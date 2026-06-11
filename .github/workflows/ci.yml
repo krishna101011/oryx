@@ -62,7 +62,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
       - name: Ruff
-        run: uv run ruff check src tests
+        run: uv run --no-sync ruff check src tests
       # Mypy is scoped to the Phase 3 strict-clean surface (queue, dedupe,
       # normalization, intake orchestration, credential crypto).
       #
@@ -74,7 +74,7 @@ jobs:
       # to `mypy src` is the burn-down's exit criterion.
       - name: Mypy (Phase 3 strict-clean scope)
         run: >-
-          uv run mypy --follow-imports=silent
+          uv run --no-sync mypy --follow-imports=silent
           src/anant/services/queue
           src/anant/services/dedupe
           src/anant/services/normalization
@@ -84,4 +84,4 @@ jobs:
           src/anant/services/intake/admin_router.py
           src/anant/core/security/secrets.py
       - name: Pytest
-        run: uv run pytest -q
+        run: uv run --no-sync pytest -q
