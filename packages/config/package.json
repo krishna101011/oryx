@@ -1,0 +1,25 @@
+{
+  "name": "@anant/config",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "files": [
+    "eslint.base.cjs",
+    "tsconfig.base.json",
+    "prettier.config.cjs"
+  ],
+  "scripts": {
+    "lint": "echo 'config: nothing to lint'",
+    "type-check": "echo 'config: nothing to type-check'"
+  },
+  "peerDependencies": {
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "eslint": "^8.57.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "eslint-config-prettier": "^9.1.0"
+  }
+}

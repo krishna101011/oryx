@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+.expo
+ios
+android
+*.lock
+*.lockb
+pnpm-lock.yaml

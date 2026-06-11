@@ -1,0 +1,11 @@
+{
+  "extends": "@anant/config/tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+    "noEmit": true
+  },
+  "include": ["src/**/*"]
+}

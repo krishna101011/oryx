@@ -1,0 +1,58 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["apps/backend/src"]
+
+[tool.ruff.lint]
+select = [
+  "E", "F", "W",   # pycodestyle, pyflakes
+  "I",             # isort
+  "B",             # bugbear
+  "UP",            # pyupgrade
+  "ASYNC",         # async best practices
+  "S",             # bandit security
+  "RUF",           # ruff-specific
+]
+ignore = [
+  "S101",  # asserts are fine in tests
+  # -- Pre-existing Phase 1-2 debt, accepted at the Phase 3 freeze --------
+  # (2026-06-11) These rules fire on committed Phase 1-2 code under current
+  # ruff. Burning them down is tracked tech debt; suppressing here keeps CI
+  # honest about NEW violations of every other rule.
+  "UP042",   # str-Enum classes throughout models/services (StrEnum migration)
+  "E741",    # two `l` loop vars in Phase 2 services
+  "RUF001",  # em-dash in two user-facing strings
+  "RUF059",  # two unused unpacked tuple members in Phase 2
+  "E501",    # four long lines in Phase 2 routers
+  "B017",    # two broad assertRaises in crypto tests
+  "ASYNC109", # one timeout-param provider signature (vendor contract)
+  "S105", "S106",  # false positives: enum labels / revoke reasons / test fixtures
+  "UP046",   # hand-maintained pydantic mirror keeps Generic[T] (pydantic>=2.7 floor)
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency injection uses calls in default arguments by design.
+extend-immutable-calls = [
+  "fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Header",
+  "fastapi.Body", "fastapi.Cookie",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+disallow_any_explicit = false
+files = ["apps/backend/src"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false

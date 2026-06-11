@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.venv/
+__pycache__/
+*.egg-info/
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+.expo/
+.expo-shared/
+ios/
+android/
+web-build/
+
+# Env files (never commit real secrets)
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+~$*
+.DS_Store
+.idea/
+.vscode/
+!.vscode/extensions.json
+
+# Logs
+*.log
+logs/
+
+# Test / coverage
+coverage/
+.pytest_cache/
+pytest-cache-files-*/
+.mypy_cache/
+.ruff_cache/
+
+# Python tooling
+*.pyc
+uv.lock-backup
