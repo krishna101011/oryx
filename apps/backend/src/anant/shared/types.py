@@ -534,6 +534,40 @@ class ManualIngestResponse(_Base):
     fingerprint: str
 
 
+# ============================================================================
+# Claims (Phase 4 Wave A)
+# ============================================================================
+
+EpistemicType = Literal[
+    "fact", "claim", "rumor", "speculation", "opinion", "unclassified"
+]
+
+
+class Claim(_Base):
+    id: str
+    workspace_id: str = Field(alias="workspaceId")
+    intake_item_id: str = Field(alias="intakeItemId")
+    text: str
+    subject: str
+    predicate: str
+    object: str | None = None
+    epistemic_type: EpistemicType = Field(alias="epistemicType")
+    extractor_version: int = Field(alias="extractorVersion")
+    classifier_version: int | None = Field(default=None, alias="classifierVersion")
+    requires_analyst_review: bool = Field(alias="requiresAnalystReview")
+    superseded_by: str | None = Field(default=None, alias="supersededBy")
+    created_at: datetime = Field(alias="createdAt")
+
+
+class _ClaimListMeta(_Base):
+    pagination: Pagination
+
+
+class ClaimListResponse(_Base):
+    claims: list[Claim]
+    meta: _ClaimListMeta
+
+
 class WebhookEnvelope(_Base):
     workspace_id: str = Field(alias="workspaceId")
     intake_source_id: str = Field(alias="intakeSourceId")

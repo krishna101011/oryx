@@ -43,6 +43,7 @@ from anant.services.analytics.router import router as analytics_router
 from anant.services.auth.me import router as auth_me_router
 from anant.services.auth.router import router as auth_router
 from anant.services.automation.router import router as automation_router
+from anant.services.claims.router import router as claims_router
 from anant.services.content.router import router as content_router
 from anant.services.feature_flags.router import router as feature_flags_router
 from anant.services.health.router import router as health_router
@@ -144,6 +145,9 @@ def create_app() -> FastAPI:
     app.include_router(automation_router, prefix=p)
     app.include_router(analytics_router, prefix=p)
     app.include_router(training_router, prefix=p)
+
+    # Phase 4 (Wave A): read-only claims surface.
+    app.include_router(claims_router, prefix=p)
 
     # Phase 2 real services. /auth/me is its own router for clarity.
     app.include_router(auth_router, prefix=p)

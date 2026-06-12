@@ -5,7 +5,7 @@
   "description": "Anant Capital backend (Python). This file exists so pnpm can run lint/type-check via shell commands.",
   "scripts": {
     "lint": "uv run --no-sync ruff check src tests",
-    "type-check": "uv run --no-sync mypy --follow-imports=silent src/anant/services/queue src/anant/services/dedupe src/anant/services/normalization src/anant/services/intake/scheduler.py src/anant/services/intake/sync_runner.py src/anant/services/intake/workspace_cascade.py src/anant/services/intake/admin_router.py src/anant/core/security/secrets.py",
+    "type-check": "uv run --no-sync mypy --follow-imports=silent src/anant/services/queue src/anant/services/dedupe src/anant/services/claims src/anant/services/normalization src/anant/services/intake/scheduler.py src/anant/services/intake/sync_runner.py src/anant/services/intake/workspace_cascade.py src/anant/services/intake/admin_router.py src/anant/core/security/secrets.py",
     "test": "uv run --no-sync pytest"
   }
 }

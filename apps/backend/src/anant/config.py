@@ -87,6 +87,11 @@ class Settings(BaseSettings):
     # CR-8 — manual ingest is platform-admin only and deliberately slow.
     manual_ingest_per_minute: int = 10
 
+    # --- Phase 4: AI pipeline ---
+    # Required for claim extraction/typing; without it AI calls raise
+    # ProviderError(AUTH) and deliveries dead-letter after the retry budget.
+    anthropic_api_key: str | None = None
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

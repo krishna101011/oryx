@@ -11,10 +11,11 @@ Convention:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
@@ -604,3 +605,59 @@ class WorkspaceDeletionOrphanCredential(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# ============================================================================
+# Phase 4 Wave A — claims + AI budget
+# ============================================================================
+
+
+class Claim(Base):
+    __tablename__ = "claims"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    intake_item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("intake_items.id", ondelete="CASCADE"), nullable=False
+    )
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    subject: Mapped[str] = mapped_column(Text, nullable=False)
+    predicate: Mapped[str] = mapped_column(Text, nullable=False)
+    object: Mapped[str | None] = mapped_column(Text)
+    epistemic_type: Mapped[str] = mapped_column(
+        Enum(
+            "fact", "claim", "rumor", "speculation", "opinion", "unclassified",
+            name="epistemic_type",
+        ),
+        nullable=False,
+        default="unclassified",
+    )
+    extractor_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    classifier_version: Mapped[int | None] = mapped_column(Integer)
+    requires_analyst_review: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    superseded_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("claims.id")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class WorkspaceAIBudget(Base):
+    """Per-workspace daily AI token ledger. Checked before every AI call."""
+
+    __tablename__ = "workspace_ai_budget"
+
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), primary_key=True
+    )
+    budget_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    tokens_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    budget_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=100000)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

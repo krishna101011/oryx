@@ -155,9 +155,15 @@ async def get_active_workspace(
 
 CAPABILITIES: dict[str, list[str]] = {
     "owner": ["*"],
-    "admin": ["research.*", "settings.*", "integrations.*", "content.*", "activity.*"],
-    "editor": ["research.write", "research.read", "content.*", "activity.read"],
-    "reader": ["research.read", "content.read", "activity.read"],
+    "admin": [
+        "research.*", "settings.*", "integrations.*", "content.*", "activity.*",
+        "verification.*",
+    ],
+    "editor": [
+        "research.write", "research.read", "content.*", "activity.read",
+        "verification.read",
+    ],
+    "reader": ["research.read", "content.read", "activity.read", "verification.read"],
 }
 
 

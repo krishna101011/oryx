@@ -77,6 +77,7 @@ jobs:
           uv run --no-sync mypy --follow-imports=silent
           src/anant/services/queue
           src/anant/services/dedupe
+          src/anant/services/claims
           src/anant/services/normalization
           src/anant/services/intake/scheduler.py
           src/anant/services/intake/sync_runner.py

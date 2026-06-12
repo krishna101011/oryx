@@ -208,12 +208,17 @@ def _format_error(e: Exception) -> str:
 def build_bus() -> EventBus:
     """Construct the bus and register subscribers.
 
-    Phase 3 ships no real subscribers — Phase 4's verification service
-    registers its `intake.item.received` handler here. Until then events
-    are published to an empty fan-out and marked delivered, which is
-    correct: the outbox row (7-day retention) remains the replay source.
+    Subscriber imports stay local: handler modules import
+    PermanentDeliveryError from this module, so importing them at the top
+    would be circular.
     """
-    return InProcessBus()
+    from anant.core.db import get_sessionmaker
+    from anant.services.claims.service import ClaimExtractionHandler
+    from anant.services.intake.events_constants import INTAKE_ITEM_RECEIVED
+
+    bus = InProcessBus()
+    bus.subscribe(INTAKE_ITEM_RECEIVED, ClaimExtractionHandler(get_sessionmaker()))
+    return bus
 
 
 async def amain() -> None:
