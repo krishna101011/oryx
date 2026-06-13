@@ -31,6 +31,7 @@ export * from './claims';
 export * from './evidence';
 
 export * as Verification from './verification';
+export * as Scoring from './scoring';
 export * as Research from './research';
 export * as Content from './content';
 export * as Publishing from './publishing';

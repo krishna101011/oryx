@@ -74,6 +74,16 @@ export const SourceDetailScreen: React.FC = () => {
         />
         <Spacer size={2} />
         <Button
+          label="View credibility"
+          variant="secondary"
+          fullWidth
+          onPress={() =>
+            // @ts-expect-error param-carrying navigate; typed via SettingsStackParamList
+            navigation.navigate('SourceCredibility', { sourceId })
+          }
+        />
+        <Spacer size={2} />
+        <Button
           label={s.enabled ? 'Disable' : 'Enable'}
           variant="secondary"
           fullWidth

@@ -79,6 +79,8 @@ jobs:
           src/anant/services/dedupe
           src/anant/services/claims
           src/anant/services/evidence
+          src/anant/services/verification
+          src/anant/core/scoring_version.py
           src/anant/core/ai_circuit_breaker.py
           src/anant/services/normalization
           src/anant/services/intake/scheduler.py

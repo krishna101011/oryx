@@ -28,6 +28,8 @@ export type SettingsStackParamList = {
   IntakeHealth: undefined;
   IntakeActivity: { sourceId?: string } | undefined;
   ManualIngest: undefined;
+  // Phase 4 Wave C — per-source credibility (ADR-031), keyed by intake source id
+  SourceCredibility: { sourceId: string };
 };
 
 export type RootTabParamList = {

@@ -15,6 +15,7 @@ import { SourceDetailScreen } from '../modules/intake/screens/SourceDetailScreen
 import { IntakeHealthScreen } from '../modules/intake/screens/IntakeHealthScreen';
 import { IntakeActivityScreen } from '../modules/intake/screens/IntakeActivityScreen';
 import { ManualIngestScreen } from '../modules/intake/screens/ManualIngestScreen';
+import { SourceCredibilityScreen } from '../modules/verification/screens/SourceCredibilityScreen';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
@@ -41,6 +42,7 @@ export const SettingsStack: React.FC = () => {
       <Stack.Screen name="IntakeHome" component={IntakeHomeScreen} options={{ title: 'Intake' }} />
       <Stack.Screen name="IntakeSourceManagement" component={SourceManagementScreen} options={{ title: 'Manage' }} />
       <Stack.Screen name="IntakeSourceDetail" component={SourceDetailScreen} options={{ title: 'Source' }} />
+      <Stack.Screen name="SourceCredibility" component={SourceCredibilityScreen} options={{ title: 'Credibility' }} />
       <Stack.Screen name="IntakeHealth" component={IntakeHealthScreen} options={{ title: 'Health' }} />
       <Stack.Screen name="IntakeActivity" component={IntakeActivityScreen} options={{ title: 'Activity' }} />
       {isPlatformAdmin ? (

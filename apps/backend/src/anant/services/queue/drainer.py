@@ -215,13 +215,16 @@ def build_bus() -> EventBus:
     from anant.core.db import get_sessionmaker
     from anant.services.claims.events.constants import CLAIM_TYPED
     from anant.services.claims.service import ClaimExtractionHandler
+    from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
     from anant.services.evidence.service import EvidenceCollectionHandler
     from anant.services.intake.events_constants import INTAKE_ITEM_RECEIVED
+    from anant.services.verification.service import VerificationHandler
 
     bus = InProcessBus()
     sm = get_sessionmaker()
     bus.subscribe(INTAKE_ITEM_RECEIVED, ClaimExtractionHandler(sm))
     bus.subscribe(CLAIM_TYPED, EvidenceCollectionHandler(sm))
+    bus.subscribe(EVIDENCE_COLLECTED, VerificationHandler(sm))
     return bus
 
 

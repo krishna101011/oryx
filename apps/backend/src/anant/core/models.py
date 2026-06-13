@@ -712,3 +712,83 @@ class ClaimEvidenceLink(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+# ============================================================================
+# Phase 4 Wave C — verification runs, source credibility, audit log
+# ============================================================================
+
+
+class VerificationRun(Base):
+    """One versioned, reproducible scoring pass on one claim. Append-only."""
+
+    __tablename__ = "verification_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    claim_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("claims.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(
+        Enum("pending", "running", "complete", "failed", name="verification_status"),
+        nullable=False,
+        default="pending",
+    )
+    outcome: Mapped[str | None] = mapped_column(
+        Enum(
+            "verified", "unverified", "contested", "unverifiable",
+            name="verification_outcome",
+        )
+    )
+    source_trust_score: Mapped[float | None] = mapped_column(Float)
+    cross_reference_count: Mapped[int | None] = mapped_column(Integer)
+    evidence_strength: Mapped[float | None] = mapped_column(Float)
+    recency_score: Mapped[float | None] = mapped_column(Float)
+    claim_specificity: Mapped[float | None] = mapped_column(Float)
+    primary_source_flag: Mapped[bool | None] = mapped_column(Boolean)
+    confidence_score: Mapped[float | None] = mapped_column(Float)
+    factors: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    engine_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    scoring_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    tokens_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class SourceCredibilityRecord(Base):
+    """Per-(workspace, source) running accuracy. source_id == intake_sources.id."""
+
+    __tablename__ = "source_credibility_records"
+
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), primary_key=True
+    )
+    source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    accuracy_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    verified_claim_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    contested_claim_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_claim_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    bias_indicators: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    topic_reliability: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    last_evaluated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class VerificationAuditLog(Base):
+    """Append-only Phase 4 pipeline decision log (separate from auth_audit_log)."""
+
+    __tablename__ = "verification_audit_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    account_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    event: Mapped[str] = mapped_column(Text, nullable=False)
+    entity_type: Mapped[str] = mapped_column(Text, nullable=False)
+    entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
