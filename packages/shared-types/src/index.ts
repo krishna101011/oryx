@@ -30,6 +30,9 @@ export * from './claims';
 // ---- Phase 4 Wave B ----
 export * from './evidence';
 
+// ---- Phase 4 Wave D ----
+export * from './conflicts';
+
 export * as Verification from './verification';
 export * as Scoring from './scoring';
 export * as Research from './research';

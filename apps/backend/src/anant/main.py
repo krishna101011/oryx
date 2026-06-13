@@ -44,6 +44,7 @@ from anant.services.auth.me import router as auth_me_router
 from anant.services.auth.router import router as auth_router
 from anant.services.automation.router import router as automation_router
 from anant.services.claims.router import router as claims_router
+from anant.services.conflicts.router import router as conflicts_router
 from anant.services.content.router import router as content_router
 from anant.services.evidence.router import router as evidence_router
 from anant.services.feature_flags.router import router as feature_flags_router
@@ -57,6 +58,7 @@ from anant.services.preferences.router import router as preferences_router
 from anant.services.profiles.router import router as profiles_router
 from anant.services.publishing.router import router as publishing_router
 from anant.services.research.router import router as research_router
+from anant.services.review.router import router as review_router
 from anant.services.sessions.router import router as sessions_router
 from anant.services.sources.router import router as sources_router
 from anant.services.training.router import router as training_router
@@ -150,6 +152,9 @@ def create_app() -> FastAPI:
     # Phase 4 (Waves A-B): read-only claims + evidence surfaces.
     app.include_router(claims_router, prefix=p)
     app.include_router(evidence_router, prefix=p)
+    # Phase 4 (Wave D): conflicts (read + resolve) + analyst review.
+    app.include_router(conflicts_router, prefix=p)
+    app.include_router(review_router, prefix=p)
 
     # Phase 2 real services. /auth/me is its own router for clarity.
     app.include_router(auth_router, prefix=p)

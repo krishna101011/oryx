@@ -30,6 +30,9 @@ export type SettingsStackParamList = {
   ManualIngest: undefined;
   // Phase 4 Wave C — per-source credibility (ADR-031), keyed by intake source id
   SourceCredibility: { sourceId: string };
+  // Phase 4 Wave D — analyst review queue + conflict resolution
+  VerificationQueue: undefined;
+  ConflictReview: { conflictId: string };
 };
 
 export type RootTabParamList = {

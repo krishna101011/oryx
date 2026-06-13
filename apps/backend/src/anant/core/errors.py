@@ -48,6 +48,16 @@ class ValidationError(AppError):
     message = "Request validation failed"
 
 
+class BadRequestError(AppError):
+    """Service-layer 400. Used where the spec mandates HTTP 400 (e.g. an
+    analyst note that is present in the body but empty) — distinct from the
+    422 schema-validation path so the check is enforced in the service."""
+
+    code = "VALIDATION_FAILED"
+    http_status = 400
+    message = "Bad request"
+
+
 class RateLimitedError(AppError):
     code = "RATE_LIMITED"
     http_status = 429

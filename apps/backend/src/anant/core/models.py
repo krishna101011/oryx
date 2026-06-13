@@ -792,3 +792,94 @@ class VerificationAuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+# ============================================================================
+# Phase 4 Wave D — conflict detection, resolution, analyst review
+# ============================================================================
+
+
+class ConflictRecord(Base):
+    """A detected conflict between two claims on the same subject.
+
+    Stored with canonical ordering: claim_a_id is always the smaller UUID
+    (enforced in the service), so the UNIQUE (workspace, a, b) dedupes a pair
+    from either detection direction.
+    """
+
+    __tablename__ = "conflict_records"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    claim_a_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("claims.id"), nullable=False
+    )
+    claim_b_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("claims.id"), nullable=False
+    )
+    conflict_type: Mapped[str] = mapped_column(
+        Enum(
+            "direct_contradiction", "factual_disagreement",
+            "temporal_inconsistency", "scope_difference",
+            name="conflict_type_enum",
+        ),
+        nullable=False,
+    )
+    severity: Mapped[float] = mapped_column(Float, nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum(
+            "open", "resolved_a_wins", "resolved_b_wins",
+            "resolved_inconclusive", "resolved_system", "analyst_reviewed",
+            name="conflict_status_enum",
+        ),
+        nullable=False,
+        default="open",
+    )
+    resolution_note: Mapped[str | None] = mapped_column(Text)
+    resolved_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id")
+    )
+    resolved_by_kind: Mapped[str | None] = mapped_column(
+        Enum("system", "analyst", name="conflict_resolver_enum")
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    # UNIQUE (workspace_id, claim_a_id, claim_b_id) lives in migration 0007
+    # (uq_conflict_records_pair); the repository upserts via index_elements.
+
+
+class AnalystReview(Base):
+    """Append-only record of one analyst decision. Overrides write HERE —
+    they never mutate the original claim / verification_run rows."""
+
+    __tablename__ = "analyst_reviews"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    entity_type: Mapped[str] = mapped_column(
+        Enum("claim", "intelligence_object", "conflict", name="analyst_entity_enum"),
+        nullable=False,
+    )
+    entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    outcome: Mapped[str] = mapped_column(
+        Enum(
+            "approved", "rejected", "flagged",
+            "override_verified", "override_unverified",
+            "conflict_resolved_a", "conflict_resolved_b", "conflict_inconclusive",
+            name="analyst_outcome_enum",
+        ),
+        nullable=False,
+    )
+    note: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

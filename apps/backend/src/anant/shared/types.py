@@ -688,3 +688,71 @@ CONFIDENCE_BAND_THRESHOLDS: list[tuple[str, float]] = [
     ("low", 0.25),
     ("minimal", 0.0),
 ]
+
+
+# ============================================================================
+# Conflicts (Phase 4 Wave D)
+# ============================================================================
+
+ConflictType = Literal[
+    "direct_contradiction",
+    "factual_disagreement",
+    "temporal_inconsistency",
+    "scope_difference",
+]
+ConflictStatus = Literal[
+    "open",
+    "resolved_a_wins",
+    "resolved_b_wins",
+    "resolved_inconclusive",
+    "resolved_system",
+    "analyst_reviewed",
+]
+ConflictResolver = Literal["system", "analyst"]
+AnalystEntityType = Literal["claim", "intelligence_object", "conflict"]
+
+
+class ConflictRecord(_Base):
+    id: str
+    workspace_id: str = Field(alias="workspaceId")
+    claim_a_id: str = Field(alias="claimAId")
+    claim_b_id: str = Field(alias="claimBId")
+    conflict_type: ConflictType = Field(alias="conflictType")
+    severity: float
+    status: ConflictStatus
+    resolution_note: str | None = Field(default=None, alias="resolutionNote")
+    resolved_by_kind: ConflictResolver | None = Field(
+        default=None, alias="resolvedByKind"
+    )
+    resolved_at: datetime | None = Field(default=None, alias="resolvedAt")
+    created_at: datetime = Field(alias="createdAt")
+
+
+class AnalystReview(_Base):
+    id: str
+    account_id: str = Field(alias="accountId")
+    workspace_id: str = Field(alias="workspaceId")
+    entity_type: AnalystEntityType = Field(alias="entityType")
+    entity_id: str = Field(alias="entityId")
+    outcome: str
+    note: str
+    created_at: datetime = Field(alias="createdAt")
+
+
+class ConflictDetail(ConflictRecord):
+    claim_a: Claim = Field(alias="claimA")
+    claim_b: Claim = Field(alias="claimB")
+    claim_a_score: float | None = Field(default=None, alias="claimAScore")
+    claim_b_score: float | None = Field(default=None, alias="claimBScore")
+    claim_a_evidence_counts: dict[str, int] = Field(alias="claimAEvidenceCounts")
+    claim_b_evidence_counts: dict[str, int] = Field(alias="claimBEvidenceCounts")
+
+
+class ReviewQueue(_Base):
+    pending_claims: list[Claim] = Field(alias="pendingClaims")
+    open_conflicts: list[ConflictRecord] = Field(alias="openConflicts")
+
+
+class ResolveConflictRequest(_Base):
+    outcome: Literal["a_wins", "b_wins", "inconclusive"]
+    note: str

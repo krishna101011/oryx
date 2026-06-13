@@ -215,9 +215,11 @@ def build_bus() -> EventBus:
     from anant.core.db import get_sessionmaker
     from anant.services.claims.events.constants import CLAIM_TYPED
     from anant.services.claims.service import ClaimExtractionHandler
+    from anant.services.conflicts.service import ConflictDetectionHandler
     from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
     from anant.services.evidence.service import EvidenceCollectionHandler
     from anant.services.intake.events_constants import INTAKE_ITEM_RECEIVED
+    from anant.services.verification.events.constants import CLAIM_VERIFIED
     from anant.services.verification.service import VerificationHandler
 
     bus = InProcessBus()
@@ -225,6 +227,9 @@ def build_bus() -> EventBus:
     bus.subscribe(INTAKE_ITEM_RECEIVED, ClaimExtractionHandler(sm))
     bus.subscribe(CLAIM_TYPED, EvidenceCollectionHandler(sm))
     bus.subscribe(EVIDENCE_COLLECTED, VerificationHandler(sm))
+    # CLAIM_VERIFIED fans out to conflict detection. Wave E adds a second
+    # subscriber (composition); two idempotent handlers on one event is fine.
+    bus.subscribe(CLAIM_VERIFIED, ConflictDetectionHandler(sm))
     return bus
 
 

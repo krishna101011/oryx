@@ -16,6 +16,8 @@ import { IntakeHealthScreen } from '../modules/intake/screens/IntakeHealthScreen
 import { IntakeActivityScreen } from '../modules/intake/screens/IntakeActivityScreen';
 import { ManualIngestScreen } from '../modules/intake/screens/ManualIngestScreen';
 import { SourceCredibilityScreen } from '../modules/verification/screens/SourceCredibilityScreen';
+import { VerificationQueueScreen } from '../modules/verification/screens/VerificationQueueScreen';
+import { ConflictReviewScreen } from '../modules/verification/screens/ConflictReviewScreen';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
@@ -43,6 +45,8 @@ export const SettingsStack: React.FC = () => {
       <Stack.Screen name="IntakeSourceManagement" component={SourceManagementScreen} options={{ title: 'Manage' }} />
       <Stack.Screen name="IntakeSourceDetail" component={SourceDetailScreen} options={{ title: 'Source' }} />
       <Stack.Screen name="SourceCredibility" component={SourceCredibilityScreen} options={{ title: 'Credibility' }} />
+      <Stack.Screen name="VerificationQueue" component={VerificationQueueScreen} options={{ title: 'Review queue' }} />
+      <Stack.Screen name="ConflictReview" component={ConflictReviewScreen} options={{ title: 'Resolve conflict' }} />
       <Stack.Screen name="IntakeHealth" component={IntakeHealthScreen} options={{ title: 'Health' }} />
       <Stack.Screen name="IntakeActivity" component={IntakeActivityScreen} options={{ title: 'Activity' }} />
       {isPlatformAdmin ? (

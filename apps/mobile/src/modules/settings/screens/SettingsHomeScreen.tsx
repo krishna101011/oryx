@@ -94,6 +94,18 @@ export const SettingsHomeScreen: React.FC = () => {
           onPress={() => navigation.navigate('IntakeHome' as never)}
         />
 
+        <Spacer size={6} />
+        <Text variant="caption" color="tertiary">
+          VERIFICATION
+        </Text>
+        <Spacer size={2} />
+        <SettingsRow
+          label="Review queue"
+          description="Claims to review and open conflicts"
+          icon="ShieldCheck"
+          onPress={() => navigation.navigate('VerificationQueue' as never)}
+        />
+
         <Spacer size={8} />
         <Button
           label="Sign out"
