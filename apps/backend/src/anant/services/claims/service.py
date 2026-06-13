@@ -34,6 +34,7 @@ from collections.abc import Mapping
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from anant.core.ai_circuit_breaker import CircuitOpenError
 from anant.core.logging import get_logger
 from anant.services.claims.classifier import CLASSIFIER_VERSION, EpistemicClassifierAI
 from anant.services.claims.events.constants import CLAIM_EXTRACTED, CLAIM_TYPED
@@ -266,7 +267,20 @@ class ClaimService:
                     await session.commit()
                     continue
 
-            result = await self._classifier.classify(claim_text, context)
+            try:
+                result = await self._classifier.classify(claim_text, context)
+            except CircuitOpenError:
+                # Wave B §21.2: circuit open → flag for analyst, leave the
+                # claim unclassified (same terminal shape as budget-skip;
+                # no CLAIM_TYPED because nothing was typed).
+                logger.warning(
+                    "claims.circuit_open",
+                    extra={"workspace_id": str(workspace_id), "stage": "classifier"},
+                )
+                async with self._sm() as session:
+                    await ClaimsRepository(session).flag_for_review(claim_id)
+                    await session.commit()
+                continue
 
             async with self._sm() as session:
                 repo = ClaimsRepository(session)

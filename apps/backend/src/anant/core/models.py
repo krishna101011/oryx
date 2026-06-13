@@ -18,6 +18,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Integer,
     LargeBinary,
@@ -659,5 +660,55 @@ class WorkspaceAIBudget(Base):
     tokens_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     budget_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=100000)
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+# ============================================================================
+# Phase 4 Wave B — evidence + claim↔evidence links
+# ============================================================================
+
+
+class Evidence(Base):
+    __tablename__ = "evidence"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    intake_item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("intake_items.id", ondelete="CASCADE"), nullable=False
+    )
+    evidence_type: Mapped[str] = mapped_column(
+        Enum(
+            "corroboration", "contradiction", "context",
+            "primary_source", "secondary_source", "inference",
+            name="evidence_type",
+        ),
+        nullable=False,
+    )
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    source_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ClaimEvidenceLink(Base):
+    __tablename__ = "claim_evidence_links"
+
+    claim_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("claims.id", ondelete="CASCADE"), primary_key=True
+    )
+    evidence_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("evidence.id", ondelete="CASCADE"), primary_key=True
+    )
+    relationship: Mapped[str] = mapped_column(
+        Enum("supports", "contradicts", "contextualizes", name="evidence_relationship"),
+        nullable=False,
+    )
+    strength: Mapped[float] = mapped_column(Float, nullable=False)
+    linker_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

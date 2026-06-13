@@ -420,6 +420,46 @@ async def test_budget_exhausted_mid_pipeline_flags_claims_for_review(sm) -> None
 
 
 @pytest.mark.asyncio
+async def test_classifier_circuit_open_flags_claims_without_typing(sm) -> None:
+    """Wave B retrofit: open circuit → claim flagged, unclassified, no TYPED."""
+    from anant.core.ai_circuit_breaker import CircuitOpenError
+    from anant.core.models import Claim, OutboxEvent
+    from anant.services.claims.events.constants import CLAIM_TYPED
+    from anant.services.intake.providers.errors import ProviderErrorKind
+
+    ws_id, item_id, intake_event_id = await _seed_item(sm)
+
+    class OpenCircuitClassifier(FakeClassifier):
+        async def classify(self, claim_text: str, context: str):
+            raise CircuitOpenError(
+                kind=ProviderErrorKind.TRANSIENT,
+                message="circuit open",
+                call_type="classifier",
+            )
+
+    await _service(sm, classifier=OpenCircuitClassifier()).extract_claims_from_intake_item(
+        intake_item_id=item_id, workspace_id=ws_id,
+        causation_event_id=intake_event_id, correlation_id=None,
+    )
+    async with sm() as session:
+        claims = (
+            await session.execute(select(Claim).where(Claim.workspace_id == ws_id))
+        ).scalars().all()
+        assert claims
+        assert all(c.epistemic_type == "unclassified" for c in claims)
+        assert all(c.requires_analyst_review is True for c in claims)
+        typed = (
+            await session.execute(
+                select(OutboxEvent).where(
+                    OutboxEvent.workspace_id == ws_id,
+                    OutboxEvent.event_name == CLAIM_TYPED,
+                )
+            )
+        ).scalars().all()
+        assert typed == []
+
+
+@pytest.mark.asyncio
 async def test_duplicate_claim_text_is_silent_noop(sm) -> None:
     from anant.core.models import Claim
     from anant.services.claims.models import ClaimTriple

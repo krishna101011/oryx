@@ -159,11 +159,17 @@ class ClaimExtractorAI:
     version = EXTRACTOR_VERSION
 
     async def extract(self, body_text: str) -> ExtractionResult:
-        result = await call_anthropic(
-            system=EXTRACTOR_SYSTEM_PROMPT,
-            user_content=body_text[:EXTRACTOR_INPUT_MAX_CHARS],
-            max_tokens=EXTRACTOR_MAX_TOKENS,
-            temperature=EXTRACTOR_TEMPERATURE,
+        # Wave B retrofit: same call, now behind the shared circuit breaker.
+        from anant.core.ai_circuit_breaker import ai_circuit_breaker
+
+        result = await ai_circuit_breaker.call(
+            "extractor",
+            lambda: call_anthropic(
+                system=EXTRACTOR_SYSTEM_PROMPT,
+                user_content=body_text[:EXTRACTOR_INPUT_MAX_CHARS],
+                max_tokens=EXTRACTOR_MAX_TOKENS,
+                temperature=EXTRACTOR_TEMPERATURE,
+            ),
         )
         triples = _parse_triples(result.text)
         if triples is None:

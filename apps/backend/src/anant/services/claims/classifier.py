@@ -56,11 +56,17 @@ class EpistemicClassifierAI:
             f"Claim:\n{claim_text}\n\n"
             f"Context (start of source document):\n{context[:CONTEXT_CHARS]}"
         )
-        result = await call_anthropic(
-            system=CLASSIFIER_SYSTEM_PROMPT,
-            user_content=user_content,
-            max_tokens=CLASSIFIER_MAX_TOKENS,
-            temperature=CLASSIFIER_TEMPERATURE,
+        # Wave B retrofit: same call, now behind the shared circuit breaker.
+        from anant.core.ai_circuit_breaker import ai_circuit_breaker
+
+        result = await ai_circuit_breaker.call(
+            "classifier",
+            lambda: call_anthropic(
+                system=CLASSIFIER_SYSTEM_PROMPT,
+                user_content=user_content,
+                max_tokens=CLASSIFIER_MAX_TOKENS,
+                temperature=CLASSIFIER_TEMPERATURE,
+            ),
         )
         label = result.text.strip().lower()
         if label not in ALLOWED_TYPES:

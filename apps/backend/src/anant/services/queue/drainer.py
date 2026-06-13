@@ -213,11 +213,15 @@ def build_bus() -> EventBus:
     would be circular.
     """
     from anant.core.db import get_sessionmaker
+    from anant.services.claims.events.constants import CLAIM_TYPED
     from anant.services.claims.service import ClaimExtractionHandler
+    from anant.services.evidence.service import EvidenceCollectionHandler
     from anant.services.intake.events_constants import INTAKE_ITEM_RECEIVED
 
     bus = InProcessBus()
-    bus.subscribe(INTAKE_ITEM_RECEIVED, ClaimExtractionHandler(get_sessionmaker()))
+    sm = get_sessionmaker()
+    bus.subscribe(INTAKE_ITEM_RECEIVED, ClaimExtractionHandler(sm))
+    bus.subscribe(CLAIM_TYPED, EvidenceCollectionHandler(sm))
     return bus
 
 

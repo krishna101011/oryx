@@ -568,6 +568,40 @@ class ClaimListResponse(_Base):
     meta: _ClaimListMeta
 
 
+# ============================================================================
+# Evidence (Phase 4 Wave B)
+# ============================================================================
+
+EvidenceType = Literal[
+    "corroboration", "contradiction", "context",
+    "primary_source", "secondary_source", "inference",
+]
+
+EvidenceRelationship = Literal["supports", "contradicts", "contextualizes"]
+
+
+class Evidence(_Base):
+    id: str
+    workspace_id: str = Field(alias="workspaceId")
+    intake_item_id: str = Field(alias="intakeItemId")
+    evidence_type: EvidenceType = Field(alias="evidenceType")
+    text: str
+    source_deleted: bool = Field(default=False, alias="sourceDeleted")
+    created_at: datetime = Field(alias="createdAt")
+
+
+class ClaimEvidenceLink(_Base):
+    claim_id: str = Field(alias="claimId")
+    evidence_id: str = Field(alias="evidenceId")
+    relationship: EvidenceRelationship
+    strength: float
+    linker_version: int = Field(alias="linkerVersion")
+
+
+class EvidenceWithLink(Evidence):
+    link: ClaimEvidenceLink
+
+
 class WebhookEnvelope(_Base):
     workspace_id: str = Field(alias="workspaceId")
     intake_source_id: str = Field(alias="intakeSourceId")

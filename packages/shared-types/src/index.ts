@@ -27,6 +27,9 @@ export * from './intake-webhooks';
 // ---- Phase 4 Wave A ----
 export * from './claims';
 
+// ---- Phase 4 Wave B ----
+export * from './evidence';
+
 export * as Verification from './verification';
 export * as Research from './research';
 export * as Content from './content';
