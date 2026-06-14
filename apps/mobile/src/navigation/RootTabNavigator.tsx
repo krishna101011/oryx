@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Icon, useTheme } from '@anant/design-system';
 import type { RootTabParamList } from './types';
 import { DashboardScreen } from '../modules/dashboard/screens/DashboardScreen';
-import { ResearchHomeScreen } from '../modules/research/screens/ResearchHomeScreen';
+import { ResearchStack } from './ResearchStack';
 import { ContentHomeScreen } from '../modules/content/screens/ContentHomeScreen';
 import { ActivityHomeScreen } from '../modules/activity/screens/ActivityHomeScreen';
 import { SettingsStack } from './SettingsStack';
@@ -14,7 +14,7 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 // Research / Content are flag-gated. Activity + Settings always on in Phase 2.
 const GatedResearch: React.FC = () => (
   <FeatureGate flag="ff_research" name="Research">
-    <ResearchHomeScreen />
+    <ResearchStack />
   </FeatureGate>
 );
 const GatedContent: React.FC = () => (

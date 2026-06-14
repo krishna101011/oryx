@@ -84,6 +84,15 @@ export interface MeResponse {
     state: OnboardingState;
     nextStep: OnboardingStep | null;
   };
+  // Phase 4 Wave E — analyst workload + research surface counts.
+  verification: {
+    pendingReviewCount: number;
+    openConflictCount: number;
+  };
+  research: {
+    activeWorkspaceCount: number;
+    readyPacketCount: number;
+  };
   serverTime: Timestamp;
   build: { version: string; commit: string };
 }

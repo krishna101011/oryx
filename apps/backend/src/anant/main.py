@@ -53,6 +53,7 @@ from anant.services.intake.admin_router import router as intake_admin_router
 from anant.services.intake.oauth_router import router as intake_oauth_router
 from anant.services.intake.router import router as intake_router
 from anant.services.intake.webhooks_router import router as intake_webhooks_router
+from anant.services.intelligence.router import router as intelligence_router
 from anant.services.onboarding.router import router as onboarding_router
 from anant.services.preferences.router import router as preferences_router
 from anant.services.profiles.router import router as profiles_router
@@ -155,6 +156,9 @@ def create_app() -> FastAPI:
     # Phase 4 (Wave D): conflicts (read + resolve) + analyst review.
     app.include_router(conflicts_router, prefix=p)
     app.include_router(review_router, prefix=p)
+    # Phase 4 (Wave E): intelligence objects (read). research_router below is
+    # the now-real research surface (replaces its Phase 1 ping stub).
+    app.include_router(intelligence_router, prefix=p)
 
     # Phase 2 real services. /auth/me is its own router for clarity.
     app.include_router(auth_router, prefix=p)

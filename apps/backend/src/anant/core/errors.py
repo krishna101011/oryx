@@ -64,6 +64,15 @@ class RateLimitedError(AppError):
     message = "Too many requests"
 
 
+class PreconditionFailedError(AppError):
+    """Service-layer 409 — a request was rejected by a gate, not by schema.
+    Used for the research-packet readiness gate; blockers ride in `details`."""
+
+    code = "VALIDATION_FAILED"
+    http_status = 409
+    message = "Precondition not met"
+
+
 class NotImplementedFeatureError(AppError):
     code = "NOT_IMPLEMENTED"
     http_status = 501

@@ -7,11 +7,11 @@ conflict_records (resolution) and claims.superseded_by (the loser pointer) —
 both inherent to resolving a conflict, both in ONE transaction with the audit
 trail and the outbox event.
 
-Object projections the Rev 3 spec attaches here — recalculating an
-intelligence_object's score, flipping its verification_status to
-analyst_approved/analyst_rejected, emitting OBJECT_UPDATED / OBJECT_REVIEWED —
-are DEFERRED to Wave E (intelligence_objects do not exist yet). Each seam is
-marked `# WAVE E`.
+Object projections (Wave E): a conflict resolution recomposes the affected
+intelligence object via ObjectConflictProjector, which subscribes to the
+CONFLICT_RESOLVED event emitted here (OBJECT_UPDATED + OBJECT_REVIEWED). An
+object review (approve/reject) flips intelligence_objects.verification_status
+inline and emits OBJECT_REVIEWED, in this same transaction.
 
 Note enforcement: the analyst note must be non-empty. The check lives HERE
 (HTTP 400), not in the request schema, so it is authoritative and unit-testable
@@ -27,6 +27,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from anant.core.errors import BadRequestError, NotFoundError
 from anant.services.conflicts.events.constants import CONFLICT_RESOLVED
 from anant.services.conflicts.repository import ConflictRepository
+from anant.services.intelligence.events.constants import OBJECT_REVIEWED
+from anant.services.intelligence.repository import IntelligenceRepository
 from anant.services.queue.outbox import enqueue_event
 from anant.services.review.repository import ReviewRepository
 
@@ -112,9 +114,11 @@ class ReviewService:
                     "note": note,
                 },
             )
-            # WAVE E: recalc the intelligence_object score excluding the
-            # superseded claim, set status if no open conflicts remain, and
-            # emit OBJECT_UPDATED(changeType='conflict_resolved') + OBJECT_REVIEWED.
+            # Object projection (Wave E): ObjectConflictProjector consumes this
+            # CONFLICT_RESOLVED event (resolution='analyst') and recomposes the
+            # affected object — recalculated score excluding the superseded
+            # claim, status restored if no open conflicts remain — emitting
+            # OBJECT_UPDATED(changeType='conflict_resolved') + OBJECT_REVIEWED.
             await enqueue_event(
                 session,
                 name=CONFLICT_RESOLVED,
@@ -197,15 +201,17 @@ class ReviewService:
         outcome: str,
         note: str,
     ) -> dict[str, Any]:
-        """Records an analyst judgment on an intelligence object. The
-        analyst_reviews row + audit entry are written now; the object's
-        verification_status projection (approved/rejected) and the
-        OBJECT_REVIEWED event land in Wave E, when intelligence_objects exist."""
+        """Records an analyst judgment on an intelligence object. Writes the
+        analyst_reviews row + audit entry, flips the object's
+        verification_status (approved → analyst_approved, rejected →
+        analyst_rejected, flagged → unchanged), and emits OBJECT_REVIEWED —
+        all in one transaction."""
         _require_note(note)
-        target_status = _OBJECT_STATUS[outcome]  # validated; applied in Wave E
+        target_status = _OBJECT_STATUS[outcome]
         async with self._sm() as session:
             reviews = ReviewRepository(session)
             conflicts = ConflictRepository(session)
+            intel = IntelligenceRepository(session)
 
             review = await reviews.insert_review(
                 account_id=account_id,
@@ -227,8 +233,28 @@ class ReviewService:
                     "target_status": target_status,
                 },
             )
-            # WAVE E: set intelligence_objects.verification_status =
-            # target_status (when not None) and emit OBJECT_REVIEWED.
+
+            # Flip status + emit OBJECT_REVIEWED when the object exists. flagged
+            # is advisory (target_status None) — the review is still recorded.
+            obj = await intel.get_object(
+                workspace_id=workspace_id, object_id=object_id
+            )
+            if obj is not None:
+                if target_status is not None:
+                    await intel.set_status(object_id=object_id, status=target_status)
+                await enqueue_event(
+                    session,
+                    name=OBJECT_REVIEWED,
+                    payload={
+                        "objectId": str(object_id),
+                        "accountId": str(account_id),
+                        "workspaceId": str(workspace_id),
+                        "reviewOutcome": outcome,
+                    },
+                    workspace_id=workspace_id,
+                    actor_kind="account",
+                    actor_id=str(account_id),
+                )
             await session.commit()
             return {
                 "objectId": str(object_id),

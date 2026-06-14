@@ -25,7 +25,7 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.dialects.postgresql import CITEXT, INET, JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, INET, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from anant.core.db import Base
@@ -880,6 +880,134 @@ class AnalystReview(Base):
         nullable=False,
     )
     note: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+# ============================================================================
+# Phase 4 Wave E — intelligence objects + research workspaces/packets
+# ============================================================================
+
+
+class IntelligenceObject(Base):
+    """The fan-in: N non-superseded claims for one intake item → one scored
+    object. UNIQUE (workspace_id, intake_item_id) — one per item."""
+
+    __tablename__ = "intelligence_objects"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    intake_item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("intake_items.id"), nullable=False
+    )
+    epistemic_type: Mapped[str] = mapped_column(
+        Enum(
+            "fact", "claim", "rumor", "speculation", "opinion", "unclassified",
+            name="epistemic_type",
+        ),
+        nullable=False,
+    )
+    confidence_score: Mapped[float | None] = mapped_column(Float)
+    verification_status: Mapped[str] = mapped_column(
+        Enum(
+            "unverified", "verified", "contested",
+            "analyst_approved", "analyst_rejected",
+            name="intel_status_enum",
+        ),
+        nullable=False,
+        default="unverified",
+    )
+    claim_ids: Mapped[list[uuid.UUID]] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), nullable=False, default=list
+    )
+    conflict_ids: Mapped[list[uuid.UUID]] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), nullable=False, default=list
+    )
+    key_facts: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    headline: Mapped[str] = mapped_column(Text, nullable=False)
+    scoring_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    # UNIQUE (workspace_id, intake_item_id) lives in migration 0008.
+
+
+class ResearchWorkspace(Base):
+    __tablename__ = "research_workspaces"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(
+        Enum("active", "archived", name="rws_status_enum"),
+        nullable=False,
+        default="active",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ResearchWorkspaceItem(Base):
+    __tablename__ = "research_workspace_items"
+
+    research_workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("research_workspaces.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    intelligence_object_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("intelligence_objects.id"), primary_key=True
+    )
+    added_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+    )
+    note: Mapped[str | None] = mapped_column(Text)  # CHECK len<=500 in migration
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ResearchPacket(Base):
+    __tablename__ = "research_packets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    research_workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("research_workspaces.id"), nullable=False
+    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum("assembling", "ready", "consumed", name="packet_status_enum"),
+        nullable=False,
+        default="assembling",
+    )
+    intelligence_object_ids: Mapped[list[uuid.UUID]] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), nullable=False, default=list
+    )
+    conflict_acknowledged_ids: Mapped[list[uuid.UUID]] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), nullable=False, default=list
+    )
+    ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # consumed_at is written by Phase 5 ONLY — never by Phase 4 code.
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

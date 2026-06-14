@@ -61,15 +61,22 @@ export const VerificationQueueScreen: React.FC = () => {
         ) : (
           pendingClaims.map((claim) => (
             <React.Fragment key={claim.id}>
-              <Card variant="elevated">
-                <Text variant="bodySm">{claim.subject}</Text>
-                <Spacer size={2} />
-                <Text variant="caption" color="secondary">
-                  {claim.text}
-                </Text>
-                <Spacer size={2} />
-                <EpistemicTypeBadge type={claim.epistemicType} />
-              </Card>
+              <Pressable
+                onPress={() =>
+                  // @ts-expect-error param-carrying navigate; typed via SettingsStackParamList
+                  navigation.navigate('ClaimDetail', { claimId: claim.id })
+                }
+              >
+                <Card variant="elevated">
+                  <Text variant="bodySm">{claim.subject}</Text>
+                  <Spacer size={2} />
+                  <Text variant="caption" color="secondary">
+                    {claim.text}
+                  </Text>
+                  <Spacer size={2} />
+                  <EpistemicTypeBadge type={claim.epistemicType} />
+                </Card>
+              </Pressable>
               <Spacer size={2} />
             </React.Fragment>
           ))

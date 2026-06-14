@@ -82,6 +82,8 @@ jobs:
           src/anant/services/verification
           src/anant/services/conflicts
           src/anant/services/review
+          src/anant/services/intelligence
+          src/anant/services/research
           src/anant/core/scoring_version.py
           src/anant/core/ai_circuit_breaker.py
           src/anant/services/normalization

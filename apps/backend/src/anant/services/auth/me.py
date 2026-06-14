@@ -25,8 +25,12 @@ from anant.core.errors import NotFoundError
 from anant.core.models import (
     Account,
     ActivityInbox,
+    Claim,
+    ConflictRecord,
     OnboardingState,
     Profile,
+    ResearchPacket,
+    ResearchWorkspace,
     Workspace,
 )
 from anant.core.models import (
@@ -109,6 +113,63 @@ async def get_me(
         # Map current_step → next_step (the step the client should render NOW is current_step).
         next_step = ob.current_step  # type: ignore[assignment]
 
+    # Phase 4 Wave E — verification + research counts (current workspace).
+    pending_review_count = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(Claim)
+                .where(
+                    Claim.workspace_id == ws.workspace_id,
+                    Claim.requires_analyst_review.is_(True),
+                    Claim.superseded_by.is_(None),
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    open_conflict_count = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(ConflictRecord)
+                .where(
+                    ConflictRecord.workspace_id == ws.workspace_id,
+                    ConflictRecord.status == "open",
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    active_workspace_count = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(ResearchWorkspace)
+                .where(
+                    ResearchWorkspace.workspace_id == ws.workspace_id,
+                    ResearchWorkspace.account_id == account.id,
+                    ResearchWorkspace.status == "active",
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    ready_packet_count = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(ResearchPacket)
+                .where(
+                    ResearchPacket.workspace_id == ws.workspace_id,
+                    ResearchPacket.status == "ready",
+                    ResearchPacket.consumed_at.is_(None),
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+
     settings = get_settings()
     payload = MeResponse(
         account=AccountSchema(
@@ -148,6 +209,14 @@ async def get_me(
         activity={"unreadCount": unread},
         flags=flags,
         onboarding={"state": onboarding_state, "nextStep": next_step},
+        verification={
+            "pendingReviewCount": pending_review_count,
+            "openConflictCount": open_conflict_count,
+        },
+        research={
+            "activeWorkspaceCount": active_workspace_count,
+            "readyPacketCount": ready_packet_count,
+        },
         serverTime=datetime.now(UTC),
         build={"version": settings.build_version, "commit": settings.build_commit},
     )

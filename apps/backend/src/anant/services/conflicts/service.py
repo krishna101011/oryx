@@ -13,10 +13,11 @@ claim_a) under ON CONFLICT DO NOTHING, then either auto-resolved (all five
 conditions in resolver.py) or escalated to an analyst — every state change
 and its outbox event committed in ONE transaction.
 
-Object-projection steps the Rev 3 spec attaches here (recalculate an
-intelligence_object's score / set it contested / emit OBJECT_UPDATED) are
-DEFERRED to Wave E: intelligence_objects do not exist yet. The seam is marked
-`# WAVE E` at each point.
+Object-projection steps (recalculate an intelligence_object's score / set it
+contested / emit OBJECT_UPDATED) are handled in Wave E by
+ObjectConflictProjector, which subscribes to the CONFLICT_DETECTED /
+CONFLICT_RESOLVED events emitted here — keeping conflict detection decoupled
+from the intelligence domain (no import cycle).
 """
 from __future__ import annotations
 
@@ -298,9 +299,11 @@ class ConflictService:
                         "conditions": decision.conditions,
                     },
                 )
-                # WAVE E: recalc intelligence_object score excluding the
-                # superseded claim, set status 'verified' if no open conflicts,
-                # and emit OBJECT_UPDATED(changeType='conflict_resolved').
+                # Object projection (Wave E): ObjectConflictProjector consumes
+                # this CONFLICT_RESOLVED event and recomposes the affected
+                # object — score recalculated without the superseded claim,
+                # status restored when no open conflicts remain — emitting
+                # OBJECT_UPDATED(changeType='conflict_resolved').
                 await enqueue_event(
                     session,
                     name=CONFLICT_RESOLVED,
@@ -336,9 +339,10 @@ class ConflictService:
                         "conditions": decision.conditions,
                     },
                 )
-                # WAVE E: set every intelligence_object containing either claim
-                # to 'contested' and emit OBJECT_UPDATED(changeType=
-                # 'conflict_detected').
+                # Object projection (Wave E): ObjectConflictProjector consumes
+                # this CONFLICT_DETECTED event and recomposes the affected
+                # object(s), which moves verification_status to 'contested',
+                # emitting OBJECT_UPDATED(changeType='conflict_detected').
                 await enqueue_event(
                     session,
                     name=CONFLICT_DETECTED,

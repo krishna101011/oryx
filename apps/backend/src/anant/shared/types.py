@@ -435,6 +435,16 @@ class _MeBuild(_Base):
     commit: str
 
 
+class _MeVerification(_Base):
+    pending_review_count: int = Field(alias="pendingReviewCount")
+    open_conflict_count: int = Field(alias="openConflictCount")
+
+
+class _MeResearch(_Base):
+    active_workspace_count: int = Field(alias="activeWorkspaceCount")
+    ready_packet_count: int = Field(alias="readyPacketCount")
+
+
 class MeResponse(_Base):
     account: Account
     profile: Profile
@@ -443,6 +453,8 @@ class MeResponse(_Base):
     activity: _MeActivity
     flags: dict[str, bool]
     onboarding: _MeOnboarding
+    verification: _MeVerification
+    research: _MeResearch
     server_time: datetime = Field(alias="serverTime")
     build: _MeBuild
 
@@ -756,3 +768,78 @@ class ReviewQueue(_Base):
 class ResolveConflictRequest(_Base):
     outcome: Literal["a_wins", "b_wins", "inconclusive"]
     note: str
+
+
+# ============================================================================
+# Intelligence objects (Phase 4 Wave E)
+# ============================================================================
+
+IntelligenceStatus = Literal[
+    "unverified", "verified", "contested", "analyst_approved", "analyst_rejected"
+]
+
+
+class IntelligenceObject(_Base):
+    id: str
+    workspace_id: str = Field(alias="workspaceId")
+    intake_item_id: str = Field(alias="intakeItemId")
+    epistemic_type: EpistemicType = Field(alias="epistemicType")
+    confidence_score: float | None = Field(default=None, alias="confidenceScore")
+    verification_status: IntelligenceStatus = Field(alias="verificationStatus")
+    claim_ids: list[str] = Field(alias="claimIds")
+    conflict_ids: list[str] = Field(alias="conflictIds")
+    key_facts: dict[str, Any] = Field(alias="keyFacts")
+    headline: str
+    scoring_version: int = Field(alias="scoringVersion")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+
+
+class StaleCheck(_Base):
+    is_stale: bool = Field(alias="isStale")
+    current_version: int = Field(alias="currentVersion")
+    object_version: int = Field(alias="objectVersion")
+
+
+# ============================================================================
+# Research workspaces + packets (Phase 4 Wave E)
+# ============================================================================
+
+ResearchPacketStatus = Literal["assembling", "ready", "consumed"]
+
+
+class ResearchWorkspace(_Base):
+    id: str
+    account_id: str = Field(alias="accountId")
+    workspace_id: str = Field(alias="workspaceId")
+    name: str
+    description: str | None = None
+    status: Literal["active", "archived"]
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+
+
+class ResearchWorkspaceItem(_Base):
+    research_workspace_id: str = Field(alias="researchWorkspaceId")
+    intelligence_object_id: str = Field(alias="intelligenceObjectId")
+    added_by: str = Field(alias="addedBy")
+    note: str | None = None
+    added_at: datetime = Field(alias="addedAt")
+
+
+class ResearchPacket(_Base):
+    id: str
+    research_workspace_id: str = Field(alias="researchWorkspaceId")
+    workspace_id: str = Field(alias="workspaceId")
+    name: str
+    status: ResearchPacketStatus
+    intelligence_object_ids: list[str] = Field(alias="intelligenceObjectIds")
+    conflict_acknowledged_ids: list[str] = Field(alias="conflictAcknowledgedIds")
+    ready_at: datetime | None = Field(default=None, alias="readyAt")
+    consumed_at: datetime | None = Field(default=None, alias="consumedAt")
+    created_at: datetime = Field(alias="createdAt")
+
+
+class ReadinessResult(_Base):
+    is_ready: bool = Field(alias="isReady")
+    blockers: list[str]

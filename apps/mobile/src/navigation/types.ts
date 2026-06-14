@@ -33,11 +33,24 @@ export type SettingsStackParamList = {
   // Phase 4 Wave D — analyst review queue + conflict resolution
   VerificationQueue: undefined;
   ConflictReview: { conflictId: string };
+  // Phase 4 Wave E — claim + intelligence object detail
+  ClaimDetail: { claimId: string };
+  IntelligenceObjectDetail: { objectId: string };
+};
+
+// Phase 4 Wave E — research tab stack
+export type ResearchStackParamList = {
+  ResearchWorkspaceList: undefined;
+  ResearchWorkspaceDetail: { rwsId: string };
+  IntelligenceObjectPicker: { rwsId: string; workspaceName: string };
+  ResearchPacket: { packetId: string };
+  IntelligenceObjectDetail: { objectId: string };
+  ClaimDetail: { claimId: string };
 };
 
 export type RootTabParamList = {
   Home: undefined;
-  Research: { id?: string } | undefined;
+  Research: NavigatorScreenParams<ResearchStackParamList> | undefined;
   Content: { id?: string } | undefined;
   Activity: undefined;
   Settings: NavigatorScreenParams<SettingsStackParamList> | undefined;

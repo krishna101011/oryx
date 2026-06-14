@@ -215,10 +215,18 @@ def build_bus() -> EventBus:
     from anant.core.db import get_sessionmaker
     from anant.services.claims.events.constants import CLAIM_TYPED
     from anant.services.claims.service import ClaimExtractionHandler
+    from anant.services.conflicts.events.constants import (
+        CONFLICT_DETECTED,
+        CONFLICT_RESOLVED,
+    )
     from anant.services.conflicts.service import ConflictDetectionHandler
     from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
     from anant.services.evidence.service import EvidenceCollectionHandler
     from anant.services.intake.events_constants import INTAKE_ITEM_RECEIVED
+    from anant.services.intelligence.service import (
+        CompositionTriggerHandler,
+        ObjectConflictProjector,
+    )
     from anant.services.verification.events.constants import CLAIM_VERIFIED
     from anant.services.verification.service import VerificationHandler
 
@@ -227,9 +235,13 @@ def build_bus() -> EventBus:
     bus.subscribe(INTAKE_ITEM_RECEIVED, ClaimExtractionHandler(sm))
     bus.subscribe(CLAIM_TYPED, EvidenceCollectionHandler(sm))
     bus.subscribe(EVIDENCE_COLLECTED, VerificationHandler(sm))
-    # CLAIM_VERIFIED fans out to conflict detection. Wave E adds a second
-    # subscriber (composition); two idempotent handlers on one event is fine.
+    # CLAIM_VERIFIED fans out to BOTH conflict detection and object composition
+    # — two idempotent handlers on one event, by design.
     bus.subscribe(CLAIM_VERIFIED, ConflictDetectionHandler(sm))
+    bus.subscribe(CLAIM_VERIFIED, CompositionTriggerHandler(sm))
+    # Conflict lifecycle projects onto intelligence objects (Wave D seam fill).
+    bus.subscribe(CONFLICT_DETECTED, ObjectConflictProjector(sm))
+    bus.subscribe(CONFLICT_RESOLVED, ObjectConflictProjector(sm))
     return bus
 
 

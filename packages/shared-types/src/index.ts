@@ -33,9 +33,12 @@ export * from './evidence';
 // ---- Phase 4 Wave D ----
 export * from './conflicts';
 
+// ---- Phase 4 Wave E ----
+export * from './intelligence';
+export * from './research';
+
 export * as Verification from './verification';
 export * as Scoring from './scoring';
-export * as Research from './research';
 export * as Content from './content';
 export * as Publishing from './publishing';
 export * as Automation from './automation';

@@ -18,6 +18,8 @@ import { ManualIngestScreen } from '../modules/intake/screens/ManualIngestScreen
 import { SourceCredibilityScreen } from '../modules/verification/screens/SourceCredibilityScreen';
 import { VerificationQueueScreen } from '../modules/verification/screens/VerificationQueueScreen';
 import { ConflictReviewScreen } from '../modules/verification/screens/ConflictReviewScreen';
+import { ClaimDetailScreen } from '../modules/verification/screens/ClaimDetailScreen';
+import { IntelligenceObjectDetailScreen } from '../modules/verification/screens/IntelligenceObjectDetailScreen';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
@@ -47,6 +49,8 @@ export const SettingsStack: React.FC = () => {
       <Stack.Screen name="SourceCredibility" component={SourceCredibilityScreen} options={{ title: 'Credibility' }} />
       <Stack.Screen name="VerificationQueue" component={VerificationQueueScreen} options={{ title: 'Review queue' }} />
       <Stack.Screen name="ConflictReview" component={ConflictReviewScreen} options={{ title: 'Resolve conflict' }} />
+      <Stack.Screen name="ClaimDetail" component={ClaimDetailScreen} options={{ title: 'Claim' }} />
+      <Stack.Screen name="IntelligenceObjectDetail" component={IntelligenceObjectDetailScreen} options={{ title: 'Object' }} />
       <Stack.Screen name="IntakeHealth" component={IntakeHealthScreen} options={{ title: 'Health' }} />
       <Stack.Screen name="IntakeActivity" component={IntakeActivityScreen} options={{ title: 'Activity' }} />
       {isPlatformAdmin ? (
