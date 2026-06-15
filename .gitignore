@@ -42,3 +42,7 @@ pytest-cache-files-*/
 *.pyc
 uv.lock-backup
 /node_modules
+
+# coverage artifacts
+.coverage
+

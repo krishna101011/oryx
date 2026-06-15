@@ -6,7 +6,6 @@ Runs only when ANANT_TEST_DB is set (with migrations applied).
 """
 from __future__ import annotations
 
-import os
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -14,15 +13,6 @@ import pytest
 from sqlalchemy import select
 
 pytestmark = pytest.mark.requires_db
-
-
-@pytest.fixture
-def sm():
-    # Local engine per test module; avoids the app's cached global engine.
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
-    engine = create_async_engine(os.environ["ANANT_TEST_DB"])
-    return async_sessionmaker(bind=engine, expire_on_commit=False)
 
 
 async def _enqueue(sm, name: str = "intake.item.received") -> uuid.UUID:
@@ -55,7 +45,11 @@ async def test_drainer_delivers_exactly_once(sm) -> None:
         seen.append(ev.id)
 
     bus.subscribe(name, handler)
-    drainer = OutboxDrainer(sm, bus)
+    # Large batch so a single pass reaches our just-enqueued row even when the
+    # shared test DB holds a backlog of undelivered events from earlier tests
+    # (batches are oldest-first). Foreign-named events have no subscriber on
+    # this bus, so they no-op-deliver and never invoke a real handler.
+    drainer = OutboxDrainer(sm, bus, batch_size=20000)
 
     await drainer.drain_once()
     await drainer.drain_once()  # second pass must not redeliver

@@ -39,6 +39,7 @@ from anant.services.accounts.router import router as accounts_router
 
 # ---- Phase 1 service stubs (still mounted) ----
 from anant.services.activity.router import router as activity_router
+from anant.services.admin.router import router as admin_verification_router
 from anant.services.analytics.router import router as analytics_router
 from anant.services.auth.me import router as auth_me_router
 from anant.services.auth.router import router as auth_router
@@ -159,6 +160,8 @@ def create_app() -> FastAPI:
     # Phase 4 (Wave E): intelligence objects (read). research_router below is
     # the now-real research surface (replaces its Phase 1 ping stub).
     app.include_router(intelligence_router, prefix=p)
+    # Phase 4 (Wave F): platform-admin re-run surface.
+    app.include_router(admin_verification_router, prefix=p)
 
     # Phase 2 real services. /auth/me is its own router for clarity.
     app.include_router(auth_router, prefix=p)

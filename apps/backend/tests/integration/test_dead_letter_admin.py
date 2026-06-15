@@ -23,14 +23,6 @@ def app():
     return create_app()
 
 
-@pytest.fixture
-def sm():
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
-    engine = create_async_engine(os.environ["ANANT_TEST_DB"])
-    return async_sessionmaker(bind=engine, expire_on_commit=False)
-
-
 async def _signup(client: AsyncClient) -> tuple[str, str]:
     """Returns (access_token, email)."""
     email = f"dladmin+{uuid.uuid4().hex[:8]}@anant.test"

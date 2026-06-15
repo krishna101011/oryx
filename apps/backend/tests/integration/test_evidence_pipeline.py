@@ -6,7 +6,6 @@ Runs only when ANANT_TEST_DB is set (with migrations applied).
 """
 from __future__ import annotations
 
-import os
 import uuid
 from datetime import UTC, datetime
 
@@ -14,14 +13,6 @@ import pytest
 from sqlalchemy import select, update
 
 pytestmark = pytest.mark.requires_db
-
-
-@pytest.fixture
-def sm():
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
-    engine = create_async_engine(os.environ["ANANT_TEST_DB"])
-    return async_sessionmaker(bind=engine, expire_on_commit=False)
 
 
 async def _seed(sm) -> dict:
