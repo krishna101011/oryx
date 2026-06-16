@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Card, Pressable, Spacer, Text } from '@anant/design-system';
-import type { EpistemicType, IntelligenceStatus } from '@anant/shared-types';
+import { Card, Pressable, Spacer, Text } from '@oryx/design-system';
+import type { EpistemicType, IntelligenceStatus } from '@oryx/shared-types';
 import { ConfidenceMeter } from './ConfidenceMeter';
 import { EpistemicTypeBadge } from './EpistemicTypeBadge';
 import { VerificationStatusPill } from './VerificationStatusPill';

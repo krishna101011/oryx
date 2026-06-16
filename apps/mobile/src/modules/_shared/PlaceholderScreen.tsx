@@ -8,7 +8,7 @@ import {
   Text,
   type IconName,
   useTheme,
-} from '@anant/design-system';
+} from '@oryx/design-system';
 
 export interface PlaceholderScreenProps {
   title: string;
@@ -44,10 +44,10 @@ export const PlaceholderScreen: React.FC<PlaceholderScreenProps> = ({
           <View
             style={[
               styles.iconWrap,
-              { backgroundColor: t.colors.accent.goldGlow },
+              { backgroundColor: t.colors.accent.tealGlow },
             ]}
           >
-            <Icon name={icon} size="lg" color="gold" />
+            <Icon name={icon} size="lg" color="brand" />
           </View>
           <View style={styles.body}>
             <Text variant="h2">Coming Soon</Text>

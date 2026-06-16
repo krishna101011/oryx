@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-syntax -- Wave E fixes packet status hex values
    by spec (#6366F1 / #22C55E / #9A9A9A); the verification-status palette is a
    fixed semantic that is identical across themes. */
-import type { IntelligenceStatus, ResearchPacketStatus } from '@anant/shared-types';
+import type { IntelligenceStatus, ResearchPacketStatus } from '@oryx/shared-types';
 
 const GREEN = '#22C55E';
 const AMBER = '#F59E0B';

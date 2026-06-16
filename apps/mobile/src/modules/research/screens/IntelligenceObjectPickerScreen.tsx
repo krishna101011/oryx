@@ -8,7 +8,7 @@ import {
   Spacer,
   Text,
   useTheme,
-} from '@anant/design-system';
+} from '@oryx/design-system';
 import type { ResearchStackParamList } from '../../../navigation/types';
 import { IntelligenceObjectCard } from '../../verification/components/IntelligenceObjectCard';
 import { useIntelligenceObjects } from '../../verification/hooks/useIntelligence';
@@ -56,13 +56,13 @@ export const IntelligenceObjectPickerScreen: React.FC = () => {
         <Spacer size={3} />
         <View style={styles.filterRow}>
           <Pressable onPress={() => setStatus(undefined)}>
-            <Text variant="caption" color={status ? 'tertiary' : 'gold'}>
+            <Text variant="caption" color={status ? 'tertiary' : 'brand'}>
               All
             </Text>
           </Pressable>
           {STATUS_FILTERS.map((s) => (
             <Pressable key={s} onPress={() => setStatus(s)}>
-              <Text variant="caption" color={status === s ? 'gold' : 'tertiary'}>
+              <Text variant="caption" color={status === s ? 'brand' : 'tertiary'}>
                 {s}
               </Text>
             </Pressable>

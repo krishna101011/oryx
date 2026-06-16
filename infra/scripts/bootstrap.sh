@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Anant Capital — one-command repo setup.
+# ORYX — one-command repo setup.
 # Idempotent: safe to re-run.
 set -euo pipefail
 

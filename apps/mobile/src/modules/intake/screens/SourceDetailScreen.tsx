@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, View, StyleSheet } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
-import { Button, Card, Divider, Screen, Skeleton, Spacer, Text } from '@anant/design-system';
+import { Button, Card, Divider, Screen, Skeleton, Spacer, Text } from '@oryx/design-system';
 import type { SettingsStackParamList } from '../../../navigation/types';
 import { SourceHealthPill } from '../components/SourceHealthPill';
 import {

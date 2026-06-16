@@ -48,8 +48,8 @@ export const Button: React.FC<ButtonProps> = ({
       case 'primary':
         return {
           backgroundColor: isDisabled
-            ? t.colors.accent.goldMuted
-            : t.colors.accent.gold,
+            ? t.colors.accent.tealMuted
+            : t.colors.accent.teal,
         };
       case 'secondary':
         return {

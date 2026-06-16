@@ -12,7 +12,7 @@ import {
   Spacer,
   Text,
   useTheme,
-} from '@anant/design-system';
+} from '@oryx/design-system';
 import type { SettingsStackParamList } from '../../../navigation/types';
 import { researchApi } from '../../research/api/research';
 import { useResearchWorkspaces } from '../../research/hooks/useResearch';
@@ -84,7 +84,7 @@ export const IntelligenceObjectDetailScreen: React.FC = () => {
 
         <Spacer size={4} />
         <Pressable onPress={() => setShowFacts((v) => !v)}>
-          <Text variant="bodySm" color="gold">
+          <Text variant="bodySm" color="brand">
             {showFacts ? 'Hide' : 'Show'} factor breakdown
           </Text>
         </Pressable>

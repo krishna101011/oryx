@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Card, Icon, Spacer, Text } from '@anant/design-system';
+import { Card, Icon, Spacer, Text } from '@oryx/design-system';
 import { usePacketReadiness } from '../hooks/useResearch';
 
 /**
@@ -21,8 +21,8 @@ export const PacketReadinessChecker: React.FC<{ packetId: string }> = ({
     return (
       <Card variant="elevated">
         <View style={styles.row}>
-          <Icon name="CircleCheck" color="gold" />
-          <Text variant="bodySm" color="gold">
+          <Icon name="CircleCheck" color="brand" />
+          <Text variant="bodySm" color="brand">
             Ready to publish
           </Text>
         </View>

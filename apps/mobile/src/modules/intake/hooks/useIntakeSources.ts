@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { IntakeSource } from '@anant/shared-types';
+import type { IntakeSource } from '@oryx/shared-types';
 import {
   intakeApi,
   type CreateSourceBody,

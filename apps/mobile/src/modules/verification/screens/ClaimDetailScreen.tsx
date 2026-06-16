@@ -11,8 +11,8 @@ import {
   Spacer,
   Text,
   useTheme,
-} from '@anant/design-system';
-import type { EvidenceWithLink } from '@anant/shared-types';
+} from '@oryx/design-system';
+import type { EvidenceWithLink } from '@oryx/shared-types';
 import type { SettingsStackParamList } from '../../../navigation/types';
 import { verificationApi } from '../api/verification';
 import { useClaim, useClaimEvidence } from '../hooks/useIntelligence';

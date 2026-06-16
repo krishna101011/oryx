@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { TokenPair } from '@anant/shared-types';
+import type { TokenPair } from '@oryx/shared-types';
 
 export type AuthStatus =
   | 'unknown'        // pre-boot

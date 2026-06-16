@@ -1,4 +1,4 @@
-# Anant Capital — Phase 3 Architecture (FROZEN)
+# ORYX — Phase 3 Architecture (FROZEN)
 
 **Phase:** 3 — Intake Layer
 **Status:** FROZEN — Revision 2

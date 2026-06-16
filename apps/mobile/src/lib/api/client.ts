@@ -1,4 +1,4 @@
-import type { ApiError, ApiResponse } from '@anant/shared-types';
+import type { ApiError, ApiResponse } from '@oryx/shared-types';
 import { AppApiError } from '../errors';
 import { logger } from '../logger';
 

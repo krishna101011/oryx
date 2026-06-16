@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Card, Screen, Spacer, Text, Button } from '@anant/design-system';
+import { Card, Screen, Spacer, Text, Button } from '@oryx/design-system';
 import { useMe } from '../../../hooks/useMe';
 import { useAppDispatch } from '../../../store';
 import { signout } from '../../../store/thunks/auth';
@@ -16,7 +16,7 @@ export const SettingsHomeScreen: React.FC = () => {
     <Screen background="primary">
       <ScrollView showsVerticalScrollIndicator={false}>
         <Spacer size={6} />
-        <Text variant="caption" color="gold">
+        <Text variant="caption" color="brand">
           SETTINGS
         </Text>
         <Spacer size={2} />

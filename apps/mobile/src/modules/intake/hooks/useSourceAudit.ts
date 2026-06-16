@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import type { IntakeSourceAuditEntry } from '@anant/shared-types';
+import type { IntakeSourceAuditEntry } from '@oryx/shared-types';
 import { intakeApi } from '../api/intake';
 
 /** Cursor-paginated audit timeline for one source (CR-9 contract). */

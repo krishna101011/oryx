@@ -7,7 +7,7 @@ import {
   Skeleton,
   Spacer,
   Text,
-} from '@anant/design-system';
+} from '@oryx/design-system';
 import type { ResearchStackParamList } from '../../../navigation/types';
 import { IntelligenceObjectCard } from '../../verification/components/IntelligenceObjectCard';
 import { packetStatusColor } from '../../verification/components/statusColors';

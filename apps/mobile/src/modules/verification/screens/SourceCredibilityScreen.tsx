@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { type RouteProp, useRoute } from '@react-navigation/native';
-import { Card, Divider, Screen, Skeleton, Spacer, Text } from '@anant/design-system';
+import { Card, Divider, Screen, Skeleton, Spacer, Text } from '@oryx/design-system';
 import type { SettingsStackParamList } from '../../../navigation/types';
 import { useSourceCredibility } from '../hooks/useSourceCredibility';
 

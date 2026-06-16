@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Icon, Text } from '@anant/design-system';
+import { Icon, Text } from '@oryx/design-system';
 
 /**
  * Persistent banner shown on contested intelligence objects. It is never

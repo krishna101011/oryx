@@ -5,7 +5,7 @@ import type {
   TokenPair,
   SigninResponse,
   SignupResponse,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import { apiClient } from '../../lib/api/client';
 import { getDeviceId, getDeviceLabel, getDevicePlatform } from '../../lib/device';
 import { logger } from '../../lib/logger';

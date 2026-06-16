@@ -2,7 +2,7 @@ import React from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTheme } from '@anant/design-system';
+import { useTheme } from '@oryx/design-system';
 import { useAppSelector } from '../store';
 import { useMe } from '../hooks/useMe';
 import type { RootStackParamList } from './types';
@@ -29,7 +29,7 @@ const Splash: React.FC = () => {
   const t = useTheme();
   return (
     <View style={[styles.splash, { backgroundColor: t.colors.bg.primary }]}>
-      <ActivityIndicator color={t.colors.accent.gold} />
+      <ActivityIndicator color={t.colors.accent.teal} />
     </View>
   );
 };

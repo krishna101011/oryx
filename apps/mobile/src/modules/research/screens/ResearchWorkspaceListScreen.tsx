@@ -9,7 +9,7 @@ import {
   Spacer,
   Text,
   useTheme,
-} from '@anant/design-system';
+} from '@oryx/design-system';
 import { useCreateWorkspace, useResearchWorkspaces } from '../hooks/useResearch';
 import { WorkspaceCard } from '../components/WorkspaceCard';
 

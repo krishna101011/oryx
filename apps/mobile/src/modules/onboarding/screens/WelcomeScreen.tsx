@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import type { OnboardingStepRequest } from '@anant/shared-types';
+import type { OnboardingStepRequest } from '@oryx/shared-types';
 import { OnboardingShell } from '../components/OnboardingShell';
 import { apiClient } from '../../../lib/api/client';
 
@@ -23,7 +23,7 @@ export const WelcomeScreen: React.FC = () => {
   return (
     <OnboardingShell
       stepIndex={0}
-      title="Welcome to Anant."
+      title="Welcome to ORYX."
       subtitle="Your intelligence operating system. Let's get you set up in under a minute."
       onContinue={onContinue}
       continueLabel="Get started"

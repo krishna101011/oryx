@@ -1,5 +1,5 @@
 /**
- * Shared ESLint base for Anant Capital workspaces.
+ * Shared ESLint base for ORYX workspaces.
  * Each package extends this and adds environment-specific overrides.
  */
 module.exports = {
@@ -26,7 +26,7 @@ module.exports = {
       {
         selector: "Literal[value=/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/]",
         message:
-          'Inline hex color detected. Use tokens from @anant/design-system instead.',
+          'Inline hex color detected. Use tokens from @oryx/design-system instead.',
       },
     ],
 

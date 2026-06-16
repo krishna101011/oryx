@@ -18,7 +18,7 @@ prefix() {
 BE_PID=$!
 
 (
-  pnpm --filter @anant/mobile start 2>&1 | prefix mob
+  pnpm --filter @oryx/mobile start 2>&1 | prefix mob
 ) &
 MOB_PID=$!
 

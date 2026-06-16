@@ -1,4 +1,4 @@
-import type { ErrorCode } from '@anant/shared-types';
+import type { ErrorCode } from '@oryx/shared-types';
 
 export class AppApiError extends Error {
   readonly code: ErrorCode;

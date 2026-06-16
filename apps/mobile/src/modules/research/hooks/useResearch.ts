@@ -3,7 +3,7 @@ import type {
   ReadinessResult,
   ResearchPacket,
   ResearchWorkspace,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import {
   type ResearchItemView,
   type WorkspaceDetail,

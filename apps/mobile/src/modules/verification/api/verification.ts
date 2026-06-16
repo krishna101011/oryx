@@ -5,7 +5,7 @@
  * router scopes everything to the authenticated workspace — no workspace id
  * is ever sent as a parameter.
  */
-import type { ApiResponse, Verification } from '@anant/shared-types';
+import type { ApiResponse, Verification } from '@oryx/shared-types';
 import { apiClient } from '../../../lib/api/client';
 
 export const verificationApi = {

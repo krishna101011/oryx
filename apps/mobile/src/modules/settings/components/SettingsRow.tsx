@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Card, Icon, Pressable, Spacer, Text, useTheme, type IconName } from '@anant/design-system';
+import { Card, Icon, Pressable, Spacer, Text, useTheme, type IconName } from '@oryx/design-system';
 
 export interface SettingsRowProps {
   label: string;
@@ -21,8 +21,8 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
   const content = (
     <Card variant="default">
       <View style={styles.row}>
-        <View style={[styles.iconWrap, { backgroundColor: t.colors.accent.goldGlow }]}>
-          <Icon name={icon} color="gold" />
+        <View style={[styles.iconWrap, { backgroundColor: t.colors.accent.tealGlow }]}>
+          <Icon name={icon} color="brand" />
         </View>
         <View style={{ flex: 1 }}>
           <Text variant="body">{label}</Text>

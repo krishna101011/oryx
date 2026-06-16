@@ -1,6 +1,6 @@
-# Anant Capital
+# ORYX
 
-Premium finance intelligence platform.
+Premium financial intelligence platform.
 
 ```
 INPUT  →  VERIFY  →  ANALYZE  →  CREATE  →  PUBLISH
@@ -45,7 +45,7 @@ OpenAPI docs: <http://localhost:8000/v1/docs>
 ## Repository layout
 
 ```
-anant-capital/
+oryx/
 ├── apps/
 │   ├── mobile/                 React Native (Expo) + TypeScript shell
 │   └── backend/                FastAPI service-oriented skeleton
@@ -97,4 +97,4 @@ See `docs/adr/` for the *why* behind every architectural choice.
 
 ## License
 
-Proprietary — Anant Capital. All rights reserved.
+Proprietary — ORYX. All rights reserved.

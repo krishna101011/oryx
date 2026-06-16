@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import type { MeResponse } from '@anant/shared-types';
+import type { MeResponse } from '@oryx/shared-types';
 import { apiClient } from '../lib/api/client';
 import { isApiError } from '../lib/errors';
 import { useAppDispatch, useAppSelector } from '../store';

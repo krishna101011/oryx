@@ -1,6 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Icon, useTheme } from '@anant/design-system';
+import { Icon, useTheme } from '@oryx/design-system';
 import type { RootTabParamList } from './types';
 import { DashboardScreen } from '../modules/dashboard/screens/DashboardScreen';
 import { ResearchStack } from './ResearchStack';
@@ -29,7 +29,7 @@ export const RootTabNavigator: React.FC = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: t.colors.accent.gold,
+        tabBarActiveTintColor: t.colors.accent.teal,
         tabBarInactiveTintColor: t.colors.text.tertiary,
         tabBarStyle: {
           backgroundColor: t.colors.bg.secondary,
@@ -44,7 +44,7 @@ export const RootTabNavigator: React.FC = () => {
         component={DashboardScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Icon name="LayoutDashboard" color={focused ? 'gold' : 'tertiary'} />
+            <Icon name="LayoutDashboard" color={focused ? 'brand' : 'tertiary'} />
           ),
         }}
       />
@@ -53,7 +53,7 @@ export const RootTabNavigator: React.FC = () => {
         component={GatedResearch}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Icon name="BookOpen" color={focused ? 'gold' : 'tertiary'} />
+            <Icon name="BookOpen" color={focused ? 'brand' : 'tertiary'} />
           ),
         }}
       />
@@ -62,7 +62,7 @@ export const RootTabNavigator: React.FC = () => {
         component={GatedContent}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Icon name="FileText" color={focused ? 'gold' : 'tertiary'} />
+            <Icon name="FileText" color={focused ? 'brand' : 'tertiary'} />
           ),
         }}
       />
@@ -71,7 +71,7 @@ export const RootTabNavigator: React.FC = () => {
         component={ActivityHomeScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Icon name="Bell" color={focused ? 'gold' : 'tertiary'} />
+            <Icon name="Bell" color={focused ? 'brand' : 'tertiary'} />
           ),
         }}
       />
@@ -80,7 +80,7 @@ export const RootTabNavigator: React.FC = () => {
         component={SettingsStack}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Icon name="Settings" color={focused ? 'gold' : 'tertiary'} />
+            <Icon name="Settings" color={focused ? 'brand' : 'tertiary'} />
           ),
         }}
       />

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { Verification } from '@anant/shared-types';
+import type { Verification } from '@oryx/shared-types';
 import { AppApiError } from '../../../lib/errors';
 import { verificationApi } from '../api/verification';
 

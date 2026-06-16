@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Card, Screen, Skeleton, Spacer, Text } from '@anant/design-system';
+import { Card, Screen, Skeleton, Spacer, Text } from '@oryx/design-system';
 import { SourceCard } from '../components/SourceCard';
 import { useIntakeSources } from '../hooks/useIntakeSources';
 import { useIntakeStatus } from '../hooks/useIntakeStatus';

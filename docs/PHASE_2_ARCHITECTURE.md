@@ -1,4 +1,4 @@
-# Anant Capital — Phase 2 Architecture (FROZEN)
+# ORYX — Phase 2 Architecture (FROZEN)
 
 **Phase:** 2 — Identity, Access, Preferences, Control Plane
 **Status:** FROZEN — 2026-06-06

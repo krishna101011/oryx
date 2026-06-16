@@ -1,19 +1,19 @@
 {
-  "name": "anant-capital",
+  "name": "oryx",
   "version": "0.1.0",
   "private": true,
-  "description": "Anant Capital — premium finance intelligence platform (monorepo root)",
+  "description": "ORYX — premium finance intelligence platform (monorepo root)",
   "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=20.11.0",
     "pnpm": ">=9.0.0"
   },
   "scripts": {
-    "mobile:dev": "pnpm --filter @anant/mobile start",
+    "mobile:dev": "pnpm --filter @oryx/mobile start",
     "backend:dev": "cd apps/backend && uv run uvicorn anant.main:app --reload --port 8000",
-    "lint": "pnpm -r --parallel --filter \"!@anant/backend\" run lint",
-    "type-check": "pnpm -r --parallel --filter \"!@anant/backend\" run type-check",
-    "test": "pnpm -r --parallel --filter \"!@anant/backend\" run test",
+    "lint": "pnpm -r --parallel --filter \"!@oryx/backend\" run lint",
+    "type-check": "pnpm -r --parallel --filter \"!@oryx/backend\" run type-check",
+    "test": "pnpm -r --parallel --filter \"!@oryx/backend\" run test",
     "gen:pydantic": "tsx infra/scripts/gen-pydantic.ts",
     "drift:check": "tsx infra/scripts/gen-pydantic.ts --check"
   },

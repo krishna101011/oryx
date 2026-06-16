@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Card, Icon, Spacer, Text, useTheme, type IconName } from '@anant/design-system';
-import type { FlagKey } from '@anant/shared-types';
+import { Card, Icon, Spacer, Text, useTheme, type IconName } from '@oryx/design-system';
+import type { FlagKey } from '@oryx/shared-types';
 import { useMe } from '../hooks/useMe';
 
 export interface FeatureGateProps {
@@ -42,8 +42,8 @@ const ComingSoonTile: React.FC<{ name: string; icon: IconName }> = ({
       <Spacer size={6} />
       <Card variant="default">
         <View style={styles.row}>
-          <View style={[styles.iconWrap, { backgroundColor: t.colors.accent.goldGlow }]}>
-            <Icon name={icon} size="lg" color="gold" />
+          <View style={[styles.iconWrap, { backgroundColor: t.colors.accent.tealGlow }]}>
+            <Icon name={icon} size="lg" color="brand" />
           </View>
           <View style={styles.body}>
             <Text variant="h2">{name}</Text>

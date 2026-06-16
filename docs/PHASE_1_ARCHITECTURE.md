@@ -1,4 +1,4 @@
-# Anant Capital — Phase 1 Architecture
+# ORYX — Phase 1 Architecture
 
 **Phase:** 1 — Foundation Only
 **Status:** Architecture & Implementation Plan (no code yet)
@@ -227,7 +227,7 @@ We re-evaluate this when backend engineering crosses ~10 people. Until then, mon
 ### 4.2 Top-Level Folder Structure
 
 ```
-anant-capital/
+oryx/
 ├── apps/
 │   ├── mobile/                    # Expo + React Native + TypeScript
 │   └── backend/                   # FastAPI + Python 3.12
@@ -639,12 +639,12 @@ colors = {
     primary:   '#FFFFFF',       // headings, key numbers
     secondary: '#A0A0A0',       // labels, supporting copy
     tertiary:  '#6B6B6B',       // metadata, captions
-    inverse:   '#0A0A0A',       // on gold buttons
+    inverse:   '#0A0A0F',       // on teal buttons
   },
   accent: {
-    gold:      '#D4AF7A',       // soft, refined — never yellow
-    goldMuted: '#8C7553',
-    goldGlow:  'rgba(212,175,122,0.15)',
+    teal:      '#00D4C8',       // ORYX brand accent — vivid teal
+    tealMuted: '#1A7A7A',
+    tealGlow:  'rgba(0,212,200,0.15)',
   },
   semantic: {
     success: '#4ADE80',
@@ -781,11 +781,11 @@ These are added to the visible nav as their phase ships.
 `navigation/linking.ts` defines:
 
 ```
-anantcapital://home
-anantcapital://research/:id
-anantcapital://content/:id
-anantcapital://notifications
-anantcapital://settings/profile
+oryx://home
+oryx://research/:id
+oryx://content/:id
+oryx://notifications
+oryx://settings/profile
 ```
 
 Phase 1 wires the config; Phase 3+ uses them.

@@ -10,8 +10,8 @@ import {
   Spacer,
   Text,
   useTheme,
-} from '@anant/design-system';
-import type { Claim, ConflictType, ResolveConflictRequest } from '@anant/shared-types';
+} from '@oryx/design-system';
+import type { Claim, ConflictType, ResolveConflictRequest } from '@oryx/shared-types';
 import type { SettingsStackParamList } from '../../../navigation/types';
 import { useConflict, useResolveConflict } from '../hooks/useConflict';
 import { ConfidenceMeter } from '../components/ConfidenceMeter';

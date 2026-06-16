@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Linking, ScrollView, StyleSheet, TextInput } from 'react-native';
-import { Button, Card, Screen, Spacer, Text, useTheme } from '@anant/design-system';
+import { Button, Card, Screen, Spacer, Text, useTheme } from '@oryx/design-system';
 import { useMe } from '../../../hooks/useMe';
 import { isApiError } from '../../../lib/errors';
 import { intakeApi } from '../api/intake';

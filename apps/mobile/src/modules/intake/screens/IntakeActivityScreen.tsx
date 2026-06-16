@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
-import { Card, Screen, Spacer, Text } from '@anant/design-system';
+import { Card, Screen, Spacer, Text } from '@oryx/design-system';
 import type { SettingsStackParamList } from '../../../navigation/types';
 import { SourceCard } from '../components/SourceCard';
 import { AuditTimeline } from '../components/AuditTimeline';

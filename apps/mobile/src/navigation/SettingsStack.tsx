@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTheme } from '@anant/design-system';
+import { useTheme } from '@oryx/design-system';
 import type { SettingsStackParamList } from './types';
 import { useMe } from '../hooks/useMe';
 import { SettingsHomeScreen } from '../modules/settings/screens/SettingsHomeScreen';

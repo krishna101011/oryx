@@ -22,10 +22,10 @@ importers:
 
   apps/mobile:
     dependencies:
-      '@anant/design-system':
+      '@oryx/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
-      '@anant/shared-types':
+      '@oryx/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       '@react-navigation/bottom-tabs':
@@ -80,12 +80,12 @@ importers:
         specifier: ^9.1.2
         version: 9.3.0(@types/react@18.2.79)(react@18.2.0)(redux@5.0.1)
     devDependencies:
-      '@anant/config':
-        specifier: workspace:*
-        version: link:../../packages/config
       '@babel/core':
         specifier: ^7.24.0
         version: 7.29.7
+      '@oryx/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@types/node':
         specifier: ^20.12.0
         version: 20.19.42
@@ -126,7 +126,7 @@ importers:
         specifier: ^0.367.0
         version: 0.367.0(react-native-svg@15.15.5(react-native@0.74.0(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0))(react-native@0.74.0(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0)
     devDependencies:
-      '@anant/config':
+      '@oryx/config':
         specifier: workspace:*
         version: link:../config
       '@types/react':
@@ -147,7 +147,7 @@ importers:
 
   packages/shared-types:
     devDependencies:
-      '@anant/config':
+      '@oryx/config':
         specifier: workspace:*
         version: link:../config
       typescript:

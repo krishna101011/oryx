@@ -1,5 +1,5 @@
 import React from 'react';
-import { Screen, Spacer, Text } from '@anant/design-system';
+import { Screen, Spacer, Text } from '@oryx/design-system';
 
 /**
  * Deep-link target. Phase 2: stub screen — the backend returns 501 for

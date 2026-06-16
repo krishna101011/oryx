@@ -2,12 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { Spacer, Text } from '@anant/design-system';
+import { Spacer, Text } from '@oryx/design-system';
 import type {
   Focus,
   OnboardingStepRequest,
   SourceCatalogEntry,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import { OnboardingShell } from '../components/OnboardingShell';
 import { ChoiceTile } from '../components/ChoiceTile';
 import { apiClient } from '../../../lib/api/client';

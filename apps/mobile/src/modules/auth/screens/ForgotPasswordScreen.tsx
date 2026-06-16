@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Screen, Spacer, Text, Pressable } from '@anant/design-system';
+import { Button, Screen, Spacer, Text, Pressable } from '@oryx/design-system';
 import { useNavigation } from '@react-navigation/native';
 import { AuthFormField } from '../components/AuthFormField';
 import { apiClient } from '../../../lib/api/client';
@@ -23,8 +23,8 @@ export const ForgotPasswordScreen: React.FC = () => {
   return (
     <Screen background="primary">
       <Spacer size={12} />
-      <Text variant="caption" color="gold">
-        ANANT CAPITAL
+      <Text variant="caption" color="brand">
+        ORYX
       </Text>
       <Spacer size={2} />
       <Text variant="display">Reset password</Text>
@@ -54,7 +54,7 @@ export const ForgotPasswordScreen: React.FC = () => {
         onPress={() => navigation.goBack()}
         style={{ alignSelf: 'center' }}
       >
-        <Text variant="bodySm" color="gold">
+        <Text variant="bodySm" color="brand">
           Back to sign in
         </Text>
       </Pressable>

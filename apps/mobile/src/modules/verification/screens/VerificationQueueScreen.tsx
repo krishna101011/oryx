@@ -8,8 +8,8 @@ import {
   Skeleton,
   Spacer,
   Text,
-} from '@anant/design-system';
-import type { ConflictRecord, ConflictType } from '@anant/shared-types';
+} from '@oryx/design-system';
+import type { ConflictRecord, ConflictType } from '@oryx/shared-types';
 import { useReviewQueue } from '../hooks/useReviewQueue';
 import { EpistemicTypeBadge } from '../components/EpistemicTypeBadge';
 import { SeverityPill } from '../components/SeverityPill';

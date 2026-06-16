@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { Provider as ReduxProvider, useStore } from 'react-redux';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ThemeProvider } from '@anant/design-system';
+import { ThemeProvider } from '@oryx/design-system';
 import { store, type RootState } from '../store';
 import { QueryProvider } from './QueryProvider';
 import { ErrorBoundary } from '../components/ErrorBoundary';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, View, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Button, Card, Screen, Skeleton, Spacer, Text } from '@anant/design-system';
+import { Button, Card, Screen, Skeleton, Spacer, Text } from '@oryx/design-system';
 import { useMe } from '../../../hooks/useMe';
 import { SourceCard } from '../components/SourceCard';
 import { useIntakeSources } from '../hooks/useIntakeSources';
@@ -25,7 +25,7 @@ export const IntakeHomeScreen: React.FC = () => {
     <Screen background="primary">
       <ScrollView showsVerticalScrollIndicator={false}>
         <Spacer size={6} />
-        <Text variant="caption" color="gold">
+        <Text variant="caption" color="brand">
           INTAKE
         </Text>
         <Spacer size={2} />

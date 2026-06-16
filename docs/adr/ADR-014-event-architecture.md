@@ -10,7 +10,7 @@
 
 ## 1. Context
 
-Every later phase of Anant Capital is event-driven:
+Every later phase of ORYX is event-driven:
 
 - Phase 3 emits `intake.item.received` when Gmail / RSS / webhooks deliver
 - Phase 4 emits `item.verified`, `item.analyzed`, `item.clustered`

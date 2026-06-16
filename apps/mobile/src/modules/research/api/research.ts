@@ -8,7 +8,7 @@ import type {
   ReadinessResult,
   ResearchPacket,
   ResearchWorkspace,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import { apiClient } from '../../../lib/api/client';
 
 export interface WorkspaceDetail extends ResearchWorkspace {

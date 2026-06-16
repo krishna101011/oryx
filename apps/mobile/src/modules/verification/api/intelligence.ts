@@ -8,7 +8,7 @@ import type {
   EvidenceWithLink,
   IntelligenceObject,
   StaleCheck,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import { apiClient } from '../../../lib/api/client';
 
 export interface ObjectFilters {

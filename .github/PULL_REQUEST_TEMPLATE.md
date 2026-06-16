@@ -1,4 +1,4 @@
-<!-- Anant Capital — PR template. Defended phase boundaries are non-negotiable. -->
+<!-- ORYX — PR template. Defended phase boundaries are non-negotiable. -->
 
 ## What
 

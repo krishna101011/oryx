@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
-import { Spacer, Text, useTheme } from '@anant/design-system';
+import { Spacer, Text, useTheme } from '@oryx/design-system';
 
 export interface AuthFormFieldProps extends Omit<TextInputProps, 'style'> {
   label: string;
@@ -23,7 +23,7 @@ export const AuthFormField: React.FC<AuthFormFieldProps> = ({
       <Spacer size={1} />
       <TextInput
         placeholderTextColor={t.colors.text.tertiary}
-        selectionColor={t.colors.accent.gold}
+        selectionColor={t.colors.accent.teal}
         autoCapitalize="none"
         autoCorrect={false}
         {...rest}

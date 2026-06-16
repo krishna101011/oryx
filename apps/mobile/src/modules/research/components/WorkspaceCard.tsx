@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Card, Pressable, Spacer, Text } from '@anant/design-system';
-import type { ResearchWorkspace } from '@anant/shared-types';
+import { Card, Pressable, Spacer, Text } from '@oryx/design-system';
+import type { ResearchWorkspace } from '@oryx/shared-types';
 
 export const WorkspaceCard: React.FC<{
   workspace: ResearchWorkspace;

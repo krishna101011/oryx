@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { Spacer, Text } from '@anant/design-system';
+import { Spacer, Text } from '@oryx/design-system';
 import type {
   NotificationFrequency,
   OnboardingStepRequest,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import { OnboardingShell } from '../components/OnboardingShell';
 import { ChoiceTile } from '../components/ChoiceTile';
 import { apiClient } from '../../../lib/api/client';

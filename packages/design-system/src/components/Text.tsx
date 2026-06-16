@@ -9,7 +9,7 @@ import type { TextVariant } from '../tokens';
 
 export interface TextProps extends Omit<RNTextProps, 'style'> {
   variant?: TextVariant;
-  color?: 'primary' | 'secondary' | 'tertiary' | 'inverse' | 'gold' | 'danger';
+  color?: 'primary' | 'secondary' | 'tertiary' | 'inverse' | 'brand' | 'danger';
   align?: 'auto' | 'left' | 'center' | 'right';
   style?: TextStyle | TextStyle[];
   children: React.ReactNode;
@@ -30,8 +30,8 @@ export const Text: React.FC<TextProps> = ({
   const t = useTheme();
   const variantStyle = t.typography[variant];
   const resolvedColor =
-    color === 'gold'
-      ? t.colors.accent.gold
+    color === 'brand'
+      ? t.colors.accent.teal
       : color === 'danger'
         ? t.colors.semantic.danger
         : t.colors.text[color];

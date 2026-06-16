@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Text, useTheme } from '@anant/design-system';
-import type { SourceHealth } from '@anant/shared-types';
+import { Text, useTheme } from '@oryx/design-system';
+import type { SourceHealth } from '@oryx/shared-types';
 
 /**
  * Small status chip (§15.5). Composes existing tokens only — no new ones.

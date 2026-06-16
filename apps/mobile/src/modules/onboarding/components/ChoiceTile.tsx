@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Card, Pressable, Spacer, Text, useTheme } from '@anant/design-system';
+import { Card, Pressable, Spacer, Text, useTheme } from '@oryx/design-system';
 
 export interface ChoiceTileProps {
   label: string;
@@ -36,10 +36,10 @@ export const ChoiceTile: React.FC<ChoiceTileProps> = ({
               styles.dot,
               {
                 borderColor: selected
-                  ? t.colors.accent.gold
+                  ? t.colors.accent.teal
                   : t.colors.border.strong,
                 backgroundColor: selected
-                  ? t.colors.accent.gold
+                  ? t.colors.accent.teal
                   : 'transparent',
               },
             ]}
@@ -60,7 +60,7 @@ const styles = StyleSheet.create<any>({
     marginLeft: 12,
   },
   selectedCard: (t: any) => ({
-    borderColor: t.colors.accent.gold,
+    borderColor: t.colors.accent.teal,
     borderWidth: 1,
   }),
 });

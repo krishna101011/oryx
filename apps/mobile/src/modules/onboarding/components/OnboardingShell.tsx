@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Button, Screen, Spacer, Text, useTheme } from '@anant/design-system';
+import { Button, Screen, Spacer, Text, useTheme } from '@oryx/design-system';
 
 export interface OnboardingShellProps {
   stepIndex: number; // 0..3
@@ -39,7 +39,7 @@ export const OnboardingShell: React.FC<OnboardingShellProps> = ({
                 styles.pip,
                 {
                   backgroundColor: active
-                    ? t.colors.accent.gold
+                    ? t.colors.accent.teal
                     : t.colors.border.default,
                   flex: 1,
                   marginRight: i === TOTAL_STEPS - 1 ? 0 : 6,
@@ -50,7 +50,7 @@ export const OnboardingShell: React.FC<OnboardingShellProps> = ({
         })}
       </View>
       <Spacer size={6} />
-      <Text variant="caption" color="gold">
+      <Text variant="caption" color="brand">
         STEP {stepIndex + 1} OF {TOTAL_STEPS}
       </Text>
       <Spacer size={2} />

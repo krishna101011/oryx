@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Screen, Spacer, Text } from '@anant/design-system';
-import type { Profile, UpdateProfileRequest } from '@anant/shared-types';
+import { Button, Screen, Spacer, Text } from '@oryx/design-system';
+import type { Profile, UpdateProfileRequest } from '@oryx/shared-types';
 import { useMe } from '../../../hooks/useMe';
 import { AuthFormField } from '../../auth/components/AuthFormField';
 import { apiClient } from '../../../lib/api/client';

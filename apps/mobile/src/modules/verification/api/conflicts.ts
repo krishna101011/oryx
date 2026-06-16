@@ -9,7 +9,7 @@ import type {
   ConflictDetail,
   ResolveConflictRequest,
   ReviewQueue,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import { apiClient } from '../../../lib/api/client';
 
 export interface ResolveConflictResult {

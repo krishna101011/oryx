@@ -1,25 +1,33 @@
 /**
- * Color tokens for Anant Capital.
+ * Color tokens for ORYX.
  * Source of truth — no component may use a hex value directly.
  * Lint rule enforces this everywhere except inside this folder.
  */
 export const colors = {
   bg: {
-    primary: '#0A0A0A',
-    secondary: '#121212',
-    card: '#181818',
-    elevated: '#1F1F1F',
+    primary: '#0A0A0F', // obsidian
+    secondary: '#0F1117', // navy
+    card: '#1A2332', // charcoal
+    elevated: '#1E2A3A', // surface
   },
   text: {
     primary: '#FFFFFF',
-    secondary: '#A0A0A0',
-    tertiary: '#6B6B6B',
-    inverse: '#0A0A0A',
+    secondary: '#8B95A5',
+    tertiary: '#4E5D6C',
+    inverse: '#0A0A0F',
   },
   accent: {
-    gold: '#D4AF7A',
-    goldMuted: '#8C7553',
-    goldGlow: 'rgba(212, 175, 122, 0.15)',
+    // ORYX brand mark + UI accent family (replaces the retired gold accents).
+    // The `teal*` keys keep the former `gold*` shape so the 'brand' text/icon
+    // keyword and the disabled/glow variants resolve without restructuring.
+    teal: '#00D4C8',
+    tealMuted: '#1A7A7A',
+    tealGlow: 'rgba(0, 212, 200, 0.15)',
+    brand: '#1A7A7A',
+    brandSecondary: '#1E8F8F',
+    indigo: '#6366F1',
+    violet: '#9B5DE5',
+    blue: '#60A5FA',
   },
   semantic: {
     success: '#4ADE80',
@@ -34,8 +42,29 @@ export const colors = {
   },
   overlay: {
     scrim: 'rgba(0, 0, 0, 0.60)',
-    glass: 'rgba(31, 31, 31, 0.70)',
+    glass: 'rgba(30, 42, 58, 0.70)',
   },
 } as const;
 
+/**
+ * Flat ORYX brand palette (brand-spec token names). Components use the
+ * structured `colors` object; this is the canonical brand-value reference.
+ */
+export const oryxPalette = {
+  brandPrimary: '#1A7A7A',
+  brandSecondary: '#1E8F8F',
+  accentTeal: '#00D4C8',
+  accentIndigo: '#6366F1',
+  accentViolet: '#9B5DE5',
+  accentBlue: '#60A5FA',
+  baseObsidian: '#0A0A0F',
+  baseNavy: '#0F1117',
+  baseCharcoal: '#1A2332',
+  baseSurface: '#1E2A3A',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8B95A5',
+  textTertiary: '#4E5D6C',
+} as const;
+
 export type Colors = typeof colors;
+export type OryxPalette = typeof oryxPalette;

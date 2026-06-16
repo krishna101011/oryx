@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Button, Card, Skeleton, Spacer, Text, useTheme } from '@anant/design-system';
-import type { IntakeSourceAuditEntry } from '@anant/shared-types';
+import { Button, Card, Skeleton, Spacer, Text, useTheme } from '@oryx/design-system';
+import type { IntakeSourceAuditEntry } from '@oryx/shared-types';
 
 /** Operational language only (§15.3) — no content, no truth claims. */
 const EVENT_LABELS: Record<string, string> = {
@@ -49,7 +49,7 @@ export const AuditTimeline: React.FC<{
     <View>
       {entries.map((entry) => (
         <View key={entry.id} style={styles.entryRow}>
-          <View style={[styles.tick, { backgroundColor: t.colors.accent.goldMuted }]} />
+          <View style={[styles.tick, { backgroundColor: t.colors.accent.tealMuted }]} />
           <View style={styles.entryBody}>
             <Text variant="bodySm">{EVENT_LABELS[entry.event] ?? entry.event}</Text>
             <Spacer size={1} />

@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Text } from '@anant/design-system';
-import type { IntelligenceStatus } from '@anant/shared-types';
+import { Text } from '@oryx/design-system';
+import type { IntelligenceStatus } from '@oryx/shared-types';
 import { verificationStatusColor } from './statusColors';
 
 const LABEL: Record<IntelligenceStatus, string> = {

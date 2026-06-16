@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTheme } from '@anant/design-system';
+import { useTheme } from '@oryx/design-system';
 import type { ResearchStackParamList } from './types';
 import { ResearchWorkspaceListScreen } from '../modules/research/screens/ResearchWorkspaceListScreen';
 import { ResearchWorkspaceDetailScreen } from '../modules/research/screens/ResearchWorkspaceDetailScreen';

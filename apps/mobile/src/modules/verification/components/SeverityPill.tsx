@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Text } from '@anant/design-system';
+import { Text } from '@oryx/design-system';
 import { SEVERITY_AMBER, SEVERITY_INDIGO, SEVERITY_RED } from './severityColors';
 
 /**

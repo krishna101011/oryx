@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Screen, Spacer, Text, Pressable } from '@anant/design-system';
+import { Button, Screen, Spacer, Text, Pressable } from '@oryx/design-system';
 import { useNavigation } from '@react-navigation/native';
 import { AuthFormField } from '../components/AuthFormField';
 import { useAppDispatch } from '../../../store';
@@ -35,8 +35,8 @@ export const SignUpScreen: React.FC = () => {
   return (
     <Screen background="primary">
       <Spacer size={12} />
-      <Text variant="caption" color="gold">
-        ANANT CAPITAL
+      <Text variant="caption" color="brand">
+        ORYX
       </Text>
       <Spacer size={2} />
       <Text variant="display">Create account</Text>
@@ -76,7 +76,7 @@ export const SignUpScreen: React.FC = () => {
       >
         <Text variant="bodySm" color="secondary">
           Have an account?{' '}
-          <Text variant="bodySm" color="gold">
+          <Text variant="bodySm" color="brand">
             Sign in
           </Text>
         </Text>

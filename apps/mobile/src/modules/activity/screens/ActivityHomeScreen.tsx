@@ -9,11 +9,11 @@ import {
   Spacer,
   Text,
   useTheme,
-} from '@anant/design-system';
+} from '@oryx/design-system';
 import type {
   ActivityInboxResponse,
   ActivityItem,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import { apiClient } from '../../../lib/api/client';
 
 export const ActivityHomeScreen: React.FC = () => {
@@ -37,7 +37,7 @@ export const ActivityHomeScreen: React.FC = () => {
   return (
     <Screen background="primary">
       <Spacer size={6} />
-      <Text variant="caption" color="gold">
+      <Text variant="caption" color="brand">
         ACTIVITY
       </Text>
       <Spacer size={2} />
@@ -82,10 +82,10 @@ const ActivityCard: React.FC<{ item: ActivityItem }> = ({ item }) => {
         <View
           style={[
             styles.iconWrap,
-            { backgroundColor: t.colors.accent.goldGlow },
+            { backgroundColor: t.colors.accent.tealGlow },
           ]}
         >
-          <Icon name={icon} color={unread ? 'gold' : 'tertiary'} />
+          <Icon name={icon} color={unread ? 'brand' : 'tertiary'} />
         </View>
         <View style={{ flex: 1 }}>
           <Text variant="body">{item.title}</Text>
@@ -106,7 +106,7 @@ const ActivityCard: React.FC<{ item: ActivityItem }> = ({ item }) => {
           <View
             style={[
               styles.dot,
-              { backgroundColor: t.colors.accent.gold },
+              { backgroundColor: t.colors.accent.teal },
             ]}
           />
         )}

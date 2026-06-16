@@ -3,7 +3,7 @@ import type {
   Claim,
   EvidenceWithLink,
   IntelligenceObject,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import { type ObjectFilters, intelligenceApi } from '../api/intelligence';
 
 export function useIntelligenceObject(objectId: string) {

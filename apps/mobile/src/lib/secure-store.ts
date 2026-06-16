@@ -6,7 +6,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const PREFIX = 'anant.';
+const PREFIX = 'oryx.';
 const memoryFallback = new Map<string, string>();
 
 const isAvailable = Platform.OS === 'ios' || Platform.OS === 'android';

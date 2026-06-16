@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
 import { ScrollView } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Screen, Spacer, Text } from '@anant/design-system';
+import { Screen, Spacer, Text } from '@oryx/design-system';
 import type {
   SourceCatalogEntry,
   UpdateWorkspaceSourceRequest,
   WorkspaceSource,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import { ChoiceTile } from '../../onboarding/components/ChoiceTile';
 import { apiClient } from '../../../lib/api/client';
 

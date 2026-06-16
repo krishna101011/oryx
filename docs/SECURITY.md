@@ -1,4 +1,4 @@
-# Anant Capital — Security Notes (Phase 2)
+# ORYX — Security Notes (Phase 2)
 
 This document captures Phase 2's security posture: what the code guarantees, what the tests verify, and what is explicitly the operator's responsibility.
 

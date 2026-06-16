@@ -7,7 +7,7 @@ import {
   Text,
   Divider,
   useTheme,
-} from '@anant/design-system';
+} from '@oryx/design-system';
 
 /**
  * Phase 1 dashboard — not placeholder, real shell.
@@ -19,8 +19,8 @@ export const DashboardScreen: React.FC = () => {
   return (
     <Screen background="primary">
       <Spacer size={6} />
-      <Text variant="caption" color="gold">
-        ANANT CAPITAL
+      <Text variant="caption" color="brand">
+        ORYX
       </Text>
       <Spacer size={2} />
       <Text variant="display">Good morning.</Text>

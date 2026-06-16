@@ -11,7 +11,7 @@ import type {
   IntakeStatusSummary,
   ManualIngestRequest,
   ManualIngestResponse,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import { apiClient } from '../../../lib/api/client';
 
 export interface CreateSourceBody {

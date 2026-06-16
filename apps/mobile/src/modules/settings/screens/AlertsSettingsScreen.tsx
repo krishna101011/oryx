@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Spacer, Text, Screen } from '@anant/design-system';
+import { Spacer, Text, Screen } from '@oryx/design-system';
 import type {
   NotificationFrequency,
   UpdatePreferencesRequest,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import { useMe } from '../../../hooks/useMe';
 import { ChoiceTile } from '../../onboarding/components/ChoiceTile';
 import { apiClient } from '../../../lib/api/client';

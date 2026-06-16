@@ -1,7 +1,7 @@
 import type { LinkingOptions } from '@react-navigation/native';
 
 export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
-  prefixes: ['anantcapital://'],
+  prefixes: ['oryx://'],
   config: {
     screens: {
       Auth: {

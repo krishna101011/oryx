@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Spacer, Text } from '@anant/design-system';
+import { Spacer, Text } from '@oryx/design-system';
 import type {
   ContentStyle,
   OnboardingStepRequest,
   VerificationStrictness,
-} from '@anant/shared-types';
+} from '@oryx/shared-types';
 import { OnboardingShell } from '../components/OnboardingShell';
 import { ChoiceTile } from '../components/ChoiceTile';
 import { apiClient } from '../../../lib/api/client';

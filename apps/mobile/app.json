@@ -1,27 +1,30 @@
 {
   "expo": {
-    "name": "Anant Capital",
-    "slug": "anant-capital",
+    "name": "ORYX",
+    "slug": "oryx",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
     "splash": {
-      "backgroundColor": "#0A0A0A",
-      "resizeMode": "contain"
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A2332"
     },
-    "scheme": "anantcapital",
+    "scheme": "oryx",
     "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "capital.anant.app"
+      "supportsTablet": true,
+      "bundleIdentifier": "com.oryx.app"
     },
     "android": {
-      "package": "capital.anant.app",
+      "package": "com.oryx.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0A0A0A"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A0A0F"
       }
     },
     "web": {
-      "favicon": "./src/assets/favicon.png"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": ["expo-secure-store"]
   }

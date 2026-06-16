@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Text } from '@anant/design-system';
-import type { EpistemicType } from '@anant/shared-types';
+import { Text } from '@oryx/design-system';
+import type { EpistemicType } from '@oryx/shared-types';
 
 /** Compact label for a claim's epistemic type (ADR-036). */
 export const EpistemicTypeBadge: React.FC<{ type: EpistemicType }> = ({ type }) => (

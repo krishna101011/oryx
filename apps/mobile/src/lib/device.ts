@@ -5,7 +5,7 @@
  */
 import { Platform } from 'react-native';
 import { SecureKeys, secureGet, secureSet } from './secure-store';
-import type { DevicePlatform } from '@anant/shared-types';
+import type { DevicePlatform } from '@oryx/shared-types';
 
 function randomUuid(): string {
   // Prefer Web Crypto if available; otherwise a v4-ish fallback.

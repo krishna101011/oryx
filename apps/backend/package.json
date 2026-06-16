@@ -1,8 +1,8 @@
 {
-  "name": "@anant/backend",
+  "name": "@oryx/backend",
   "version": "0.1.0",
   "private": true,
-  "description": "Anant Capital backend (Python). This file exists so pnpm can run lint/type-check via shell commands.",
+  "description": "ORYX backend (Python). This file exists so pnpm can run lint/type-check via shell commands.",
   "scripts": {
     "lint": "uv run --no-sync ruff check src tests",
     "type-check": "uv run --no-sync mypy --follow-imports=silent src/anant/services/queue src/anant/services/dedupe src/anant/services/claims src/anant/services/evidence src/anant/services/verification src/anant/services/conflicts src/anant/services/review src/anant/services/intelligence src/anant/services/research src/anant/services/admin src/anant/core/scoring_version.py src/anant/core/ai_circuit_breaker.py src/anant/services/normalization src/anant/services/intake/scheduler.py src/anant/services/intake/sync_runner.py src/anant/services/intake/workspace_cascade.py src/anant/services/intake/admin_router.py src/anant/core/security/secrets.py",

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, TextInput, StyleSheet } from 'react-native';
-import { Button, Card, Screen, Spacer, Text, useTheme } from '@anant/design-system';
-import type { ManualIngestResponse } from '@anant/shared-types';
+import { Button, Card, Screen, Spacer, Text, useTheme } from '@oryx/design-system';
+import type { ManualIngestResponse } from '@oryx/shared-types';
 import { FeatureGate } from '../../../components/FeatureGate';
 import { useMe } from '../../../hooks/useMe';
 import { isApiError } from '../../../lib/errors';
@@ -88,7 +88,7 @@ const ManualIngestForm: React.FC = () => {
     <Screen background="primary">
       <ScrollView showsVerticalScrollIndicator={false}>
         <Spacer size={6} />
-        <Text variant="caption" color="gold">
+        <Text variant="caption" color="brand">
           OPERATOR TOOL
         </Text>
         <Spacer size={2} />

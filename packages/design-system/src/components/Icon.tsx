@@ -8,7 +8,7 @@ export type IconSize = 'sm' | 'md' | 'lg';
 export interface IconProps {
   name: IconName;
   size?: IconSize | number;
-  color?: 'primary' | 'secondary' | 'tertiary' | 'gold' | 'danger';
+  color?: 'primary' | 'secondary' | 'tertiary' | 'brand' | 'danger';
 }
 
 const SIZE_MAP: Record<IconSize, number> = { sm: 16, md: 20, lg: 24 };
@@ -25,8 +25,8 @@ export const Icon: React.FC<IconProps> = ({
 
   const px = typeof size === 'number' ? size : SIZE_MAP[size];
   const resolvedColor =
-    color === 'gold'
-      ? t.colors.accent.gold
+    color === 'brand'
+      ? t.colors.accent.teal
       : color === 'danger'
         ? t.colors.semantic.danger
         : t.colors.text[color];

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { IntakeStatusSummary } from '@anant/shared-types';
+import type { IntakeStatusSummary } from '@oryx/shared-types';
 import { intakeApi } from '../api/intake';
 
 /** Per-workspace health rollup for the intake dashboard. */

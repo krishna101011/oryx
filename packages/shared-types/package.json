@@ -1,5 +1,5 @@
 {
-  "name": "@anant/shared-types",
+  "name": "@oryx/shared-types",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",
@@ -18,7 +18,7 @@
     "test": "echo 'shared-types: no tests yet'"
   },
   "devDependencies": {
-    "@anant/config": "workspace:*",
+    "@oryx/config": "workspace:*",
     "typescript": "^5.4.5"
   }
 }

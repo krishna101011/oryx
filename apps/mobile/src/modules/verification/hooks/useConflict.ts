@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ConflictDetail, ResolveConflictRequest } from '@anant/shared-types';
+import type { ConflictDetail, ResolveConflictRequest } from '@oryx/shared-types';
 import { conflictsApi } from '../api/conflicts';
 
 /** Full conflict detail (both claims, scores, evidence counts). */

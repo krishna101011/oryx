@@ -9,8 +9,8 @@ import {
   Spacer,
   Text,
   useTheme,
-} from '@anant/design-system';
-import type { Session } from '@anant/shared-types';
+} from '@oryx/design-system';
+import type { Session } from '@oryx/shared-types';
 import { apiClient } from '../../../lib/api/client';
 import { useAppDispatch } from '../../../store';
 import { signout } from '../../../store/thunks/auth';
@@ -50,8 +50,8 @@ export const ActiveSessionsScreen: React.FC = () => {
           <View key={s.id}>
             <Card variant="default">
               <View style={styles.row}>
-                <View style={[styles.iconWrap, { backgroundColor: t.colors.accent.goldGlow }]}>
-                  <Icon name="Smartphone" color="gold" />
+                <View style={[styles.iconWrap, { backgroundColor: t.colors.accent.tealGlow }]}>
+                  <Icon name="Smartphone" color="brand" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="body">

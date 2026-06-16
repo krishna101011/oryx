@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Card, Icon, Pressable, Spacer, Text, type IconName } from '@anant/design-system';
-import type { IntakeSource } from '@anant/shared-types';
+import { Card, Icon, Pressable, Spacer, Text, type IconName } from '@oryx/design-system';
+import type { IntakeSource } from '@oryx/shared-types';
 import { SourceHealthPill } from './SourceHealthPill';
 
 const KIND_ICONS: Record<IntakeSource['kind'], IconName> = {
@@ -38,7 +38,7 @@ export const SourceCard: React.FC<{
   const content = (
     <Card variant="default">
       <View style={styles.row}>
-        <Icon name={KIND_ICONS[source.kind]} color="gold" />
+        <Icon name={KIND_ICONS[source.kind]} color="brand" />
         <View style={styles.body}>
           <Text variant="body">{source.name}</Text>
           <Spacer size={1} />

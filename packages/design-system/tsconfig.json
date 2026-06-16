@@ -1,5 +1,5 @@
 {
-  "extends": "@anant/config/tsconfig.base.json",
+  "extends": "@oryx/config/tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
