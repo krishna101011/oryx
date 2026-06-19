@@ -46,7 +46,7 @@ from anant.services.auth.router import router as auth_router
 from anant.services.automation.router import router as automation_router
 from anant.services.claims.router import router as claims_router
 from anant.services.conflicts.router import router as conflicts_router
-from anant.services.content.router import router as content_router
+from anant.services.drafts.router import router as drafts_router
 from anant.services.evidence.router import router as evidence_router
 from anant.services.feature_flags.router import router as feature_flags_router
 from anant.services.health.router import router as health_router
@@ -145,7 +145,8 @@ def create_app() -> FastAPI:
     app.include_router(intake_webhooks_router, prefix=p)
     app.include_router(verification_router, prefix=p)
     app.include_router(research_router, prefix=p)
-    app.include_router(content_router, prefix=p)
+    # Phase 5 Wave A: content drafts (replaces the /content ping stub).
+    app.include_router(drafts_router, prefix=p)
     app.include_router(publishing_router, prefix=p)
     app.include_router(automation_router, prefix=p)
     app.include_router(analytics_router, prefix=p)

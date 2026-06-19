@@ -1,0 +1,443 @@
+"""Drafts orchestration — packet consumption + AI generation + version control.
+
+Wave A contract (the five invariants):
+
+  1. Generation runs on Claude SONNET (DraftGeneratorAI.model).
+  2. PacketConsumerHandler sets research_packets.consumed_at and NOTHING else —
+     no auto-generation. Generation is a manual analyst action.
+  3. One draft per packet. generate_draft is idempotent: if a draft already
+     exists for the packet, it is returned unchanged (the UNIQUE(workspace,
+     packet) constraint backs this against races).
+  4. Append-only versions. Generation, regeneration, and analyst saves each
+     INSERT a new draft_versions row; nothing is ever overwritten.
+  5. The source-only constraint lives in the generation system context
+     (generator.SOURCE_ONLY_MARKER).
+
+Transactional shape mirrors the claims pipeline: the budget check and the
+AI call happen outside the write transaction; spend is recorded durably before
+the draft is persisted; the draft + version 1 + citations + DRAFT_CREATED commit
+together (atomic).
+"""
+from __future__ import annotations
+
+import uuid
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from anant.core.errors import (
+    BadRequestError,
+    NotFoundError,
+    PreconditionFailedError,
+    RateLimitedError,
+)
+from anant.core.logging import get_logger
+from anant.core.models import ContentDraft, DraftVersion, IntelligenceObject
+from anant.services.drafts.events.constants import DRAFT_CREATED, DRAFT_UPDATED
+from anant.services.drafts.generator import DraftGeneratorAI
+from anant.services.drafts.models import ObjectSnapshot
+from anant.services.drafts.repository import DraftsRepository
+from anant.services.queue.bus import DomainEvent
+from anant.services.queue.drainer import PermanentDeliveryError
+from anant.services.queue.outbox import enqueue_event
+
+logger = get_logger(__name__)
+
+
+def _snapshot(obj: IntelligenceObject) -> ObjectSnapshot:
+    return ObjectSnapshot(
+        id=obj.id,
+        headline=obj.headline,
+        epistemic_type=obj.epistemic_type,
+        confidence_score=obj.confidence_score,
+        key_facts=dict(obj.key_facts or {}),
+    )
+
+
+def _word_count(text: str) -> int:
+    return len(text.split())
+
+
+class DraftService:
+    def __init__(
+        self,
+        sessionmaker: async_sessionmaker[AsyncSession],
+        *,
+        generator: DraftGeneratorAI | None = None,
+    ) -> None:
+        self._sm = sessionmaker
+        self._generator = generator or DraftGeneratorAI()
+
+    # ---------------- packet consumption (handler path) ----------------
+
+    async def consume_packet(
+        self,
+        *,
+        workspace_id: uuid.UUID,
+        packet_id: uuid.UUID,
+        causation_event_id: str | None = None,
+        correlation_id: str | None = None,
+    ) -> None:
+        """Invariant #2: set consumed_at, nothing else. No generation here."""
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            if not await repo.workspace_exists(workspace_id):
+                raise PermanentDeliveryError(
+                    f"workspace {workspace_id} deleted — dead-lettering"
+                )
+            packet = await repo.get_packet(
+                workspace_id=workspace_id, packet_id=packet_id
+            )
+            if packet is None:
+                return  # cascade-deleted; nothing to consume
+            if packet.consumed_at is not None:
+                return  # idempotent: re-delivery is a no-op
+            await repo.mark_packet_consumed(packet_id)
+            await session.commit()
+
+    # ---------------- generation (analyst path) ----------------
+
+    async def generate_draft(
+        self,
+        *,
+        packet_id: uuid.UUID,
+        format: str,
+        instructions: str | None,
+        account_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        correlation_id: str | None = None,
+    ) -> ContentDraft:
+        # ---- 1. Validate packet + idempotency (invariant #3) ----
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            if not await repo.workspace_exists(workspace_id):
+                raise NotFoundError("Workspace not found")
+            packet = await repo.get_packet(
+                workspace_id=workspace_id, packet_id=packet_id
+            )
+            if packet is None:
+                raise NotFoundError("Research packet not found")
+            # A draft can only be created from a ready (or already-consumed)
+            # packet — verified-only content (blueprint §1).
+            if packet.status not in ("ready", "consumed"):
+                raise PreconditionFailedError(
+                    "Packet is not ready for content generation",
+                    details={"status": packet.status},
+                )
+            existing = await repo.get_draft_by_packet(
+                workspace_id=workspace_id, packet_id=packet_id
+            )
+            if existing is not None:
+                return existing  # one draft per packet — return it unchanged
+            object_ids = list(packet.intelligence_object_ids or [])
+            packet_name = packet.name
+            # Mark consumed (idempotent) — handoff marker. If the handler already
+            # ran on PACKET_READY this is a no-op.
+            await repo.mark_packet_consumed(packet_id)
+            await session.commit()
+
+        # ---- 2. Load source objects + budget gate ----
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            objects = await repo.get_objects(
+                workspace_id=workspace_id, ids=object_ids
+            )
+            if await repo.budget_remaining(workspace_id) <= 0:
+                logger.warning(
+                    "content.budget_exceeded",
+                    extra={
+                        "workspace_id": str(workspace_id),
+                        "stage": "draft_generator",
+                    },
+                )
+                raise RateLimitedError(
+                    "Daily AI budget reached — try again after reset"
+                )
+        snapshots = [_snapshot(o) for o in objects]
+        title = packet_name
+
+        # ---- 3. Generate (Sonnet) — outside any transaction ----
+        generated = await self._generator.generate(
+            objects=snapshots, format=format, instructions=instructions
+        )
+
+        # ---- 4. Record spend durably (tokens were really consumed) ----
+        if generated.token_count:
+            async with self._sm() as session:
+                await DraftsRepository(session).add_tokens_used(
+                    workspace_id, generated.token_count
+                )
+                await session.commit()
+
+        # ---- 5. Persist draft + version 1 + citations + event (atomic) ----
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            draft = await repo.create_draft(
+                workspace_id=workspace_id,
+                account_id=account_id,
+                packet_id=packet_id,
+                format=format,
+                title=title,
+                generation_model=self._generator.model,
+                generation_version=self._generator.version,
+                word_count=generated.word_count,
+            )
+            if draft is None:
+                # Lost the one-per-packet race — return the winner's draft.
+                winner = await repo.get_draft_by_packet(
+                    workspace_id=workspace_id, packet_id=packet_id
+                )
+                assert winner is not None
+                return winner
+            await repo.insert_version(
+                draft_id=draft.id,
+                version_number=1,
+                content=generated.content,
+                edited_by=account_id,
+                is_ai_generated=True,
+                word_count=generated.word_count,
+                token_count=generated.token_count,
+            )
+            await repo.insert_citations(
+                draft_id=draft.id, object_ids=[o.id for o in objects]
+            )
+            await enqueue_event(
+                session,
+                name=DRAFT_CREATED,
+                payload={
+                    "draftId": str(draft.id),
+                    "packetId": str(packet_id),
+                    "workspaceId": str(workspace_id),
+                    "format": format,
+                    "generationModel": self._generator.model,
+                    "versionNumber": 1,
+                },
+                workspace_id=workspace_id,
+                actor_kind="account",
+                actor_id=str(account_id),
+                correlation_id=correlation_id,
+            )
+            await session.commit()
+            refreshed = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft.id
+            )
+            assert refreshed is not None
+            return refreshed
+
+    async def regenerate_draft(
+        self,
+        *,
+        draft_id: uuid.UUID,
+        instructions: str | None,
+        account_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        correlation_id: str | None = None,
+    ) -> ContentDraft:
+        # ---- Load draft + its packet's objects (same snapshot) ----
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            draft = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            if draft is None:
+                raise NotFoundError("Draft not found")
+            packet = await repo.get_packet(
+                workspace_id=workspace_id, packet_id=draft.packet_id
+            )
+            object_ids = list(packet.intelligence_object_ids or []) if packet else []
+            objects = await repo.get_objects(
+                workspace_id=workspace_id, ids=object_ids
+            )
+            fmt = draft.format
+            if await repo.budget_remaining(workspace_id) <= 0:
+                logger.warning(
+                    "content.budget_exceeded",
+                    extra={
+                        "workspace_id": str(workspace_id),
+                        "stage": "draft_regenerator",
+                    },
+                )
+                raise RateLimitedError(
+                    "Daily AI budget reached — try again after reset"
+                )
+        snapshots = [_snapshot(o) for o in objects]
+
+        # ---- Generate (does NOT re-consume packet, does NOT create a draft) ----
+        generated = await self._generator.generate(
+            objects=snapshots, format=fmt, instructions=instructions
+        )
+        if generated.token_count:
+            async with self._sm() as session:
+                await DraftsRepository(session).add_tokens_used(
+                    workspace_id, generated.token_count
+                )
+                await session.commit()
+
+        # ---- Append a new AI version (invariant #4) ----
+        return await self._append_version(
+            draft_id=draft_id,
+            workspace_id=workspace_id,
+            content=generated.content,
+            edited_by=account_id,
+            is_ai_generated=True,
+            word_count=generated.word_count,
+            token_count=generated.token_count,
+            correlation_id=correlation_id,
+        )
+
+    # ---------------- analyst edit (save version) ----------------
+
+    async def save_version(
+        self,
+        *,
+        draft_id: uuid.UUID,
+        content: str,
+        content_html: str | None,
+        edit_note: str | None,
+        account_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        correlation_id: str | None = None,
+    ) -> ContentDraft:
+        if not content or not content.strip():
+            raise BadRequestError("Draft content cannot be empty")
+        return await self._append_version(
+            draft_id=draft_id,
+            workspace_id=workspace_id,
+            content=content,
+            edited_by=account_id,
+            is_ai_generated=False,
+            content_html=content_html,
+            edit_note=edit_note,
+            word_count=_word_count(content),
+            token_count=None,
+            correlation_id=correlation_id,
+        )
+
+    async def _append_version(
+        self,
+        *,
+        draft_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        content: str,
+        edited_by: uuid.UUID,
+        is_ai_generated: bool,
+        word_count: int,
+        token_count: int | None,
+        content_html: str | None = None,
+        edit_note: str | None = None,
+        correlation_id: str | None = None,
+    ) -> ContentDraft:
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            draft = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            if draft is None:
+                raise NotFoundError("Draft not found")
+            next_number = await repo.max_version_number(draft_id) + 1
+            await repo.insert_version(
+                draft_id=draft_id,
+                version_number=next_number,
+                content=content,
+                edited_by=edited_by,
+                is_ai_generated=is_ai_generated,
+                content_html=content_html,
+                edit_note=edit_note,
+                word_count=word_count,
+                token_count=token_count,
+            )
+            await repo.set_current_version(
+                draft_id=draft_id,
+                version_number=next_number,
+                word_count=word_count,
+            )
+            await enqueue_event(
+                session,
+                name=DRAFT_UPDATED,
+                payload={
+                    "draftId": str(draft_id),
+                    "workspaceId": str(workspace_id),
+                    "versionNumber": next_number,
+                    "editedBy": str(edited_by),
+                    "isAiGenerated": is_ai_generated,
+                },
+                workspace_id=workspace_id,
+                actor_kind="account",
+                actor_id=str(edited_by),
+                correlation_id=correlation_id,
+            )
+            await session.commit()
+            refreshed = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            assert refreshed is not None
+            return refreshed
+
+    # ---------------- reads ----------------
+
+    async def list_drafts(
+        self,
+        *,
+        workspace_id: uuid.UUID,
+        status: str | None = None,
+        packet_id: uuid.UUID | None = None,
+    ) -> list[ContentDraft]:
+        async with self._sm() as session:
+            return await DraftsRepository(session).list_drafts(
+                workspace_id=workspace_id, status=status, packet_id=packet_id
+            )
+
+    async def get_draft_detail(
+        self, *, workspace_id: uuid.UUID, draft_id: uuid.UUID
+    ) -> tuple[ContentDraft, DraftVersion | None, list[uuid.UUID]]:
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            draft = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            if draft is None:
+                raise NotFoundError("Draft not found")
+            current = await repo.get_version(
+                draft_id=draft_id, version_number=draft.current_version
+            )
+            citations = await repo.list_citation_object_ids(draft_id)
+            return draft, current, citations
+
+    async def list_versions(
+        self, *, workspace_id: uuid.UUID, draft_id: uuid.UUID
+    ) -> list[DraftVersion]:
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            draft = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            if draft is None:
+                raise NotFoundError("Draft not found")
+            return await repo.list_versions(draft_id)
+
+
+class PacketConsumerHandler:
+    """Subscriber for research.packet.ready (registered in build_bus()).
+
+    Invariant #2: sets research_packets.consumed_at and NOTHING else. It does
+    NOT auto-generate a draft — generation is a manual analyst action via
+    POST /v1/drafts/generate. Idempotent: re-delivery is a no-op once consumed.
+    """
+
+    def __init__(
+        self,
+        sessionmaker: async_sessionmaker[AsyncSession],
+        *,
+        service: DraftService | None = None,
+    ) -> None:
+        self._sm = sessionmaker
+        self._service = service or DraftService(sessionmaker)
+
+    async def __call__(self, event: DomainEvent) -> None:
+        workspace_id = uuid.UUID(event.payload["workspaceId"])
+        packet_id = uuid.UUID(event.payload["packetId"])
+        await self._service.consume_packet(
+            workspace_id=workspace_id,
+            packet_id=packet_id,
+            causation_event_id=event.id,
+            correlation_id=event.correlation_id,
+        )

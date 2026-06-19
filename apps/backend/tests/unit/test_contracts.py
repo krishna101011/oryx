@@ -99,6 +99,10 @@ def test_me_response_full_envelope() -> None:
         "onboarding": {"state": "complete", "nextStep": None},
         "verification": {"pendingReviewCount": 3, "openConflictCount": 1},
         "research": {"activeWorkspaceCount": 2, "readyPacketCount": 0},
+        "content": {
+            "draftCount": 4, "pendingReviewCount": 1,
+            "scheduledCount": 0, "publishedThisWeek": 2,
+        },
         "serverTime": now,
         "build": {"version": "0.1.0", "commit": "dev"},
     })
@@ -108,6 +112,8 @@ def test_me_response_full_envelope() -> None:
     assert j["activity"]["unreadCount"] == 0
     assert j["verification"]["pendingReviewCount"] == 3
     assert j["research"]["readyPacketCount"] == 0
+    assert j["content"]["draftCount"] == 4
+    assert j["content"]["publishedThisWeek"] == 2
 
 
 def test_onboarding_step_request_accepts_partial_payload() -> None:

@@ -93,6 +93,13 @@ export interface MeResponse {
     activeWorkspaceCount: number;
     readyPacketCount: number;
   };
+  // Phase 5 Wave A — content workload counts (current workspace).
+  content: {
+    draftCount: number;
+    pendingReviewCount: number;
+    scheduledCount: number;
+    publishedThisWeek: number;
+  };
   serverTime: Timestamp;
   build: { version: string; commit: string };
 }

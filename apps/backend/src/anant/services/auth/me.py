@@ -6,7 +6,7 @@ without N parallel requests.
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import func, select
@@ -27,6 +27,7 @@ from anant.core.models import (
     ActivityInbox,
     Claim,
     ConflictRecord,
+    ContentDraft,
     OnboardingState,
     Profile,
     ResearchPacket,
@@ -170,6 +171,59 @@ async def get_me(
         or 0
     )
 
+    # Phase 5 Wave A — content workload counts (current workspace).
+    week_ago = datetime.now(UTC) - timedelta(days=7)
+    draft_count = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(ContentDraft)
+                .where(ContentDraft.workspace_id == ws.workspace_id)
+            )
+        ).scalar_one()
+        or 0
+    )
+    content_pending_review_count = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(ContentDraft)
+                .where(
+                    ContentDraft.workspace_id == ws.workspace_id,
+                    ContentDraft.status == "in_review",
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    scheduled_count = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(ContentDraft)
+                .where(
+                    ContentDraft.workspace_id == ws.workspace_id,
+                    ContentDraft.status == "scheduled",
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    published_this_week = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(ContentDraft)
+                .where(
+                    ContentDraft.workspace_id == ws.workspace_id,
+                    ContentDraft.status == "published",
+                    ContentDraft.published_at >= week_ago,
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+
     settings = get_settings()
     payload = MeResponse(
         account=AccountSchema(
@@ -216,6 +270,12 @@ async def get_me(
         research={
             "activeWorkspaceCount": active_workspace_count,
             "readyPacketCount": ready_packet_count,
+        },
+        content={
+            "draftCount": draft_count,
+            "pendingReviewCount": content_pending_review_count,
+            "scheduledCount": scheduled_count,
+            "publishedThisWeek": published_this_week,
         },
         serverTime=datetime.now(UTC),
         build={"version": settings.build_version, "commit": settings.build_commit},

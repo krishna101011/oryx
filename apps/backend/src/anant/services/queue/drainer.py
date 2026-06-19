@@ -220,6 +220,7 @@ def build_bus() -> EventBus:
         CONFLICT_RESOLVED,
     )
     from anant.services.conflicts.service import ConflictDetectionHandler
+    from anant.services.drafts.service import PacketConsumerHandler
     from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
     from anant.services.evidence.service import EvidenceCollectionHandler
     from anant.services.intake.events_constants import INTAKE_ITEM_RECEIVED
@@ -227,6 +228,7 @@ def build_bus() -> EventBus:
         CompositionTriggerHandler,
         ObjectConflictProjector,
     )
+    from anant.services.research.events.constants import PACKET_READY
     from anant.services.verification.events.constants import CLAIM_VERIFIED
     from anant.services.verification.service import VerificationHandler
 
@@ -242,6 +244,9 @@ def build_bus() -> EventBus:
     # Conflict lifecycle projects onto intelligence objects (Wave D seam fill).
     bus.subscribe(CONFLICT_DETECTED, ObjectConflictProjector(sm))
     bus.subscribe(CONFLICT_RESOLVED, ObjectConflictProjector(sm))
+    # Phase 5 Wave A: research.packet.ready hands off to the content layer. The
+    # handler sets research_packets.consumed_at and NOTHING else — no auto-gen.
+    bus.subscribe(PACKET_READY, PacketConsumerHandler(sm))
     return bus
 
 

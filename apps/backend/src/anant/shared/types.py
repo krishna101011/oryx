@@ -445,6 +445,13 @@ class _MeResearch(_Base):
     ready_packet_count: int = Field(alias="readyPacketCount")
 
 
+class _MeContent(_Base):
+    draft_count: int = Field(alias="draftCount")
+    pending_review_count: int = Field(alias="pendingReviewCount")
+    scheduled_count: int = Field(alias="scheduledCount")
+    published_this_week: int = Field(alias="publishedThisWeek")
+
+
 class MeResponse(_Base):
     account: Account
     profile: Profile
@@ -455,6 +462,7 @@ class MeResponse(_Base):
     onboarding: _MeOnboarding
     verification: _MeVerification
     research: _MeResearch
+    content: _MeContent
     server_time: datetime = Field(alias="serverTime")
     build: _MeBuild
 
@@ -843,3 +851,77 @@ class ResearchPacket(_Base):
 class ReadinessResult(_Base):
     is_ready: bool = Field(alias="isReady")
     blockers: list[str]
+
+
+# ============================================================================
+# Phase 5 Wave A — content drafts
+# ============================================================================
+
+ContentFormat = Literal[
+    "tweet_thread",
+    "linkedin_post",
+    "newsletter_section",
+    "article",
+    "report_summary",
+    "custom",
+]
+DraftStatus = Literal[
+    "draft",
+    "in_review",
+    "changes_requested",
+    "approved",
+    "scheduled",
+    "published",
+    "rejected",
+    "archived",
+]
+
+
+class ContentDraft(_Base):
+    id: str
+    workspace_id: str = Field(alias="workspaceId")
+    account_id: str = Field(alias="accountId")
+    packet_id: str = Field(alias="packetId")
+    template_id: str | None = Field(default=None, alias="templateId")
+    format: ContentFormat
+    title: str
+    status: DraftStatus
+    current_version: int = Field(alias="currentVersion")
+    generation_model: str = Field(alias="generationModel")
+    word_count: int | None = Field(default=None, alias="wordCount")
+    published_at: datetime | None = Field(default=None, alias="publishedAt")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+
+
+class ContentDraftDetail(ContentDraft):
+    current_content: str | None = Field(default=None, alias="currentContent")
+    current_content_html: str | None = Field(default=None, alias="currentContentHtml")
+    citation_object_ids: list[str] = Field(alias="citationObjectIds")
+
+
+class DraftVersion(_Base):
+    id: str
+    draft_id: str = Field(alias="draftId")
+    version_number: int = Field(alias="versionNumber")
+    content: str
+    content_html: str | None = Field(default=None, alias="contentHtml")
+    edited_by: str = Field(alias="editedBy")
+    edit_note: str | None = Field(default=None, alias="editNote")
+    word_count: int | None = Field(default=None, alias="wordCount")
+    token_count: int | None = Field(default=None, alias="tokenCount")
+    is_ai_generated: bool = Field(alias="isAiGenerated")
+    created_at: datetime = Field(alias="createdAt")
+
+
+class DraftCitation(_Base):
+    draft_id: str = Field(alias="draftId")
+    intelligence_object_id: str = Field(alias="intelligenceObjectId")
+    added_at: datetime = Field(alias="addedAt")
+
+
+class ContentCounts(_Base):
+    draft_count: int = Field(alias="draftCount")
+    pending_review_count: int = Field(alias="pendingReviewCount")
+    scheduled_count: int = Field(alias="scheduledCount")
+    published_this_week: int = Field(alias="publishedThisWeek")

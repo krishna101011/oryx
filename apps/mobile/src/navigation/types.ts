@@ -48,10 +48,17 @@ export type ResearchStackParamList = {
   ClaimDetail: { claimId: string };
 };
 
+// Phase 5 Wave A — content tab stack
+export type ContentStackParamList = {
+  ContentHome: undefined;
+  GenerateDraft: undefined;
+  DraftEditor: { draftId: string };
+};
+
 export type RootTabParamList = {
   Home: undefined;
   Research: NavigatorScreenParams<ResearchStackParamList> | undefined;
-  Content: { id?: string } | undefined;
+  Content: NavigatorScreenParams<ContentStackParamList> | undefined;
   Activity: undefined;
   Settings: NavigatorScreenParams<SettingsStackParamList> | undefined;
 };

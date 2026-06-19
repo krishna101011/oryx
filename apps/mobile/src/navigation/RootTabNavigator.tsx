@@ -4,7 +4,7 @@ import { Icon, useTheme } from '@oryx/design-system';
 import type { RootTabParamList } from './types';
 import { DashboardScreen } from '../modules/dashboard/screens/DashboardScreen';
 import { ResearchStack } from './ResearchStack';
-import { ContentHomeScreen } from '../modules/content/screens/ContentHomeScreen';
+import { ContentStack } from './ContentStack';
 import { ActivityHomeScreen } from '../modules/activity/screens/ActivityHomeScreen';
 import { SettingsStack } from './SettingsStack';
 import { FeatureGate } from '../components/FeatureGate';
@@ -19,7 +19,7 @@ const GatedResearch: React.FC = () => (
 );
 const GatedContent: React.FC = () => (
   <FeatureGate flag="ff_content_drafts" name="Content">
-    <ContentHomeScreen />
+    <ContentStack />
   </FeatureGate>
 );
 

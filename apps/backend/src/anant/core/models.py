@@ -1011,3 +1011,101 @@ class ResearchPacket(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+# ============================================================================
+# Phase 5 Wave A — content drafts + versions + citations
+# ============================================================================
+
+
+class ContentDraft(Base):
+    """One AI-generated draft per research packet. UNIQUE (workspace_id,
+    packet_id) — exactly one draft per packet (generate is idempotent on it)."""
+
+    __tablename__ = "content_drafts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+    )
+    packet_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("research_packets.id"), nullable=False
+    )
+    # FK to content_templates lands in migration 0010 (Wave B). Nullable UUID now.
+    template_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    format: Mapped[str] = mapped_column(
+        Enum(
+            "tweet_thread", "linkedin_post", "newsletter_section",
+            "article", "report_summary", "custom",
+            name="content_format_enum",
+        ),
+        nullable=False,
+    )
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum(
+            "draft", "in_review", "changes_requested", "approved",
+            "scheduled", "published", "rejected", "archived",
+            name="draft_status_enum",
+        ),
+        nullable=False,
+        default="draft",
+    )
+    current_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    generation_model: Mapped[str] = mapped_column(Text, nullable=False)
+    generation_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    word_count: Mapped[int | None] = mapped_column(Integer)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    # UNIQUE (workspace_id, packet_id) lives in migration 0009.
+
+
+class DraftVersion(Base):
+    """Append-only edit history. Every save and every regeneration inserts a
+    new row; nothing is ever overwritten. UNIQUE (draft_id, version_number)."""
+
+    __tablename__ = "draft_versions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    draft_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("content_drafts.id", ondelete="CASCADE"), nullable=False
+    )
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content_html: Mapped[str | None] = mapped_column(Text)
+    edited_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+    )
+    edit_note: Mapped[str | None] = mapped_column(Text)
+    word_count: Mapped[int | None] = mapped_column(Integer)
+    token_count: Mapped[int | None] = mapped_column(Integer)
+    is_ai_generated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    # UNIQUE (draft_id, version_number) lives in migration 0009.
+
+
+class DraftCitation(Base):
+    """Provenance edge: a draft drew from an intelligence object. The chain back
+    to verified claims and intake items runs through intelligence_objects."""
+
+    __tablename__ = "draft_citations"
+
+    draft_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("content_drafts.id", ondelete="CASCADE"), primary_key=True
+    )
+    intelligence_object_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("intelligence_objects.id"), primary_key=True
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

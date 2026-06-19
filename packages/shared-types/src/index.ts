@@ -37,6 +37,9 @@ export * from './conflicts';
 export * from './intelligence';
 export * from './research';
 
+// ---- Phase 5 Wave A ----
+export * from './drafts';
+
 export * as Verification from './verification';
 export * as Scoring from './scoring';
 export * as Content from './content';

@@ -28,7 +28,7 @@ const SOURCES = [
   'sources.ts', 'sessions.ts', 'auth.ts', 'activity.ts', 'alerts.ts',
   'feature-flags.ts', 'onboarding.ts', 'users.ts',
   'intake.ts', 'verification.ts', 'scoring.ts', 'conflicts.ts',
-  'intelligence.ts', 'research.ts',
+  'intelligence.ts', 'research.ts', 'drafts.ts',
   'content.ts', 'publishing.ts', 'automation.ts', 'analytics.ts', 'training.ts',
 ];
 
