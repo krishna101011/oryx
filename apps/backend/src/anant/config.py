@@ -92,6 +92,13 @@ class Settings(BaseSettings):
     # ProviderError(AUTH) and deliveries dead-letter after the retry budget.
     anthropic_api_key: str | None = None
 
+    # AI provider selection — "anthropic" (default) or "ollama" (free local).
+    # Switch by setting AI_PROVIDER=ollama in the environment or .env file.
+    # See core/ai_provider.py for quality trade-offs.
+    ai_provider: str = "anthropic"
+    ollama_model: str = "qwen2.5:7b-instruct"
+    ollama_base_url: str = "http://localhost:11434"
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

@@ -13,22 +13,16 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any
-
-import httpx
-
 from anant.config import get_settings
+from anant.core.ai_provider import get_ai_provider
 from anant.core.logging import get_logger
 from anant.services.claims.models import ClaimTriple
-from anant.services.intake.providers.errors import ProviderError, ProviderErrorKind
 
 logger = get_logger(__name__)
 
 EXTRACTOR_VERSION = 1
 
 ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
-ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
-ANTHROPIC_API_VERSION = "2023-06-01"
 
 EXTRACTOR_MAX_TOKENS = 800
 EXTRACTOR_TEMPERATURE = 0
@@ -81,69 +75,18 @@ async def call_anthropic(
     max_tokens: int,
     temperature: float,
 ) -> AnthropicResult:
-    """One Messages-API call. Vendor errors map onto the existing
-    ProviderError taxonomy so the drainer's retry policy applies."""
+    """Provider-agnostic AI call. Routes to AnthropicProvider or OllamaProvider
+    based on AI_PROVIDER setting. Vendor errors map onto the existing
+    ProviderError taxonomy so the drainer's retry policy applies unchanged."""
     settings = get_settings()
-    api_key = settings.anthropic_api_key
-    if not api_key:
-        raise ProviderError(
-            kind=ProviderErrorKind.AUTH,
-            message="ANTHROPIC_API_KEY is not configured",
-        )
-    try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                ANTHROPIC_API_URL,
-                headers={
-                    "x-api-key": api_key,
-                    "anthropic-version": ANTHROPIC_API_VERSION,
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": ANTHROPIC_MODEL,
-                    "max_tokens": max_tokens,
-                    "temperature": temperature,
-                    "system": system,
-                    "messages": [{"role": "user", "content": user_content}],
-                },
-            )
-    except httpx.HTTPError as e:
-        raise ProviderError(
-            kind=ProviderErrorKind.TRANSIENT,
-            message=f"Anthropic API unreachable: {e}",
-        ) from e
-
-    if resp.status_code == 401:
-        raise ProviderError(
-            kind=ProviderErrorKind.AUTH, message="Anthropic API key rejected"
-        )
-    if resp.status_code == 429:
-        retry_after = resp.headers.get("retry-after")
-        raise ProviderError(
-            kind=ProviderErrorKind.RATE_LIMITED,
-            message="Anthropic rate limit",
-            retry_after_seconds=int(retry_after) if retry_after else None,
-        )
-    if resp.status_code >= 500:
-        raise ProviderError(
-            kind=ProviderErrorKind.TRANSIENT,
-            message=f"Anthropic API {resp.status_code}",
-        )
-    if resp.status_code >= 400:
-        raise ProviderError(
-            kind=ProviderErrorKind.PERMANENT,
-            message=f"Anthropic API {resp.status_code}: {resp.text[:200]}",
-        )
-
-    data: dict[str, Any] = resp.json()
-    blocks = data.get("content") or []
-    text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
-    usage = data.get("usage") or {}
-    return AnthropicResult(
-        text=text,
-        input_tokens=int(usage.get("input_tokens", 0)),
-        output_tokens=int(usage.get("output_tokens", 0)),
+    provider = get_ai_provider(settings, model=ANTHROPIC_MODEL)
+    text, total_tokens = await provider.complete(
+        system=system,
+        user=user_content,
+        max_tokens=max_tokens,
+        temperature=temperature,
     )
+    return AnthropicResult(text=text, input_tokens=0, output_tokens=total_tokens)
 
 
 @dataclass(frozen=True)
