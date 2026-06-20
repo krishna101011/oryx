@@ -116,14 +116,27 @@ def create_app() -> FastAPI:
 
     # --- Middleware (added last = runs first; the stack is reversed) ---
     app.add_middleware(GZipMiddleware, minimum_size=1024)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
-        expose_headers=["X-Request-Id", "X-Response-Time"],
-    )
+    # Dev: accept any localhost/127.0.0.1 port so Expo port-drift never causes 400s.
+    # Staging/prod: explicit origins only — allow_origins=["*"] + credentials is
+    # rejected by browsers, so we never use that combination.
+    if settings.environment == "dev":
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1):\d+$",
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+            allow_headers=["*"],
+            expose_headers=["X-Request-Id", "X-Response-Time"],
+        )
+    else:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.cors_origins,
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+            allow_headers=["*"],
+            expose_headers=["X-Request-Id", "X-Response-Time"],
+        )
     app.add_middleware(RateLimitMiddleware, prefix=settings.api_prefix)
     app.add_middleware(TimingMiddleware)
     app.add_middleware(RequestIDMiddleware)
