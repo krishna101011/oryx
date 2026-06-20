@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Platform, StyleSheet, View, type ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -25,6 +25,24 @@ export const Card: React.FC<CardProps> = ({
   testID,
 }) => {
   const t = useTheme();
+  const [hovered, setHovered] = useState(false);
+  const viewRef = useRef<View>(null);
+
+  // Attach mouse enter/leave to the DOM node on web — RNW View refs are HTMLElements
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const el = viewRef.current as unknown as HTMLElement | null;
+    if (!el) return;
+    const onEnter = () => setHovered(true);
+    const onLeave = () => setHovered(false);
+    el.addEventListener('mouseenter', onEnter);
+    el.addEventListener('mouseleave', onLeave);
+    return () => {
+      el.removeEventListener('mouseenter', onEnter);
+      el.removeEventListener('mouseleave', onLeave);
+    };
+  }, []);
+
   const base: ViewStyle = {
     borderRadius: t.radius.lg,
     padding: t.spacing[5],
@@ -64,9 +82,21 @@ export const Card: React.FC<CardProps> = ({
         }
       : {};
 
+  // Web-only: smooth transition base (enables animated exit from hover too)
+  const webTransition = Platform.OS === 'web' ? ({ transition: 'all 250ms ease' } as ViewStyle) : {};
+  // Web-only: glow derived from t.colors.accent.teal (#00D4C8) at hover opacities
+  const webHover =
+    Platform.OS === 'web' && hovered
+      ? ({
+          borderColor: 'rgba(0, 212, 200, 0.22)',
+          boxShadow: '0 0 16px rgba(0, 212, 200, 0.18)',
+        } as ViewStyle)
+      : {};
+
   return (
     <View
-      style={[base, { backgroundColor: bg }, elevatedShadow, style]}
+      ref={viewRef}
+      style={[base, { backgroundColor: bg }, elevatedShadow, webTransition, webHover, style]}
       testID={testID}
     >
       {children}
