@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env tsx
+#!/usr/bin/env tsx
 /**
  * gen-pydantic.ts — Verifies the pydantic mirror of packages/shared-types/src/.
  *
