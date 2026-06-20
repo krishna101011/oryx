@@ -1,12 +1,12 @@
-"""ConfidenceScorer — §14.4 / ADR-027 arithmetic, exhaustively."""
+﻿"""ConfidenceScorer — §14.4 / ADR-027 arithmetic, exhaustively."""
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from anant.services.verification.models import EvidenceLinkInput
-from anant.services.verification.scorer import (
+from oryx.services.verification.models import EvidenceLinkInput
+from oryx.services.verification.scorer import (
     CEILINGS,
     EVIDENCE_STRENGTH_WEIGHTS,
     SCORING_VERSION,

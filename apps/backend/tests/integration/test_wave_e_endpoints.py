@@ -1,4 +1,4 @@
-"""HTTP-level tests for the Wave E surface: /auth/me counts, intelligence
+﻿"""HTTP-level tests for the Wave E surface: /auth/me counts, intelligence
 reads, and the research workspace/packet endpoints (signup → owner token)."""
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ pytestmark = pytest.mark.requires_db
 
 @pytest.fixture
 def app():
-    os.environ.setdefault("DATABASE_URL", os.environ["ANANT_TEST_DB"])
-    from anant.main import create_app
+    os.environ.setdefault("DATABASE_URL", os.environ["ORYX_TEST_DB"])
+    from oryx.main import create_app
 
     return create_app()
 
@@ -23,7 +23,7 @@ async def _auth(client: AsyncClient) -> dict[str, str]:
     signup = await client.post(
         "/v1/auth/signup",
         json={
-            "email": f"wavee+{uuid.uuid4().hex[:8]}@anant.test",
+            "email": f"wavee+{uuid.uuid4().hex[:8]}@oryx.test",
             "password": "StrongPass123",
             "displayName": "Analyst",
             "deviceId": str(uuid.uuid4()),

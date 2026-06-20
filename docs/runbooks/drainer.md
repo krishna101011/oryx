@@ -1,6 +1,6 @@
-# Runbook — queue.drainer
+﻿# Runbook — queue.drainer
 
-**Process:** `python -m anant.services.queue.drainer`
+**Process:** `python -m oryx.services.queue.drainer`
 **Owns:** outbox delivery, dead-letter promotion, outbox/dead-letter cleanup
 **Related:** ADR-018 (outbox), dead-letter recovery runbook
 

@@ -1,4 +1,4 @@
-"""Pydantic contract round-trips.
+﻿"""Pydantic contract round-trips.
 
 If the mobile app sends a wire shape, the backend must parse it. If the
 backend emits one, mobile must accept it (via the TS interface mirror).
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from anant.shared.types import (
+from oryx.shared.types import (
     ApiError,
     ApiErrorBody,
     ApiResponse,
@@ -24,7 +24,7 @@ from anant.shared.types import (
 def test_api_response_envelope_with_data() -> None:
     payload = ApiResponse[HealthStatus](
         data=HealthStatus(
-            status="ok", service="anant-backend", environment="dev",
+            status="ok", service="oryx-backend", environment="dev",
             serverTime=datetime.now(UTC),
         ),
     )

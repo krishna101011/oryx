@@ -1,4 +1,4 @@
-"""Analyst-review note enforcement + outcome maps (Wave D).
+﻿"""Analyst-review note enforcement + outcome maps (Wave D).
 
 The not-empty note rule is enforced in the SERVICE layer (HTTP 400), before
 any DB work — these tests prove it fires without a usable sessionmaker.
@@ -9,8 +9,8 @@ import uuid
 
 import pytest
 
-from anant.core.errors import BadRequestError
-from anant.services.review.service import (
+from oryx.core.errors import BadRequestError
+from oryx.services.review.service import (
     _CONFLICT_OUTCOME,
     _OBJECT_STATUS,
     ReviewService,

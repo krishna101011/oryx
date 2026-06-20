@@ -1,4 +1,4 @@
-# ORYX — Phase 2 Architecture (FROZEN)
+﻿# ORYX — Phase 2 Architecture (FROZEN)
 
 **Phase:** 2 — Identity, Access, Preferences, Control Plane
 **Status:** FROZEN — 2026-06-06
@@ -539,7 +539,7 @@ This means Phase 2 ships the *pattern*, not the integrations. Phase 3 (Gmail) is
 ### 8.2 Service Folder Layout (with provider layer)
 
 ```
-apps/backend/src/anant/services/
+apps/backend/src/oryx/services/
 ├── auth/
 │   ├── router.py
 │   ├── service.py

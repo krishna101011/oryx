@@ -1,4 +1,4 @@
-"""PII redaction in structured logs.
+﻿"""PII redaction in structured logs.
 
 Asserts that REDACT_FIELDS values never reach a sink in plaintext.
 """
@@ -8,7 +8,7 @@ import json
 import logging
 from io import StringIO
 
-from anant.core.logging import REDACT_FIELDS, RedactingFormatter, configure_logging
+from oryx.core.logging import REDACT_FIELDS, RedactingFormatter, configure_logging
 
 # Skip `name` — it's a built-in LogRecord field that pytest's log capture
 # also tracks; overriding it via setattr breaks pytest internals. The
@@ -54,7 +54,7 @@ def test_configure_logging_attaches_redacting_formatter() -> None:
     root = logging.getLogger()
     handler = root.handlers[0]
     handler.stream = buf
-    log = logging.getLogger("anant.test")
+    log = logging.getLogger("oryx.test")
     log.warning("auth.event", extra={"email": "a@b.com", "account_id": "x"})
     output = buf.getvalue()
     assert "a@b.com" not in output

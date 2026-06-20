@@ -1,8 +1,8 @@
-"""Evidence pipeline end-to-end against Postgres (Phase 4 Wave B).
+﻿"""Evidence pipeline end-to-end against Postgres (Phase 4 Wave B).
 
 The corpus search runs the REAL BM25/FTS SQL against real tables; only
 the AI linker is faked through the service seam.
-Runs only when ANANT_TEST_DB is set (with migrations applied).
+Runs only when ORYX_TEST_DB is set (with migrations applied).
 """
 from __future__ import annotations
 
@@ -19,16 +19,16 @@ async def _seed(sm) -> dict:
     """Workspace + source + claim item + one corpus item that FTS can find.
 
     Returns ids: workspace, claim (row), claim_item, corpus_item."""
-    from anant.core.models import Account, IntakeSource, Workspace
-    from anant.services.claims.repository import ClaimsRepository
-    from anant.services.intake.providers.base import RawItem
-    from anant.services.intake.service import IntakeService
+    from oryx.core.models import Account, IntakeSource, Workspace
+    from oryx.services.claims.repository import ClaimsRepository
+    from oryx.services.intake.providers.base import RawItem
+    from oryx.services.intake.service import IntakeService
 
     marker = uuid.uuid4().hex[:6]
     async with sm() as session:
         account = Account(
             id=uuid.uuid4(),
-            email=f"evid+{uuid.uuid4().hex[:8]}@anant.test",
+            email=f"evid+{uuid.uuid4().hex[:8]}@oryx.test",
             password_hash="x",
             password_changed_at=datetime.now(UTC),
             status="active",
@@ -123,8 +123,8 @@ class FakeLinker:
         self.last_candidates: list = []
 
     async def link(self, claim_text: str, candidates: list):
-        from anant.services.evidence.linker import LinkingResult
-        from anant.services.evidence.models import TYPE_TO_RELATIONSHIP, LinkResult
+        from oryx.services.evidence.linker import LinkingResult
+        from oryx.services.evidence.models import TYPE_TO_RELATIONSHIP, LinkResult
 
         if self.fail_if_called:
             raise AssertionError("linker must not be called on this path")
@@ -146,15 +146,15 @@ class FakeLinker:
 
 
 def _service(sm, linker=None):
-    from anant.services.evidence.service import EvidenceService
+    from oryx.services.evidence.service import EvidenceService
 
     return EvidenceService(sm, linker=linker or FakeLinker())
 
 
 @pytest.mark.asyncio
 async def test_full_pipeline_links_evidence_via_real_fts(sm) -> None:
-    from anant.core.models import Claim, ClaimEvidenceLink, Evidence, OutboxEvent
-    from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
+    from oryx.core.models import Claim, ClaimEvidenceLink, Evidence, OutboxEvent
+    from oryx.services.evidence.events.constants import EVIDENCE_COLLECTED
 
     ids = await _seed(sm)
     linker = FakeLinker()
@@ -220,7 +220,7 @@ async def test_full_pipeline_links_evidence_via_real_fts(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_contradiction_flags_claim_for_review(sm) -> None:
-    from anant.core.models import Claim
+    from oryx.core.models import Claim
 
     ids = await _seed(sm)
     await _service(sm, FakeLinker(evidence_type="contradiction")).collect_evidence_for_claim(
@@ -233,8 +233,8 @@ async def test_contradiction_flags_claim_for_review(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_redelivery_is_idempotent(sm) -> None:
-    from anant.core.models import ClaimEvidenceLink, OutboxEvent
-    from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
+    from oryx.core.models import ClaimEvidenceLink, OutboxEvent
+    from oryx.services.evidence.events.constants import EVIDENCE_COLLECTED
 
     ids = await _seed(sm)
     linker = FakeLinker()
@@ -269,9 +269,9 @@ async def test_redelivery_is_idempotent(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_zero_candidates_emits_empty_collection(sm) -> None:
-    from anant.core.models import OutboxEvent
-    from anant.services.claims.repository import ClaimsRepository
-    from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
+    from oryx.core.models import OutboxEvent
+    from oryx.services.claims.repository import ClaimsRepository
+    from oryx.services.evidence.events.constants import EVIDENCE_COLLECTED
 
     ids = await _seed(sm)
     # A claim whose subject matches nothing in the corpus.
@@ -306,8 +306,8 @@ async def test_zero_candidates_emits_empty_collection(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_budget_exhausted_flags_and_emits_zero(sm) -> None:
-    from anant.core.models import Claim, OutboxEvent, WorkspaceAIBudget
-    from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
+    from oryx.core.models import Claim, OutboxEvent, WorkspaceAIBudget
+    from oryx.services.evidence.events.constants import EVIDENCE_COLLECTED
 
     ids = await _seed(sm)
     async with sm() as session:
@@ -342,7 +342,7 @@ async def test_budget_exhausted_flags_and_emits_zero(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_linker_parse_failure_flags_and_emits_zero(sm) -> None:
-    from anant.core.models import Claim, WorkspaceAIBudget
+    from oryx.core.models import Claim, WorkspaceAIBudget
 
     ids = await _seed(sm)
     await _service(sm, FakeLinker(parse_failed=True, tokens=77)).collect_evidence_for_claim(
@@ -363,8 +363,8 @@ async def test_linker_parse_failure_flags_and_emits_zero(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_include_false_creates_no_links_but_emits(sm) -> None:
-    from anant.core.models import ClaimEvidenceLink, Evidence, OutboxEvent
-    from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
+    from oryx.core.models import ClaimEvidenceLink, Evidence, OutboxEvent
+    from oryx.services.evidence.events.constants import EVIDENCE_COLLECTED
 
     ids = await _seed(sm)
     await _service(sm, FakeLinker(include=False)).collect_evidence_for_claim(
@@ -396,11 +396,11 @@ async def test_include_false_creates_no_links_but_emits(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_deleted_workspace_dead_letters(sm) -> None:
-    from anant.core.models import Workspace
-    from anant.services.claims.events.constants import CLAIM_TYPED
-    from anant.services.evidence.service import EvidenceCollectionHandler
-    from anant.services.queue.bus import DomainEvent
-    from anant.services.queue.drainer import PermanentDeliveryError
+    from oryx.core.models import Workspace
+    from oryx.services.claims.events.constants import CLAIM_TYPED
+    from oryx.services.evidence.service import EvidenceCollectionHandler
+    from oryx.services.queue.bus import DomainEvent
+    from oryx.services.queue.drainer import PermanentDeliveryError
 
     ids = await _seed(sm)
     async with sm() as session:

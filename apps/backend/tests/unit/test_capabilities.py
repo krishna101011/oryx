@@ -1,9 +1,9 @@
-"""Role → capability grants. Pure-function unit test of the authorization core."""
+﻿"""Role → capability grants. Pure-function unit test of the authorization core."""
 from __future__ import annotations
 
 import pytest
 
-from anant.core.dependencies import _role_grants
+from oryx.core.dependencies import _role_grants
 
 
 @pytest.mark.parametrize(

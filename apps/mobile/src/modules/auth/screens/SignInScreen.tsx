@@ -21,7 +21,7 @@ export const SignInScreen: React.FC = () => {
       await dispatch(signin(email.trim(), password));
     } catch (e) {
       if (isApiError(e)) setError(e.message);
-      else setError('Unable to sign in. Try again.');
+      else setError('Could not reach the server. Check that the backend is running and try again.');
     } finally {
       setLoading(false);
     }

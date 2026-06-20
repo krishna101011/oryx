@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # Boot backend + mobile in parallel for local development.
 # Backend logs are prefixed [be], mobile logs [mob].
 set -euo pipefail
@@ -13,7 +13,7 @@ prefix() {
 
 (
   cd apps/backend && \
-  uv run uvicorn anant.main:app --reload --port 8000 2>&1 | prefix be
+  uv run uvicorn oryx.main:app --reload --port 8000 2>&1 | prefix be
 ) &
 BE_PID=$!
 

@@ -1,4 +1,4 @@
-"""Provider interface contract tests.
+﻿"""Provider interface contract tests.
 
 Verifies that the LogOnly stubs satisfy the Protocols and emit ProviderResult.
 This locks in the contract Phase 3+ vendor implementations must follow.
@@ -7,14 +7,14 @@ from __future__ import annotations
 
 import pytest
 
-from anant.services.activity.providers.push.base import PushMessage, PushProvider
-from anant.services.activity.providers.push.log_only import LogOnlyPushProvider
-from anant.services.auth.providers.email.base import (
+from oryx.services.activity.providers.push.base import PushMessage, PushProvider
+from oryx.services.activity.providers.push.log_only import LogOnlyPushProvider
+from oryx.services.auth.providers.email.base import (
     EmailMessage,
     EmailProvider,
     ProviderResult,
 )
-from anant.services.auth.providers.email.log_only import LogOnlyEmailProvider
+from oryx.services.auth.providers.email.log_only import LogOnlyEmailProvider
 
 
 def test_log_only_email_satisfies_protocol() -> None:

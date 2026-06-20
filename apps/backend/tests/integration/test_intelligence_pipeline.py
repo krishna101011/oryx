@@ -1,4 +1,4 @@
-"""Intelligence composition + conflict projection end-to-end (Wave E)."""
+﻿"""Intelligence composition + conflict projection end-to-end (Wave E)."""
 from __future__ import annotations
 
 import uuid
@@ -13,16 +13,16 @@ pytestmark = pytest.mark.requires_db
 async def _seed_item(sm, *, subject: str, claims_spec: list[dict]) -> dict:
     """One intake item + claims. Each claims_spec entry:
     {et, score, outcome, terminal}. terminal=False → no run (blocks fan-in)."""
-    from anant.core.models import Account, IntakeSource, VerificationRun, Workspace
-    from anant.services.claims.repository import ClaimsRepository
-    from anant.services.intake.providers.base import RawItem
-    from anant.services.intake.service import IntakeService
+    from oryx.core.models import Account, IntakeSource, VerificationRun, Workspace
+    from oryx.services.claims.repository import ClaimsRepository
+    from oryx.services.intake.providers.base import RawItem
+    from oryx.services.intake.service import IntakeService
 
     now = datetime.now(UTC)
     async with sm() as session:
         account = Account(
             id=uuid.uuid4(),
-            email=f"intel+{uuid.uuid4().hex[:8]}@anant.test",
+            email=f"intel+{uuid.uuid4().hex[:8]}@oryx.test",
             password_hash="x",
             password_changed_at=now,
             status="active",
@@ -109,15 +109,15 @@ async def _seed_item(sm, *, subject: str, claims_spec: list[dict]) -> dict:
 
 
 def _service(sm):
-    from anant.services.intelligence.service import IntelligenceService
+    from oryx.services.intelligence.service import IntelligenceService
 
     return IntelligenceService(sm)
 
 
 @pytest.mark.asyncio
 async def test_composes_when_all_terminal(sm) -> None:
-    from anant.core.models import IntelligenceObject, OutboxEvent, VerificationAuditLog
-    from anant.services.intelligence.events.constants import OBJECT_CREATED
+    from oryx.core.models import IntelligenceObject, OutboxEvent, VerificationAuditLog
+    from oryx.services.intelligence.events.constants import OBJECT_CREATED
 
     ids = await _seed_item(
         sm,
@@ -171,7 +171,7 @@ async def test_composes_when_all_terminal(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_non_terminal_claim_blocks_composition(sm) -> None:
-    from anant.core.models import IntelligenceObject
+    from oryx.core.models import IntelligenceObject
 
     ids = await _seed_item(
         sm,
@@ -198,7 +198,7 @@ async def test_non_terminal_claim_blocks_composition(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_epistemic_type_is_weakest_and_caps_score(sm) -> None:
-    from anant.core.models import IntelligenceObject
+    from oryx.core.models import IntelligenceObject
 
     ids = await _seed_item(
         sm,
@@ -219,8 +219,8 @@ async def test_epistemic_type_is_weakest_and_caps_score(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_idempotent_composition(sm) -> None:
-    from anant.core.models import IntelligenceObject, OutboxEvent
-    from anant.services.intelligence.events.constants import OBJECT_CREATED
+    from oryx.core.models import IntelligenceObject, OutboxEvent
+    from oryx.services.intelligence.events.constants import OBJECT_CREATED
 
     ids = await _seed_item(
         sm, subject="Once", claims_spec=[{"et": "claim", "score": 0.7}]
@@ -255,7 +255,7 @@ async def test_idempotent_composition(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_status_unverified_when_not_all_verified(sm) -> None:
-    from anant.core.models import IntelligenceObject
+    from oryx.core.models import IntelligenceObject
 
     ids = await _seed_item(
         sm,
@@ -275,10 +275,10 @@ async def test_status_unverified_when_not_all_verified(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_handler_triggers_composition(sm) -> None:
-    from anant.core.models import IntelligenceObject
-    from anant.services.intelligence.service import CompositionTriggerHandler
-    from anant.services.queue.bus import DomainEvent
-    from anant.services.verification.events.constants import CLAIM_VERIFIED
+    from oryx.core.models import IntelligenceObject
+    from oryx.services.intelligence.service import CompositionTriggerHandler
+    from oryx.services.queue.bus import DomainEvent
+    from oryx.services.verification.events.constants import CLAIM_VERIFIED
 
     ids = await _seed_item(
         sm, subject="Handler", claims_spec=[{"et": "claim", "score": 0.6}]
@@ -312,7 +312,7 @@ async def test_handler_triggers_composition(sm) -> None:
 
 
 async def _add_open_conflict(sm, *, workspace_id, claim_a, claim_b, severity=0.9):
-    from anant.core.models import ConflictRecord
+    from oryx.core.models import ConflictRecord
 
     a, b = (claim_a, claim_b) if claim_a <= claim_b else (claim_b, claim_a)
     async with sm() as session:
@@ -331,7 +331,7 @@ async def _add_open_conflict(sm, *, workspace_id, claim_a, claim_b, severity=0.9
 
 
 def _conflict_event(name, *, workspace_id, claim_a, claim_b, resolution=None):
-    from anant.services.queue.bus import DomainEvent
+    from oryx.services.queue.bus import DomainEvent
 
     payload = {
         "claimAId": str(claim_a),
@@ -357,10 +357,10 @@ def _conflict_event(name, *, workspace_id, claim_a, claim_b, resolution=None):
 
 @pytest.mark.asyncio
 async def test_projector_marks_object_contested_on_detect(sm) -> None:
-    from anant.core.models import IntelligenceObject, OutboxEvent
-    from anant.services.conflicts.events.constants import CONFLICT_DETECTED
-    from anant.services.intelligence.events.constants import OBJECT_UPDATED
-    from anant.services.intelligence.service import ObjectConflictProjector
+    from oryx.core.models import IntelligenceObject, OutboxEvent
+    from oryx.services.conflicts.events.constants import CONFLICT_DETECTED
+    from oryx.services.intelligence.events.constants import OBJECT_UPDATED
+    from oryx.services.intelligence.service import ObjectConflictProjector
 
     ids = await _seed_item(
         sm,
@@ -402,13 +402,13 @@ async def test_projector_marks_object_contested_on_detect(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_projector_recomposes_on_resolve(sm) -> None:
-    from anant.core.models import Claim, IntelligenceObject, OutboxEvent
-    from anant.services.conflicts.events.constants import (
+    from oryx.core.models import Claim, IntelligenceObject, OutboxEvent
+    from oryx.services.conflicts.events.constants import (
         CONFLICT_DETECTED,
         CONFLICT_RESOLVED,
     )
-    from anant.services.intelligence.events.constants import OBJECT_REVIEWED
-    from anant.services.intelligence.service import ObjectConflictProjector
+    from oryx.services.intelligence.events.constants import OBJECT_REVIEWED
+    from oryx.services.intelligence.service import ObjectConflictProjector
 
     ids = await _seed_item(
         sm,
@@ -434,7 +434,7 @@ async def test_projector_recomposes_on_resolve(sm) -> None:
         )
     )
     # Analyst resolves: supersede claim_b, close the conflict.
-    from anant.core.models import ConflictRecord
+    from oryx.core.models import ConflictRecord
 
     async with sm() as session:
         await session.execute(
@@ -476,9 +476,9 @@ async def test_projector_recomposes_on_resolve(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_review_object_flips_status_and_emits(sm) -> None:
-    from anant.core.models import AnalystReview, IntelligenceObject, OutboxEvent
-    from anant.services.intelligence.events.constants import OBJECT_REVIEWED
-    from anant.services.review.service import ReviewService
+    from oryx.core.models import AnalystReview, IntelligenceObject, OutboxEvent
+    from oryx.services.intelligence.events.constants import OBJECT_REVIEWED
+    from oryx.services.review.service import ReviewService
 
     ids = await _seed_item(
         sm, subject="ReviewMe", claims_spec=[{"et": "claim", "score": 0.6}]
@@ -515,10 +515,10 @@ async def test_review_object_flips_status_and_emits(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_sticky_analyst_status_survives_recompose(sm) -> None:
-    from anant.core.models import IntelligenceObject
-    from anant.services.conflicts.events.constants import CONFLICT_DETECTED
-    from anant.services.intelligence.service import ObjectConflictProjector
-    from anant.services.review.service import ReviewService
+    from oryx.core.models import IntelligenceObject
+    from oryx.services.conflicts.events.constants import CONFLICT_DETECTED
+    from oryx.services.intelligence.service import ObjectConflictProjector
+    from oryx.services.review.service import ReviewService
 
     ids = await _seed_item(
         sm,
@@ -557,11 +557,11 @@ async def test_sticky_analyst_status_survives_recompose(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_deleted_workspace_dead_letters(sm) -> None:
-    from anant.core.models import Workspace
-    from anant.services.intelligence.service import CompositionTriggerHandler
-    from anant.services.queue.bus import DomainEvent
-    from anant.services.queue.drainer import PermanentDeliveryError
-    from anant.services.verification.events.constants import CLAIM_VERIFIED
+    from oryx.core.models import Workspace
+    from oryx.services.intelligence.service import CompositionTriggerHandler
+    from oryx.services.queue.bus import DomainEvent
+    from oryx.services.queue.drainer import PermanentDeliveryError
+    from oryx.services.verification.events.constants import CLAIM_VERIFIED
 
     ids = await _seed_item(
         sm, subject="Dead", claims_spec=[{"et": "claim", "score": 0.6}]

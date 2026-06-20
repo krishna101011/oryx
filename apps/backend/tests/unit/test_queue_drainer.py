@@ -1,4 +1,4 @@
-"""Drainer delivery policy — backoff, due predicate, retry/dead-letter paths.
+﻿"""Drainer delivery policy — backoff, due predicate, retry/dead-letter paths.
 
 DB-free: the drainer's SQL surface is exercised by the requires_db
 integration suite; here we fake the session and drive the policy.
@@ -10,10 +10,10 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from anant.core.models import OutboxEvent
-from anant.services.queue.bus import DomainEvent, InProcessBus
-from anant.services.queue.dead_letter import MAX_DELIVERY_ATTEMPTS
-from anant.services.queue.drainer import (
+from oryx.core.models import OutboxEvent
+from oryx.services.queue.bus import DomainEvent, InProcessBus
+from oryx.services.queue.dead_letter import MAX_DELIVERY_ATTEMPTS
+from oryx.services.queue.drainer import (
     DELIVERY_BACKOFF_BASE_SECONDS,
     DELIVERY_BACKOFF_CAP_SECONDS,
     OutboxDrainer,
@@ -21,7 +21,7 @@ from anant.services.queue.drainer import (
     delivery_backoff,
     row_is_due,
 )
-from anant.services.queue.outbox import make_event_envelope
+from oryx.services.queue.outbox import make_event_envelope
 
 NOW = datetime(2026, 6, 10, 12, 0, 0, tzinfo=UTC)
 

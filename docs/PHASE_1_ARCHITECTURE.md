@@ -1,4 +1,4 @@
-# ORYX — Phase 1 Architecture
+﻿# ORYX — Phase 1 Architecture
 
 **Phase:** 1 — Foundation Only
 **Status:** Architecture & Implementation Plan (no code yet)
@@ -267,7 +267,7 @@ Three packages, three purposes:
 | If the code is... | It lives in... |
 |---|---|
 | Used only by mobile | `apps/mobile/src/` |
-| Used only by backend | `apps/backend/src/anant/` |
+| Used only by backend | `apps/backend/src/oryx/` |
 | A type that crosses FE↔BE | `packages/shared-types/` |
 | A visual primitive (Button, Card) | `packages/design-system/` |
 | A tool config (eslint, mypy) | `packages/config/` |
@@ -433,7 +433,7 @@ The backend will eventually own every meaningful business rule in the product. P
 ```
 apps/backend/
 ├── pyproject.toml
-├── src/anant/
+├── src/oryx/
 │   ├── main.py                    # app factory, mounts routers, applies middleware
 │   ├── config.py                  # Pydantic Settings; reads env, validates at boot
 │   ├── core/
@@ -543,7 +543,7 @@ ErrorHandlingMiddleware   # last so it wraps everything
 ### 7.1 Type Strategy
 
 - `packages/shared-types/` is the **source of truth** in TypeScript
-- A build script (`infra/scripts/gen-pydantic.ts`) reads each file and emits matching pydantic models into `apps/backend/src/anant/shared/types.py`
+- A build script (`infra/scripts/gen-pydantic.ts`) reads each file and emits matching pydantic models into `apps/backend/src/oryx/shared/types.py`
 - CI step compares generated output against committed file; mismatch fails the build
 - Frontend imports types directly; backend imports the pydantic mirror
 

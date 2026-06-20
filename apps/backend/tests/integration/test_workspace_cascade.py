@@ -1,9 +1,9 @@
-"""CR-6 workspace deletion cascade against Postgres.
+﻿"""CR-6 workspace deletion cascade against Postgres.
 
 Exit-checklist items: upstream revoke best-effort (failure → orphan
 table), local credentials always deleted, no orphan rows, no
 cross-workspace leakage, idempotent re-run.
-Runs only when ANANT_TEST_DB is set (with migrations applied).
+Runs only when ORYX_TEST_DB is set (with migrations applied).
 """
 from __future__ import annotations
 
@@ -18,20 +18,20 @@ pytestmark = pytest.mark.requires_db
 
 async def _seed_workspace_with_intake(sm) -> tuple[uuid.UUID, uuid.UUID]:
     """Workspace + gmail source + credentials + one ingested item + queue rows."""
-    from anant.core.models import (
+    from oryx.core.models import (
         Account,
         IntakeSource,
         WebhookIdempotencyKey,
         Workspace,
     )
-    from anant.services.intake.credentials import IntakeCredentialsRepository
-    from anant.services.intake.providers.base import RawItem
-    from anant.services.intake.service import IntakeService
+    from oryx.services.intake.credentials import IntakeCredentialsRepository
+    from oryx.services.intake.providers.base import RawItem
+    from oryx.services.intake.service import IntakeService
 
     async with sm() as session:
         account = Account(
             id=uuid.uuid4(),
-            email=f"cascade+{uuid.uuid4().hex[:8]}@anant.test",
+            email=f"cascade+{uuid.uuid4().hex[:8]}@oryx.test",
             password_hash="x",
             password_changed_at=datetime.now(UTC),
             status="active",
@@ -100,7 +100,7 @@ async def _count(sm, model, workspace_id: uuid.UUID) -> int:
 
 @pytest.mark.asyncio
 async def test_cascade_removes_every_workspace_scoped_row(sm) -> None:
-    from anant.core.models import (
+    from oryx.core.models import (
         IntakeAuditLog,
         IntakeCredentials,
         IntakeDedupeIndex,
@@ -109,7 +109,7 @@ async def test_cascade_removes_every_workspace_scoped_row(sm) -> None:
         OutboxEvent,
         WebhookIdempotencyKey,
     )
-    from anant.services.intake.workspace_cascade import (
+    from oryx.services.intake.workspace_cascade import (
         cascade_workspace_intake_deletion,
     )
 
@@ -133,8 +133,8 @@ async def test_cascade_removes_every_workspace_scoped_row(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_failed_revoke_lands_in_orphan_table_but_creds_still_deleted(sm) -> None:
-    from anant.core.models import IntakeCredentials, WorkspaceDeletionOrphanCredential
-    from anant.services.intake.workspace_cascade import (
+    from oryx.core.models import IntakeCredentials, WorkspaceDeletionOrphanCredential
+    from oryx.services.intake.workspace_cascade import (
         cascade_workspace_intake_deletion,
     )
 
@@ -162,8 +162,8 @@ async def test_failed_revoke_lands_in_orphan_table_but_creds_still_deleted(sm) -
 
 @pytest.mark.asyncio
 async def test_cascade_does_not_touch_other_workspaces(sm) -> None:
-    from anant.core.models import IntakeItem, IntakeSource
-    from anant.services.intake.workspace_cascade import (
+    from oryx.core.models import IntakeItem, IntakeSource
+    from oryx.services.intake.workspace_cascade import (
         cascade_workspace_intake_deletion,
     )
 
@@ -181,7 +181,7 @@ async def test_cascade_does_not_touch_other_workspaces(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_cascade_is_idempotent(sm) -> None:
-    from anant.services.intake.workspace_cascade import (
+    from oryx.services.intake.workspace_cascade import (
         cascade_workspace_intake_deletion,
     )
 
@@ -200,8 +200,8 @@ async def test_cascade_is_idempotent(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_lifecycle_events_survive_the_cascade(sm) -> None:
-    from anant.core.models import OutboxEvent
-    from anant.services.intake.workspace_cascade import (
+    from oryx.core.models import OutboxEvent
+    from oryx.services.intake.workspace_cascade import (
         cascade_workspace_intake_deletion,
     )
 

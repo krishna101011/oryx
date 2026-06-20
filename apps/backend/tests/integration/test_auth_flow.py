@@ -1,6 +1,6 @@
-"""End-to-end signup → signin → refresh → signout flow.
+﻿"""End-to-end signup → signin → refresh → signout flow.
 
-Runs only when ANANT_TEST_DB points at a fresh Postgres (with migrations applied).
+Runs only when ORYX_TEST_DB points at a fresh Postgres (with migrations applied).
 Use a disposable schema or a docker-compose-up'd test database.
 """
 from __future__ import annotations
@@ -15,14 +15,14 @@ pytestmark = pytest.mark.requires_db
 
 
 def _u() -> str:
-    return f"test+{uuid.uuid4().hex[:8]}@anant.test"
+    return f"test+{uuid.uuid4().hex[:8]}@oryx.test"
 
 
 @pytest.fixture
 def app():
     # Import inside fixture so unit suite never touches engine init.
-    os.environ.setdefault("DATABASE_URL", os.environ["ANANT_TEST_DB"])
-    from anant.main import create_app
+    os.environ.setdefault("DATABASE_URL", os.environ["ORYX_TEST_DB"])
+    from oryx.main import create_app
     return create_app()
 
 

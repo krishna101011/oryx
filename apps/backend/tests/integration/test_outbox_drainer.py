@@ -1,8 +1,8 @@
-"""Outbox drainer end-to-end against Postgres (Phase 3 exit checklist).
+﻿"""Outbox drainer end-to-end against Postgres (Phase 3 exit checklist).
 
 Covers: exactly-once delivery on success, retry persistence on transient
 handler failure, dead-letter promotion on poison, and the cleanup job.
-Runs only when ANANT_TEST_DB is set (with migrations applied).
+Runs only when ORYX_TEST_DB is set (with migrations applied).
 """
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ pytestmark = pytest.mark.requires_db
 
 
 async def _enqueue(sm, name: str = "intake.item.received") -> uuid.UUID:
-    from anant.core.models import OutboxEvent
-    from anant.services.queue.outbox import make_event_envelope
+    from oryx.core.models import OutboxEvent
+    from oryx.services.queue.outbox import make_event_envelope
 
     env = make_event_envelope(name=name, payload={"n": 1}, workspace_id=None)
     row_id = uuid.UUID(env["id"])
@@ -31,9 +31,9 @@ async def _enqueue(sm, name: str = "intake.item.received") -> uuid.UUID:
 
 @pytest.mark.asyncio
 async def test_drainer_delivers_exactly_once(sm) -> None:
-    from anant.core.models import OutboxEvent
-    from anant.services.queue.bus import InProcessBus
-    from anant.services.queue.drainer import OutboxDrainer
+    from oryx.core.models import OutboxEvent
+    from oryx.services.queue.bus import InProcessBus
+    from oryx.services.queue.drainer import OutboxDrainer
 
     name = f"test.delivery.{uuid.uuid4().hex[:8]}"
     row_id = await _enqueue(sm, name)
@@ -62,9 +62,9 @@ async def test_drainer_delivers_exactly_once(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_drainer_retries_then_succeeds(sm) -> None:
-    from anant.core.models import OutboxEvent
-    from anant.services.queue.bus import InProcessBus
-    from anant.services.queue.drainer import OutboxDrainer
+    from oryx.core.models import OutboxEvent
+    from oryx.services.queue.bus import InProcessBus
+    from oryx.services.queue.drainer import OutboxDrainer
 
     name = f"test.retry.{uuid.uuid4().hex[:8]}"
     row_id = await _enqueue(sm, name)
@@ -98,9 +98,9 @@ async def test_drainer_retries_then_succeeds(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_poison_event_moves_to_dead_letter(sm) -> None:
-    from anant.core.models import OutboxDeadLetter, OutboxEvent
-    from anant.services.queue.bus import InProcessBus
-    from anant.services.queue.drainer import OutboxDrainer, PermanentDeliveryError
+    from oryx.core.models import OutboxDeadLetter, OutboxEvent
+    from oryx.services.queue.bus import InProcessBus
+    from oryx.services.queue.drainer import OutboxDrainer, PermanentDeliveryError
 
     name = f"test.poison.{uuid.uuid4().hex[:8]}"
     row_id = await _enqueue(sm, name)
@@ -124,9 +124,9 @@ async def test_poison_event_moves_to_dead_letter(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_cleanup_prunes_old_delivered_rows(sm) -> None:
-    from anant.core.models import OutboxEvent
-    from anant.services.queue.bus import InProcessBus
-    from anant.services.queue.drainer import OutboxDrainer
+    from oryx.core.models import OutboxEvent
+    from oryx.services.queue.bus import InProcessBus
+    from oryx.services.queue.drainer import OutboxDrainer
 
     name = f"test.cleanup.{uuid.uuid4().hex[:8]}"
     row_id = await _enqueue(sm, name)

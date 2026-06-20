@@ -1,8 +1,8 @@
-"""Dead-letter admin endpoints end-to-end (§12.3 ops surface).
+﻿"""Dead-letter admin endpoints end-to-end (§12.3 ops surface).
 
 Covers: platform-admin gating (workspace owner denied), list with envelope,
 replay restores a fresh outbox row, discard removes the entry.
-Runs only when ANANT_TEST_DB is set (with migrations applied).
+Runs only when ORYX_TEST_DB is set (with migrations applied).
 """
 from __future__ import annotations
 
@@ -18,14 +18,14 @@ pytestmark = pytest.mark.requires_db
 
 @pytest.fixture
 def app():
-    os.environ.setdefault("DATABASE_URL", os.environ["ANANT_TEST_DB"])
-    from anant.main import create_app
+    os.environ.setdefault("DATABASE_URL", os.environ["ORYX_TEST_DB"])
+    from oryx.main import create_app
     return create_app()
 
 
 async def _signup(client: AsyncClient) -> tuple[str, str]:
     """Returns (access_token, email)."""
-    email = f"dladmin+{uuid.uuid4().hex[:8]}@anant.test"
+    email = f"dladmin+{uuid.uuid4().hex[:8]}@oryx.test"
     res = await client.post(
         "/v1/auth/signup",
         json={
@@ -42,7 +42,7 @@ async def _signup(client: AsyncClient) -> tuple[str, str]:
 
 
 async def _promote_to_platform_admin(sm, email: str) -> None:
-    from anant.core.models import Account
+    from oryx.core.models import Account
 
     async with sm() as session:
         account = (
@@ -53,8 +53,8 @@ async def _promote_to_platform_admin(sm, email: str) -> None:
 
 
 async def _seed_dead_letter(sm) -> uuid.UUID:
-    from anant.core.models import OutboxDeadLetter
-    from anant.services.queue.outbox import make_event_envelope
+    from oryx.core.models import OutboxDeadLetter
+    from oryx.services.queue.outbox import make_event_envelope
 
     env = make_event_envelope(
         name="intake.item.received", payload={"seed": True}, workspace_id=None
@@ -105,7 +105,7 @@ async def test_platform_admin_lists_dead_letter_entries(app, sm) -> None:
 
 @pytest.mark.asyncio
 async def test_replay_moves_entry_back_to_outbox(app, sm) -> None:
-    from anant.core.models import OutboxDeadLetter, OutboxEvent
+    from oryx.core.models import OutboxDeadLetter, OutboxEvent
 
     dl_id = await _seed_dead_letter(sm)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
@@ -129,7 +129,7 @@ async def test_replay_moves_entry_back_to_outbox(app, sm) -> None:
 
 @pytest.mark.asyncio
 async def test_discard_removes_entry(app, sm) -> None:
-    from anant.core.models import OutboxDeadLetter
+    from oryx.core.models import OutboxDeadLetter
 
     dl_id = await _seed_dead_letter(sm)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:

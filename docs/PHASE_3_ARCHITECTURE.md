@@ -1,4 +1,4 @@
-# ORYX — Phase 3 Architecture (FROZEN)
+﻿# ORYX — Phase 3 Architecture (FROZEN)
 
 **Phase:** 3 — Intake Layer
 **Status:** FROZEN — Revision 2
@@ -341,9 +341,9 @@ links       = [item link, content links]
 ```
 POST /v1/intake/webhooks/:workspace_id/:intake_source_id
 Headers:
-  X-Anant-Signature: hmac-sha256=<hex>
-  X-Anant-Timestamp: <unix-seconds>
-  X-Anant-Idempotency-Key: <vendor-key-or-sha256-body>
+  X-Oryx-Signature: hmac-sha256=<hex>
+  X-Oryx-Timestamp: <unix-seconds>
+  X-Oryx-Idempotency-Key: <vendor-key-or-sha256-body>
   Content-Type: application/json
 Body: vendor-specific JSON
 ```
@@ -846,7 +846,7 @@ Confidence weights already exist in Phase 2 (`editorial_confidence`, `confidence
 ### 14.1 New service folders
 
 ```
-apps/backend/src/anant/services/
+apps/backend/src/oryx/services/
 ├── intake/                              # orchestrator
 │   ├── router.py                        # CRUD + status (CR-9 pagination)
 │   ├── service.py                       # orchestration
@@ -907,7 +907,7 @@ Pagination contract reuses Phase 1: `?cursor=<opaque>&limit=<int>` → response 
 ┌──────────────────────────────────────────────────────────────┐
 │ Deploy unit                                                  │
 ├──────────────────────────────────────────────────────────────┤
-│  process: api                  (uvicorn anant.main:app)      │
+│  process: api                  (uvicorn oryx.main:app)      │
 │  process: intake.scheduler     (separate; never blocks api)  │
 │  process: queue.drainer        (separate; never blocks api)  │
 └──────────────────────────────────────────────────────────────┘
@@ -916,9 +916,9 @@ Pagination contract reuses Phase 1: `?cursor=<opaque>&limit=<int>` → response 
 - **API process** serves HTTP. Never blocks on intake.
 - **`intake.scheduler` process** picks healthy sources, dispatches `sync()` calls. Each provider has its own concurrency limit.
 - **`queue.drainer` process** drains `outbox_events`, publishes to the bus.
-- Local dev can colocate behind `ANANT_DEV_MONOPROCESS=1` for convenience; production deploys never do.
+- Local dev can colocate behind `ORYX_DEV_MONOPROCESS=1` for convenience; production deploys never do.
 
-`scheduler.py` and `drainer.py` are runnable entry points (`python -m anant.services.intake.scheduler` and `python -m anant.services.queue.drainer`).
+`scheduler.py` and `drainer.py` are runnable entry points (`python -m oryx.services.intake.scheduler` and `python -m oryx.services.queue.drainer`).
 
 ### 14.4 OAuth surface (Gmail in Phase 3)
 
@@ -1346,7 +1346,7 @@ If any of these appears in a Phase 3 PR, it gets reverted:
 ```
 0. Have new key value ready (high-entropy 32+ bytes).
 1. Deploy app version with dual-key support: INTAKE_KMS_KEY + INTAKE_KMS_KEY_PREVIOUS
-2. Run `python -m anant.services.intake.credentials reencrypt --batch=200`
+2. Run `python -m oryx.services.intake.credentials reencrypt --batch=200`
    - Reads ciphertext under PREVIOUS key, writes under new key
    - Marks rows with `kms_key_version = N+1`
 3. Verify `SELECT count(*) FROM intake_credentials WHERE kms_key_version = N` == 0

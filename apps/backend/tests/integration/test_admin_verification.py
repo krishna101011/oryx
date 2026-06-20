@@ -1,4 +1,4 @@
-"""Admin re-run surface (Wave F): reextract / reverify / rescore / budget,
+﻿"""Admin re-run surface (Wave F): reextract / reverify / rescore / budget,
 plus the platform-admin gate."""
 from __future__ import annotations
 
@@ -14,28 +14,28 @@ pytestmark = pytest.mark.requires_db
 
 
 def _svc(sm):
-    from anant.services.admin.service import AdminVerificationService
+    from oryx.services.admin.service import AdminVerificationService
 
     return AdminVerificationService(sm)
 
 
 async def _seed(sm, *, with_items=0, with_claims=0, with_object=False) -> dict:
-    from anant.core.models import (
+    from oryx.core.models import (
         Account,
         IntakeSource,
         IntelligenceObject,
         VerificationRun,
         Workspace,
     )
-    from anant.services.claims.repository import ClaimsRepository
-    from anant.services.intake.providers.base import RawItem
-    from anant.services.intake.service import IntakeService
+    from oryx.services.claims.repository import ClaimsRepository
+    from oryx.services.intake.providers.base import RawItem
+    from oryx.services.intake.service import IntakeService
 
     now = datetime.now(UTC)
     async with sm() as session:
         account = Account(
             id=uuid.uuid4(),
-            email=f"adm+{uuid.uuid4().hex[:8]}@anant.test",
+            email=f"adm+{uuid.uuid4().hex[:8]}@oryx.test",
             password_hash="x",
             password_changed_at=now,
             status="active",
@@ -143,7 +143,7 @@ async def test_budget_default_when_no_row(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_budget_reflects_usage(sm) -> None:
-    from anant.core.models import WorkspaceAIBudget
+    from oryx.core.models import WorkspaceAIBudget
 
     ids = await _seed(sm)
     async with sm() as session:
@@ -162,8 +162,8 @@ async def test_budget_reflects_usage(sm) -> None:
 
 
 async def _intake_event_count(sm, workspace_id) -> int:
-    from anant.core.models import OutboxEvent
-    from anant.services.intake.events_constants import INTAKE_ITEM_RECEIVED
+    from oryx.core.models import OutboxEvent
+    from oryx.services.intake.events_constants import INTAKE_ITEM_RECEIVED
 
     async with sm() as session:
         return int(
@@ -212,8 +212,8 @@ async def test_reextract_enqueues_events(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_reverify_inserts_pending_and_queues(sm) -> None:
-    from anant.core.models import OutboxEvent, VerificationAuditLog, VerificationRun
-    from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
+    from oryx.core.models import OutboxEvent, VerificationAuditLog, VerificationRun
+    from oryx.services.evidence.events.constants import EVIDENCE_COLLECTED
 
     ids = await _seed(sm, with_claims=2)
     queued = await _svc(sm).reverify(
@@ -256,8 +256,8 @@ async def test_reverify_inserts_pending_and_queues(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_rescore_updates_runs_and_objects(sm) -> None:
-    from anant.core.models import IntelligenceObject, OutboxEvent
-    from anant.services.intelligence.events.constants import OBJECT_UPDATED
+    from oryx.core.models import IntelligenceObject, OutboxEvent
+    from oryx.services.intelligence.events.constants import OBJECT_UPDATED
 
     ids = await _seed(sm, with_claims=1, with_object=True)
     updated_runs, updated_objects = await _svc(sm).rescore(
@@ -283,8 +283,8 @@ async def test_rescore_updates_runs_and_objects(sm) -> None:
 
 @pytest.fixture
 def app():
-    os.environ.setdefault("DATABASE_URL", os.environ["ANANT_TEST_DB"])
-    from anant.main import create_app
+    os.environ.setdefault("DATABASE_URL", os.environ["ORYX_TEST_DB"])
+    from oryx.main import create_app
 
     return create_app()
 
@@ -295,7 +295,7 @@ async def test_admin_gate_rejects_non_platform_admin(app) -> None:
         signup = await c.post(
             "/v1/auth/signup",
             json={
-                "email": f"plain+{uuid.uuid4().hex[:8]}@anant.test",
+                "email": f"plain+{uuid.uuid4().hex[:8]}@oryx.test",
                 "password": "StrongPass123",
                 "displayName": "Plain",
                 "deviceId": str(uuid.uuid4()),

@@ -1,4 +1,4 @@
-"""Security pass — rate limit, lockout, permission deny, feature gate."""
+﻿"""Security pass — rate limit, lockout, permission deny, feature gate."""
 from __future__ import annotations
 
 import os
@@ -12,8 +12,8 @@ pytestmark = [pytest.mark.requires_db, pytest.mark.security]
 
 @pytest.fixture
 def app():
-    os.environ.setdefault("DATABASE_URL", os.environ["ANANT_TEST_DB"])
-    from anant.main import create_app
+    os.environ.setdefault("DATABASE_URL", os.environ["ORYX_TEST_DB"])
+    from oryx.main import create_app
     return create_app()
 
 
@@ -37,7 +37,7 @@ async def test_rate_limit_blocks_repeated_signin_attempts(app) -> None:
 async def test_lockout_triggers_after_threshold_failures(app) -> None:
     """10 wrong passwords on the same account → account locked."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
-        email = f"test+{uuid.uuid4().hex[:8]}@anant.test"
+        email = f"test+{uuid.uuid4().hex[:8]}@oryx.test"
         await client.post("/v1/auth/signup", json={
             "email": email, "password": "StrongPass123", "displayName": "x",
             "deviceId": "d", "deviceLabel": "l", "devicePlatform": "ios",

@@ -1,10 +1,10 @@
-"""VerificationEngine — the §14.3 outcome rules, exhaustively."""
+﻿"""VerificationEngine — the §14.3 outcome rules, exhaustively."""
 from __future__ import annotations
 
 import pytest
 
-from anant.services.verification.engine import ENGINE_VERSION, VerificationEngine
-from anant.services.verification.models import EvidenceLinkInput
+from oryx.services.verification.engine import ENGINE_VERSION, VerificationEngine
+from oryx.services.verification.models import EvidenceLinkInput
 
 
 def _link(relationship: str, evidence_type: str = "corroboration", strength: float = 0.7):

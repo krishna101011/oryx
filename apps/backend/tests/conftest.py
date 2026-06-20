@@ -1,6 +1,6 @@
-"""Shared pytest fixtures.
+﻿"""Shared pytest fixtures.
 
-ANANT_TEST_DB env var, when set to a usable postgres URL, enables the
+ORYX_TEST_DB env var, when set to a usable postgres URL, enables the
 integration tests marked `requires_db`. They are skipped otherwise so
 the unit suite stays runnable anywhere.
 
@@ -23,10 +23,10 @@ import pytest
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Auto-skip db-bound tests when ANANT_TEST_DB isn't set."""
-    if os.environ.get("ANANT_TEST_DB"):
+    """Auto-skip db-bound tests when ORYX_TEST_DB isn't set."""
+    if os.environ.get("ORYX_TEST_DB"):
         return
-    skip_db = pytest.mark.skip(reason="ANANT_TEST_DB not set; skipping DB-bound test")
+    skip_db = pytest.mark.skip(reason="ORYX_TEST_DB not set; skipping DB-bound test")
     for item in items:
         if "requires_db" in item.keywords:
             item.add_marker(skip_db)
@@ -50,5 +50,5 @@ def sm():
     """
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-    engine = create_async_engine(os.environ["ANANT_TEST_DB"])
+    engine = create_async_engine(os.environ["ORYX_TEST_DB"])
     return async_sessionmaker(bind=engine, expire_on_commit=False)

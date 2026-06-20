@@ -1,16 +1,16 @@
-"""EpistemicClassifierAI — single-word contract + conservative fallback."""
+﻿"""EpistemicClassifierAI — single-word contract + conservative fallback."""
 from __future__ import annotations
 
 import pytest
 
-from anant.services.claims import classifier as classifier_module
-from anant.services.claims.classifier import (
+from oryx.services.claims import classifier as classifier_module
+from oryx.services.claims.classifier import (
     ALLOWED_TYPES,
     CLASSIFIER_VERSION,
     CONTEXT_CHARS,
     EpistemicClassifierAI,
 )
-from anant.services.claims.extractor import AnthropicResult
+from oryx.services.claims.extractor import AnthropicResult
 
 
 def _fake_call(label: str, capture: dict | None = None):

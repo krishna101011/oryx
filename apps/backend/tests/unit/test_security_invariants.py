@@ -1,4 +1,4 @@
-"""Phase 3 security pass — invariants that must hold at freeze (§17, ADR-023).
+﻿"""Phase 3 security pass — invariants that must hold at freeze (§17, ADR-023).
 
 Covers the gaps not already exercised elsewhere:
   - No-write-back policy: the Gmail surface is structurally read-only
@@ -18,13 +18,13 @@ import uuid
 
 import pytest
 
-from anant.core.security.secrets import (
+from oryx.core.security.secrets import (
     decrypt_for_workspace,
     encrypt_for_workspace,
     kms_version_of,
 )
-from anant.services.intake.providers.gmail import client as gmail_client
-from anant.services.intake.providers.gmail.config_schema import REQUESTED_SCOPES
+from oryx.services.intake.providers.gmail import client as gmail_client
+from oryx.services.intake.providers.gmail.config_schema import REQUESTED_SCOPES
 
 # ---------------------------------------------------------------------------
 # ADR-023 — no write-back
@@ -52,7 +52,7 @@ def test_gmail_scope_is_exactly_readonly() -> None:
 
 def test_auth_url_builder_refuses_tampered_scopes(monkeypatch: pytest.MonkeyPatch) -> None:
     """build_auth_url re-asserts the scope constant at call time."""
-    from anant.services.intake.providers.gmail import auth as gmail_auth
+    from oryx.services.intake.providers.gmail import auth as gmail_auth
 
     monkeypatch.setattr(
         gmail_auth, "REQUESTED_SCOPES",

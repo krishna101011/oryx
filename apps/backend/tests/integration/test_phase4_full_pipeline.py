@@ -1,4 +1,4 @@
-"""Phase 4 end-to-end proof: intake.item.received → research.packet.ready.
+﻿"""Phase 4 end-to-end proof: intake.item.received → research.packet.ready.
 
 One test drives the whole pipeline with the AI seams faked, asserting at each
 hop and verifying the causation chain, the no-AI / no-write boundaries, and
@@ -25,7 +25,7 @@ class _FakeExtractor:
         self._triples = triples
 
     async def extract(self, body_text):
-        from anant.services.claims.extractor import ExtractionResult
+        from oryx.services.claims.extractor import ExtractionResult
 
         return ExtractionResult(triples=self._triples, tokens_used=12, parse_failed=False)
 
@@ -34,7 +34,7 @@ class _FakeClassifier:
     version = 1
 
     async def classify(self, claim_text, context):
-        from anant.services.claims.classifier import ClassificationResult
+        from oryx.services.claims.classifier import ClassificationResult
 
         return ClassificationResult(
             epistemic_type="claim", tokens_used=4, requires_analyst_review=False
@@ -45,8 +45,8 @@ class _FakeLinker:
     version = 1
 
     async def link(self, claim_text, candidates):
-        from anant.services.evidence.linker import LinkingResult
-        from anant.services.evidence.models import TYPE_TO_RELATIONSHIP, LinkResult
+        from oryx.services.evidence.linker import LinkingResult
+        from oryx.services.evidence.models import TYPE_TO_RELATIONSHIP, LinkResult
 
         results = [
             LinkResult(
@@ -63,7 +63,7 @@ class _FakeLinker:
 
 async def _event(session, name, *, claim_id=None):
     """Latest outbox envelope for an event name, optionally filtered by claimId."""
-    from anant.core.models import OutboxEvent
+    from oryx.core.models import OutboxEvent
 
     rows = (
         await session.execute(
@@ -80,7 +80,7 @@ async def _event(session, name, *, claim_id=None):
 
 @pytest.mark.asyncio
 async def test_full_pipeline_intake_to_packet(sm) -> None:
-    from anant.core.models import (
+    from oryx.core.models import (
         Account,
         Claim,
         IntakeItem,
@@ -90,20 +90,20 @@ async def test_full_pipeline_intake_to_packet(sm) -> None:
         SourceCredibilityRecord,
         Workspace,
     )
-    from anant.services.claims.events.constants import CLAIM_EXTRACTED, CLAIM_TYPED
-    from anant.services.claims.models import ClaimTriple
-    from anant.services.claims.service import ClaimService
-    from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
-    from anant.services.evidence.service import EvidenceService
-    from anant.services.intake.providers.base import RawItem
-    from anant.services.intake.service import IntakeService
-    from anant.services.intelligence.events.constants import OBJECT_CREATED
-    from anant.services.intelligence.service import IntelligenceService
-    from anant.services.queue.outbox import enqueue_event
-    from anant.services.research.events.constants import PACKET_READY
-    from anant.services.research.service import ResearchService
-    from anant.services.verification.events.constants import CLAIM_VERIFIED
-    from anant.services.verification.service import VerificationService
+    from oryx.services.claims.events.constants import CLAIM_EXTRACTED, CLAIM_TYPED
+    from oryx.services.claims.models import ClaimTriple
+    from oryx.services.claims.service import ClaimService
+    from oryx.services.evidence.events.constants import EVIDENCE_COLLECTED
+    from oryx.services.evidence.service import EvidenceService
+    from oryx.services.intake.providers.base import RawItem
+    from oryx.services.intake.service import IntakeService
+    from oryx.services.intelligence.events.constants import OBJECT_CREATED
+    from oryx.services.intelligence.service import IntelligenceService
+    from oryx.services.queue.outbox import enqueue_event
+    from oryx.services.research.events.constants import PACKET_READY
+    from oryx.services.research.service import ResearchService
+    from oryx.services.verification.events.constants import CLAIM_VERIFIED
+    from oryx.services.verification.service import VerificationService
 
     now = datetime.now(UTC)
 
@@ -111,7 +111,7 @@ async def test_full_pipeline_intake_to_packet(sm) -> None:
     async with sm() as session:
         account = Account(
             id=uuid.uuid4(),
-            email=f"e2e+{uuid.uuid4().hex[:8]}@anant.test",
+            email=f"e2e+{uuid.uuid4().hex[:8]}@oryx.test",
             password_hash="x",
             password_changed_at=now,
             status="active",
@@ -183,7 +183,7 @@ async def test_full_pipeline_intake_to_packet(sm) -> None:
     ]
 
     # ---- Step 1: synthetic intake.item.received (the chain root) ----
-    from anant.services.intake.events_constants import INTAKE_ITEM_RECEIVED
+    from oryx.services.intake.events_constants import INTAKE_ITEM_RECEIVED
 
     async with sm() as session:
         item = await session.get(IntakeItem, item_a)

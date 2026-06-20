@@ -1,10 +1,10 @@
-"""Conflict detection + resolution end-to-end against Postgres (Wave D).
+﻿"""Conflict detection + resolution end-to-end against Postgres (Wave D).
 
 The auto-resolver and the analyst-resolution paths run over real tables. The
 AI detector is faked through the service seam (PATH B); PATH A uses a real
 contradiction evidence link and no AI at all.
 
-Runs only when ANANT_TEST_DB is set (with migrations applied).
+Runs only when ORYX_TEST_DB is set (with migrations applied).
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy import select, update
 
-from anant.services.conflicts.models import ConflictResult
+from oryx.services.conflicts.models import ConflictResult
 
 pytestmark = pytest.mark.requires_db
 
@@ -42,7 +42,7 @@ class FakeDetector:
         self.calls = 0
 
     async def detect(self, **kwargs):
-        from anant.services.conflicts.detector import DetectionResult
+        from oryx.services.conflicts.detector import DetectionResult
 
         self.calls += 1
         return DetectionResult(result=self._result, tokens_used=self._tokens)
@@ -57,7 +57,7 @@ async def _seed(
     with_contradiction_link: bool = False,
     contradiction_strength: float = 0.9,
 ) -> dict:
-    from anant.core.models import (
+    from oryx.core.models import (
         Account,
         ClaimEvidenceLink,
         Evidence,
@@ -65,15 +65,15 @@ async def _seed(
         VerificationRun,
         Workspace,
     )
-    from anant.services.claims.repository import ClaimsRepository
-    from anant.services.intake.providers.base import RawItem
-    from anant.services.intake.service import IntakeService
+    from oryx.services.claims.repository import ClaimsRepository
+    from oryx.services.intake.providers.base import RawItem
+    from oryx.services.intake.service import IntakeService
 
     now = datetime.now(UTC)
     async with sm() as session:
         account = Account(
             id=uuid.uuid4(),
-            email=f"conf+{uuid.uuid4().hex[:8]}@anant.test",
+            email=f"conf+{uuid.uuid4().hex[:8]}@oryx.test",
             password_hash="x",
             password_changed_at=now,
             status="active",
@@ -193,15 +193,15 @@ async def _seed(
 
 
 def _service(sm, detector=None):
-    from anant.services.conflicts.service import ConflictService
+    from oryx.services.conflicts.service import ConflictService
 
     return ConflictService(sm, detector=detector or FakeDetector())
 
 
 @pytest.mark.asyncio
 async def test_path_b_ai_conflict_auto_resolves(sm) -> None:
-    from anant.core.models import Claim, ConflictRecord, OutboxEvent, VerificationAuditLog
-    from anant.services.conflicts.events.constants import CONFLICT_RESOLVED
+    from oryx.core.models import Claim, ConflictRecord, OutboxEvent, VerificationAuditLog
+    from oryx.services.conflicts.events.constants import CONFLICT_RESOLVED
 
     ids = await _seed(sm, score_a=0.8, score_b=0.2)
     detector = FakeDetector(conflict_type="factual_disagreement", severity=0.1)
@@ -260,8 +260,8 @@ async def test_path_b_ai_conflict_auto_resolves(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_path_a_contradiction_link_escalates(sm) -> None:
-    from anant.core.models import Claim, ConflictRecord, OutboxEvent
-    from anant.services.conflicts.events.constants import CONFLICT_DETECTED
+    from oryx.core.models import Claim, ConflictRecord, OutboxEvent
+    from oryx.services.conflicts.events.constants import CONFLICT_DETECTED
 
     ids = await _seed(sm, with_contradiction_link=True, contradiction_strength=0.9)
     # Real detector instance, but PATH A must NOT call it.
@@ -301,8 +301,8 @@ async def test_path_a_contradiction_link_escalates(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_redetection_is_idempotent(sm) -> None:
-    from anant.core.models import ConflictRecord, OutboxEvent
-    from anant.services.conflicts.events.constants import CONFLICT_DETECTED
+    from oryx.core.models import ConflictRecord, OutboxEvent
+    from oryx.services.conflicts.events.constants import CONFLICT_DETECTED
 
     ids = await _seed(sm, with_contradiction_link=True)
     svc = _service(sm)
@@ -335,7 +335,7 @@ async def _make_open_conflict(sm) -> dict:
     await _service(sm).detect_for_claim(
         claim_id=ids["claim_a"], workspace_id=ids["workspace"]
     )
-    from anant.core.models import ConflictRecord
+    from oryx.core.models import ConflictRecord
 
     async with sm() as session:
         conflict = (
@@ -352,21 +352,21 @@ async def _make_open_conflict(sm) -> dict:
 
 
 def _review(sm):
-    from anant.services.review.service import ReviewService
+    from oryx.services.review.service import ReviewService
 
     return ReviewService(sm)
 
 
 @pytest.mark.asyncio
 async def test_analyst_resolve_a_wins(sm) -> None:
-    from anant.core.models import (
+    from oryx.core.models import (
         AnalystReview,
         Claim,
         ConflictRecord,
         OutboxEvent,
         VerificationAuditLog,
     )
-    from anant.services.conflicts.events.constants import CONFLICT_RESOLVED
+    from oryx.services.conflicts.events.constants import CONFLICT_RESOLVED
 
     ids = await _make_open_conflict(sm)
     result = await _review(sm).resolve_conflict(
@@ -423,7 +423,7 @@ async def test_analyst_resolve_a_wins(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_analyst_resolve_empty_note_rejected(sm) -> None:
-    from anant.core.errors import BadRequestError
+    from oryx.core.errors import BadRequestError
 
     ids = await _make_open_conflict(sm)
     with pytest.raises(BadRequestError):
@@ -438,7 +438,7 @@ async def test_analyst_resolve_empty_note_rejected(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_review_claim_records_without_mutation(sm) -> None:
-    from anant.core.models import AnalystReview, Claim
+    from oryx.core.models import AnalystReview, Claim
 
     ids = await _seed(sm)
     before = None
@@ -485,7 +485,7 @@ async def test_queue_lists_pending_and_open(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_same_predicate_no_conflict(sm) -> None:
-    from anant.core.models import ConflictRecord
+    from oryx.core.models import ConflictRecord
 
     ids = await _seed(sm, same_predicate=True)
     detector = FakeDetector()
@@ -506,7 +506,7 @@ async def test_same_predicate_no_conflict(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_ai_reports_no_conflict(sm) -> None:
-    from anant.core.models import ConflictRecord
+    from oryx.core.models import ConflictRecord
 
     ids = await _seed(sm)
     detector = FakeDetector(is_conflict=False)
@@ -528,7 +528,7 @@ async def test_ai_reports_no_conflict(sm) -> None:
 @pytest.mark.asyncio
 async def test_unverified_claim_is_not_a_candidate(sm) -> None:
     """A peer without a completed verification run is never compared."""
-    from anant.core.models import ConflictRecord, VerificationRun
+    from oryx.core.models import ConflictRecord, VerificationRun
 
     ids = await _seed(sm, with_contradiction_link=True)
     # Drop claim_b's completed run so it no longer qualifies as a candidate.
@@ -556,7 +556,7 @@ async def test_unverified_claim_is_not_a_candidate(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_analyst_resolve_b_wins(sm) -> None:
-    from anant.core.models import Claim, ConflictRecord
+    from oryx.core.models import Claim, ConflictRecord
 
     ids = await _make_open_conflict(sm)
     await _review(sm).resolve_conflict(
@@ -575,7 +575,7 @@ async def test_analyst_resolve_b_wins(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_analyst_resolve_inconclusive_supersedes_nothing(sm) -> None:
-    from anant.core.models import AnalystReview, Claim, ConflictRecord
+    from oryx.core.models import AnalystReview, Claim, ConflictRecord
 
     ids = await _make_open_conflict(sm)
     await _review(sm).resolve_conflict(
@@ -603,7 +603,7 @@ async def test_analyst_resolve_inconclusive_supersedes_nothing(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_review_object_records_analyst_review(sm) -> None:
-    from anant.core.models import AnalystReview, VerificationAuditLog
+    from oryx.core.models import AnalystReview, VerificationAuditLog
 
     ids = await _seed(sm)
     object_id = uuid.uuid4()
@@ -635,11 +635,11 @@ async def test_review_object_records_analyst_review(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_deleted_workspace_dead_letters(sm) -> None:
-    from anant.core.models import Workspace
-    from anant.services.conflicts.service import ConflictDetectionHandler
-    from anant.services.queue.bus import DomainEvent
-    from anant.services.queue.drainer import PermanentDeliveryError
-    from anant.services.verification.events.constants import CLAIM_VERIFIED
+    from oryx.core.models import Workspace
+    from oryx.services.conflicts.service import ConflictDetectionHandler
+    from oryx.services.queue.bus import DomainEvent
+    from oryx.services.queue.drainer import PermanentDeliveryError
+    from oryx.services.verification.events.constants import CLAIM_VERIFIED
 
     ids = await _seed(sm)
     async with sm() as session:

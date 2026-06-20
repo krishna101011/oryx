@@ -1,9 +1,9 @@
-"""URL canonicalizer rules."""
+﻿"""URL canonicalizer rules."""
 from __future__ import annotations
 
 import pytest
 
-from anant.services.normalization.url_canonicalizer import (
+from oryx.services.normalization.url_canonicalizer import (
     canonicalize_url,
     extract_domain,
 )

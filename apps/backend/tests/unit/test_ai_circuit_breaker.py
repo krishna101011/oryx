@@ -1,15 +1,15 @@
-"""AI circuit breaker — threshold, open window, half-open probe, isolation."""
+﻿"""AI circuit breaker — threshold, open window, half-open probe, isolation."""
 from __future__ import annotations
 
 import pytest
 
-from anant.core.ai_circuit_breaker import (
+from oryx.core.ai_circuit_breaker import (
     FAILURE_THRESHOLD,
     OPEN_WINDOW_SECONDS,
     AICircuitBreaker,
     CircuitOpenError,
 )
-from anant.services.intake.providers.errors import ProviderError, ProviderErrorKind
+from oryx.services.intake.providers.errors import ProviderError, ProviderErrorKind
 
 
 class FakeClock:

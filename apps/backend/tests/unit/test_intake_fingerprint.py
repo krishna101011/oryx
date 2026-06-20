@@ -1,9 +1,9 @@
-"""Two-tier dedupe fingerprint (CR-2)."""
+﻿"""Two-tier dedupe fingerprint (CR-2)."""
 from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from anant.services.dedupe.fingerprint import (
+from oryx.services.dedupe.fingerprint import (
     TIER_BODY_DATE,
     TIER_LINKED,
     compute_fingerprint,

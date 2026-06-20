@@ -1,4 +1,4 @@
-"""Onboarding step durability across device switches."""
+﻿"""Onboarding step durability across device switches."""
 from __future__ import annotations
 
 import os
@@ -12,15 +12,15 @@ pytestmark = pytest.mark.requires_db
 
 @pytest.fixture
 def app():
-    os.environ.setdefault("DATABASE_URL", os.environ["ANANT_TEST_DB"])
-    from anant.main import create_app
+    os.environ.setdefault("DATABASE_URL", os.environ["ORYX_TEST_DB"])
+    from oryx.main import create_app
     return create_app()
 
 
 @pytest.mark.asyncio
 async def test_onboarding_state_persists_across_signins(app) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
-        email = f"test+{uuid.uuid4().hex[:8]}@anant.test"
+        email = f"test+{uuid.uuid4().hex[:8]}@oryx.test"
         # 1. signup (device A) -> partial onboarding (welcome + focus_sources)
         s1 = await client.post("/v1/auth/signup", json={
             "email": email, "password": "StrongPass123", "displayName": "X",

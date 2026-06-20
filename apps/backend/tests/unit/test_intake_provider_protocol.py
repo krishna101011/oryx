@@ -1,4 +1,4 @@
-"""IntakeProvider Protocol — structural check.
+﻿"""IntakeProvider Protocol — structural check.
 
 This is a compile-time-style assertion implemented at test time:
 a tiny fake that satisfies the Protocol can be bound to a typed
@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from anant.services.intake.providers.base import (
+from oryx.services.intake.providers.base import (
     IntakeProvider,
     IntakeSourceKind,
     RawItem,

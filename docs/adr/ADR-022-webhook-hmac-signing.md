@@ -1,4 +1,4 @@
-# ADR-022 — Webhook HMAC Signing, Timestamp Window, Idempotency
+﻿# ADR-022 — Webhook HMAC Signing, Timestamp Window, Idempotency
 
 **Status:** Accepted
 **Date:** 2026-06-11
@@ -21,9 +21,9 @@ Three independent controls, all required:
 
 | Control | Header | Defeats |
 |---|---|---|
-| HMAC-SHA256 over the raw body | `X-Anant-Signature` | Forgery — only holders of the per-source secret can produce it |
-| ±5-minute timestamp window | `X-Anant-Timestamp` | Replay of a previously valid request |
-| Idempotency key, 24h TTL | `X-Anant-Idempotency-Key` | Duplicate delivery (vendor retries) |
+| HMAC-SHA256 over the raw body | `X-Oryx-Signature` | Forgery — only holders of the per-source secret can produce it |
+| ±5-minute timestamp window | `X-Oryx-Timestamp` | Replay of a previously valid request |
+| Idempotency key, 24h TTL | `X-Oryx-Idempotency-Key` | Duplicate delivery (vendor retries) |
 
 Secret lifecycle:
 

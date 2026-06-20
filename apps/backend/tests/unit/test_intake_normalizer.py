@@ -1,8 +1,8 @@
-"""Normalizer end-to-end on a representative raw payload."""
+﻿"""Normalizer end-to-end on a representative raw payload."""
 from __future__ import annotations
 
-from anant.services.normalization.normalizer import normalize_raw_item
-from anant.services.normalization.version import NORMALIZER_VERSION
+from oryx.services.normalization.normalizer import normalize_raw_item
+from oryx.services.normalization.version import NORMALIZER_VERSION
 
 
 def test_normalizer_extracts_sender_domain_from_email() -> None:

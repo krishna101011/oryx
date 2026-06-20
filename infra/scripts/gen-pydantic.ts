@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+﻿#!/usr/bin/env tsx
 /**
  * gen-pydantic.ts — Verifies the pydantic mirror of packages/shared-types/src/.
  *
@@ -9,7 +9,7 @@
  *
  * Convention enforced by the PR template:
  *   Any change to packages/shared-types/src/* must include a matching change
- *   to apps/backend/src/anant/shared/types.py in the same PR.
+ *   to apps/backend/src/oryx/shared/types.py in the same PR.
  *
  * Flags:
  *   --check   exit non-zero if target is missing or unparseable (CI uses this)
@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..');
-const TARGET = resolve(REPO_ROOT, 'apps/backend/src/anant/shared/types.py');
+const TARGET = resolve(REPO_ROOT, 'apps/backend/src/oryx/shared/types.py');
 
 const SOURCES = [
   'common.ts', 'accounts.ts', 'profiles.ts', 'workspaces.ts', 'preferences.ts',

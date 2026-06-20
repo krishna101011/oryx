@@ -1,4 +1,4 @@
-# ORYX
+﻿# ORYX
 
 Premium financial intelligence platform.
 
@@ -60,9 +60,11 @@ oryx/
 │   └── scripts/                bootstrap.sh, dev.sh, check.sh, gen-pydantic.ts
 │
 ├── docs/
-│   ├── PHASE_1_ARCHITECTURE.md
+│   ├── PHASE_1_ARCHITECTURE.md (frozen)
 │   ├── PHASE_2_ARCHITECTURE.md (frozen)
-│   └── adr/                    Architecture Decision Records (immutable)
+│   ├── PHASE_3_ARCHITECTURE.md (frozen)
+│   ├── PHASE_5_ARCHITECTURE.md (active — Phase 4 doc not authored separately)
+│   └── adr/                    Architecture Decision Records — see INDEX.md (28 filed)
 │
 └── .github/workflows/ci.yml
 ```
@@ -81,7 +83,7 @@ oryx/
 
 ## The contract loop
 
-`packages/shared-types/src/` is the single source of truth for API contracts. The TypeScript interfaces there are transformed into pydantic models at `apps/backend/src/anant/shared/types.py` by `pnpm gen:pydantic`. CI rejects any commit where the mirror is stale.
+`packages/shared-types/src/` is the single source of truth for API contracts. The TypeScript interfaces there are transformed into pydantic models at `apps/backend/src/oryx/shared/types.py` by `pnpm gen:pydantic`. CI rejects any commit where the mirror is stale.
 
 When you change a contract:
 

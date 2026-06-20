@@ -1,4 +1,4 @@
-"""Gmail provider tests — config, scope, mapper, sync + CR-5 expiry recovery.
+﻿"""Gmail provider tests — config, scope, mapper, sync + CR-5 expiry recovery.
 
 The transport is mocked at the gmail_client module surface. The mapper is
 pure and tested against a fixture. The CR-5 path is explicitly asserted:
@@ -16,18 +16,18 @@ from unittest.mock import patch
 
 import pytest
 
-from anant.services.intake.providers.base import (
+from oryx.services.intake.providers.base import (
     IntakeSourceKind,
     ValidationStatus,
 )
-from anant.services.intake.providers.gmail import auth as gmail_auth
-from anant.services.intake.providers.gmail import client as gmail_client
-from anant.services.intake.providers.gmail.config_schema import (
+from oryx.services.intake.providers.gmail import auth as gmail_auth
+from oryx.services.intake.providers.gmail import client as gmail_client
+from oryx.services.intake.providers.gmail.config_schema import (
     GMAIL_READONLY_SCOPE,
     REQUESTED_SCOPES,
 )
-from anant.services.intake.providers.gmail.mapper import gmail_message_to_raw
-from anant.services.intake.providers.gmail.sync import (
+from oryx.services.intake.providers.gmail.mapper import gmail_message_to_raw
+from oryx.services.intake.providers.gmail.sync import (
     GmailProvider,
     cursor_from_report,
 )
@@ -49,7 +49,7 @@ def _fixture_message(mid: str = "m-1") -> dict[str, Any]:
             "mimeType": "multipart/alternative",
             "headers": [
                 {"name": "From", "value": "Newsletter <hi@ft.com>"},
-                {"name": "To", "value": "user@anant.test"},
+                {"name": "To", "value": "user@oryx.test"},
                 {"name": "Subject", "value": "Daily Macro Brief"},
                 {"name": "Received", "value": "from junk; should not hash"},
             ],
@@ -86,7 +86,7 @@ def test_only_readonly_scope_is_requested() -> None:
 
 def test_build_auth_url_includes_readonly_scope_and_state() -> None:
     url = gmail_auth.build_auth_url(
-        client_id="cid", redirect_uri="https://anant.test/cb", state="STATE"
+        client_id="cid", redirect_uri="https://oryx.test/cb", state="STATE"
     )
     assert "gmail.readonly" in url
     assert "state=STATE" in url
@@ -193,7 +193,7 @@ async def test_delta_uses_history_id_when_cursor_present() -> None:
     async def fake_get_message(*, access_token, message_id, format):
         return _fixture_message(mid=message_id)
 
-    from anant.services.intake.providers.base import SyncCursor
+    from oryx.services.intake.providers.base import SyncCursor
     cursor = SyncCursor(value={"history_id": "100", "bootstrap_complete": True})
     with patch.multiple(
         gmail_client,
@@ -235,7 +235,7 @@ async def test_cr5_history_id_expired_falls_back_to_bootstrap() -> None:
     async def fake_get_profile(*, access_token):
         return {"historyId": "77777"}
 
-    from anant.services.intake.providers.base import SyncCursor
+    from oryx.services.intake.providers.base import SyncCursor
     cursor = SyncCursor(value={"history_id": "999", "bootstrap_complete": True})
 
     with patch.multiple(
@@ -261,7 +261,7 @@ async def test_cr5_history_id_expired_falls_back_to_bootstrap() -> None:
 
 
 def test_cursor_from_report_round_trip() -> None:
-    from anant.services.intake.providers.gmail.sync import GmailSyncReport
+    from oryx.services.intake.providers.gmail.sync import GmailSyncReport
     report = GmailSyncReport(
         new_history_id="abc",
         bootstrap_complete=True,
@@ -316,7 +316,7 @@ def test_oauth_state_rejects_tampered_token() -> None:
         intake_source_id=uuid.uuid4(),
     )
     tampered = state[:-2] + ("xx" if not state.endswith("xx") else "yy")
-    from anant.services.intake.providers.errors import (
+    from oryx.services.intake.providers.errors import (
         ProviderError,
         ProviderErrorKind,
     )

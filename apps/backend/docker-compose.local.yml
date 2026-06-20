@@ -1,4 +1,4 @@
-services:
+﻿services:
   db:
     # Matches the default DATABASE_URL in config.py:
     #   postgresql+asyncpg://anant:anant@localhost:5432/anant
@@ -30,7 +30,7 @@ services:
         condition: service_healthy
     volumes:
       - ./src:/app/src
-    command: uvicorn anant.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn oryx.main:app --host 0.0.0.0 --port 8000 --reload
 
 volumes:
   pgdata:

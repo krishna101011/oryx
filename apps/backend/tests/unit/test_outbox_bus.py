@@ -1,16 +1,16 @@
-"""InProcessBus + outbox envelope shape."""
+﻿"""InProcessBus + outbox envelope shape."""
 from __future__ import annotations
 
 import uuid
 
 import pytest
 
-from anant.services.queue.bus import (
+from oryx.services.queue.bus import (
     DomainEvent,
     InProcessBus,
     event_from_envelope,
 )
-from anant.services.queue.outbox import make_event_envelope
+from oryx.services.queue.outbox import make_event_envelope
 
 
 def test_envelope_has_all_required_fields() -> None:

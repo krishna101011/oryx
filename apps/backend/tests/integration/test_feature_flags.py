@@ -1,4 +1,4 @@
-"""Feature flag resolution order: account override > workspace override > default."""
+﻿"""Feature flag resolution order: account override > workspace override > default."""
 from __future__ import annotations
 
 import os
@@ -12,8 +12,8 @@ pytestmark = pytest.mark.requires_db
 
 @pytest.fixture
 def app():
-    os.environ.setdefault("DATABASE_URL", os.environ["ANANT_TEST_DB"])
-    from anant.main import create_app
+    os.environ.setdefault("DATABASE_URL", os.environ["ORYX_TEST_DB"])
+    from oryx.main import create_app
     return create_app()
 
 

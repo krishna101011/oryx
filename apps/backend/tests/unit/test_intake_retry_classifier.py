@@ -1,7 +1,7 @@
-"""Retry classifier — pure function of error kind + attempts."""
+﻿"""Retry classifier — pure function of error kind + attempts."""
 from __future__ import annotations
 
-from anant.services.intake.providers.errors import (
+from oryx.services.intake.providers.errors import (
     MAX_TRANSIENT_RETRIES,
     ProviderError,
     ProviderErrorKind,

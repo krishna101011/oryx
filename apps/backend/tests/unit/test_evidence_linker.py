@@ -1,4 +1,4 @@
-"""EvidenceLinkerAI — batch contract, mapping enforcement, hallucination guard."""
+﻿"""EvidenceLinkerAI — batch contract, mapping enforcement, hallucination guard."""
 from __future__ import annotations
 
 import json
@@ -7,10 +7,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from anant.services.claims.extractor import AnthropicResult
-from anant.services.evidence import linker as linker_module
-from anant.services.evidence.linker import LINKER_VERSION, EvidenceLinkerAI
-from anant.services.evidence.models import CandidateItem
+from oryx.services.claims.extractor import AnthropicResult
+from oryx.services.evidence import linker as linker_module
+from oryx.services.evidence.linker import LINKER_VERSION, EvidenceLinkerAI
+from oryx.services.evidence.models import CandidateItem
 
 
 def _candidate(item_id: uuid.UUID | None = None) -> CandidateItem:

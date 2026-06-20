@@ -1,4 +1,4 @@
-"""Password hashing + policy + refresh token helpers.
+﻿"""Password hashing + policy + refresh token helpers.
 
 These are the most security-critical pieces of Phase 2. Any regression here
 becomes a credential compromise vector.
@@ -9,8 +9,8 @@ import hashlib
 
 import pytest
 
-from anant.core.errors import AuthPasswordWeakError
-from anant.core.security.passwords import (
+from oryx.core.errors import AuthPasswordWeakError
+from oryx.core.security.passwords import (
     PasswordPolicy,
     generate_refresh_token,
     hash_password,

@@ -1,4 +1,4 @@
-# ADR-025 — Intake Process Topology
+﻿# ADR-025 — Intake Process Topology
 
 **Status:** Accepted
 **Date:** 2026-06-11
@@ -20,9 +20,9 @@ requests. Revision 1 left the topology implicit; CR-7 pins it.
 Three processes per deploy unit, communicating only through Postgres:
 
 ```
-process: api               uvicorn anant.main:app
-process: intake.scheduler  python -m anant.services.intake.scheduler
-process: queue.drainer     python -m anant.services.queue.drainer
+process: api               uvicorn oryx.main:app
+process: intake.scheduler  python -m oryx.services.intake.scheduler
+process: queue.drainer     python -m oryx.services.queue.drainer
 ```
 
 - **api** serves HTTP and never blocks on intake. Operational endpoints
@@ -38,7 +38,7 @@ process: queue.drainer     python -m anant.services.queue.drainer
   needs no code change.
 
 Local development may colocate all three inside the API process with
-`ANANT_DEV_MONOPROCESS=1`. The flag is honored **only when
+`ORYX_DEV_MONOPROCESS=1`. The flag is honored **only when
 `environment == "dev"`** — the environment check is the hard stop that
 keeps a stray flag out of production. Worker imports stay local to the
 lifespan hook so the production API process never loads worker wiring.

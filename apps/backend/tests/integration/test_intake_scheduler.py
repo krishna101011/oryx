@@ -1,9 +1,9 @@
-"""SourceSyncRunner end-to-end against Postgres.
+﻿"""SourceSyncRunner end-to-end against Postgres.
 
 Uses a fake provider injected through the runner's provider_factory seam,
 so the full pipeline (claim → ingest → dedupe → outbox → cursor + health
 persistence) runs against real tables with zero network.
-Runs only when ANANT_TEST_DB is set (with migrations applied).
+Runs only when ORYX_TEST_DB is set (with migrations applied).
 """
 from __future__ import annotations
 
@@ -18,12 +18,12 @@ pytestmark = pytest.mark.requires_db
 
 async def _make_source(sm, *, kind: str = "rss") -> tuple[uuid.UUID, uuid.UUID]:
     """Create account → workspace → intake_source; return (workspace_id, source_id)."""
-    from anant.core.models import Account, IntakeSource, Workspace
+    from oryx.core.models import Account, IntakeSource, Workspace
 
     async with sm() as session:
         account = Account(
             id=uuid.uuid4(),
-            email=f"sched+{uuid.uuid4().hex[:8]}@anant.test",
+            email=f"sched+{uuid.uuid4().hex[:8]}@oryx.test",
             password_hash="x",
             password_changed_at=datetime.now(UTC),
             status="active",
@@ -51,7 +51,7 @@ async def _make_source(sm, *, kind: str = "rss") -> tuple[uuid.UUID, uuid.UUID]:
 
 
 def _raw_item(n: int):
-    from anant.services.intake.providers.base import RawItem
+    from oryx.services.intake.providers.base import RawItem
 
     return RawItem(
         external_id=f"ext-{n}-{uuid.uuid4().hex[:6]}",
@@ -79,7 +79,7 @@ class FakeRssProvider:
         raise NotImplementedError
 
     async def sync(self, *, workspace_id, intake_source_id, cursor, config):
-        from anant.services.intake.providers.rss.sync import RssSyncReport
+        from oryx.services.intake.providers.rss.sync import RssSyncReport
 
         if self._error is not None:
             raise self._error
@@ -95,8 +95,8 @@ class FakeRssProvider:
 
 @pytest.mark.asyncio
 async def test_sync_ingests_items_and_persists_cursor_and_health(sm) -> None:
-    from anant.core.models import IntakeAuditLog, IntakeItem, IntakeSource, OutboxEvent
-    from anant.services.intake.sync_runner import SourceSyncRunner, SyncOutcome
+    from oryx.core.models import IntakeAuditLog, IntakeItem, IntakeSource, OutboxEvent
+    from oryx.services.intake.sync_runner import SourceSyncRunner, SyncOutcome
 
     workspace_id, source_id = await _make_source(sm)
     provider = FakeRssProvider(items=2)
@@ -145,9 +145,9 @@ async def test_sync_ingests_items_and_persists_cursor_and_health(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_auth_failure_marks_source_auth_required(sm) -> None:
-    from anant.core.models import IntakeAuditLog, IntakeSource
-    from anant.services.intake.providers.errors import ProviderError, ProviderErrorKind
-    from anant.services.intake.sync_runner import SourceSyncRunner, SyncOutcome
+    from oryx.core.models import IntakeAuditLog, IntakeSource
+    from oryx.services.intake.providers.errors import ProviderError, ProviderErrorKind
+    from oryx.services.intake.sync_runner import SourceSyncRunner, SyncOutcome
 
     _, source_id = await _make_source(sm)
     provider = FakeRssProvider(
@@ -177,9 +177,9 @@ async def test_auth_failure_marks_source_auth_required(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_circuit_breaker_degrades_after_threshold(sm) -> None:
-    from anant.core.models import IntakeAuditLog, IntakeSource
-    from anant.services.intake.providers.errors import ProviderError, ProviderErrorKind
-    from anant.services.intake.sync_runner import (
+    from oryx.core.models import IntakeAuditLog, IntakeSource
+    from oryx.services.intake.providers.errors import ProviderError, ProviderErrorKind
+    from oryx.services.intake.sync_runner import (
         CIRCUIT_BREAK_THRESHOLD,
         SourceSyncRunner,
     )
@@ -219,15 +219,15 @@ async def test_circuit_breaker_degrades_after_threshold(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_duplicate_items_are_skipped_not_reinserted(sm) -> None:
-    from anant.core.models import IntakeItem
-    from anant.services.intake.sync_runner import SourceSyncRunner
+    from oryx.core.models import IntakeItem
+    from oryx.services.intake.sync_runner import SourceSyncRunner
 
     _, source_id = await _make_source(sm)
     item = _raw_item(0)
 
     class RepeatingProvider(FakeRssProvider):
         async def sync(self, *, workspace_id, intake_source_id, cursor, config):
-            from anant.services.intake.providers.rss.sync import RssSyncReport
+            from oryx.services.intake.providers.rss.sync import RssSyncReport
 
             yield item
             yield item  # exact duplicate within one sync

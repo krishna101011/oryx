@@ -1,4 +1,4 @@
-"""Scheduler due-time policy + provider factory dispatch.
+﻿"""Scheduler due-time policy + provider factory dispatch.
 
 DB-free: pick_due/tick are exercised by the requires_db integration suite.
 """
@@ -9,19 +9,19 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from anant.services.intake.providers.api_pull.sync import (
+from oryx.services.intake.providers.api_pull.sync import (
     ApiPullProvider,
     ApiPullSyncReport,
 )
-from anant.services.intake.providers.gmail.sync import GmailProvider, GmailSyncReport
-from anant.services.intake.providers.rss.sync import RssProvider, RssSyncReport
-from anant.services.intake.scheduler import (
+from oryx.services.intake.providers.gmail.sync import GmailProvider, GmailSyncReport
+from oryx.services.intake.providers.rss.sync import RssProvider, RssSyncReport
+from oryx.services.intake.scheduler import (
     PROBE_INTERVAL,
     failure_backoff,
     fetch_interval,
     source_is_due,
 )
-from anant.services.intake.sync_runner import (
+from oryx.services.intake.sync_runner import (
     SourceSnapshot,
     _cursor_from_report,
     build_provider,

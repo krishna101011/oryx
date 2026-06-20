@@ -1,18 +1,18 @@
-# Runbook — Deployment (Phase 3 topology)
+﻿# Runbook — Deployment (Phase 3 topology)
 
 **Related:** ADR-025 (process topology), scheduler runbook, drainer runbook
 
 ## Deploy unit
 
 ```
-process: api               uvicorn anant.main:app          (HTTP)
-process: intake.scheduler  python -m anant.services.intake.scheduler
-process: queue.drainer     python -m anant.services.queue.drainer
+process: api               uvicorn oryx.main:app          (HTTP)
+process: intake.scheduler  python -m oryx.services.intake.scheduler
+process: queue.drainer     python -m oryx.services.queue.drainer
 ```
 
 All three run the same code artifact with the same environment; they
 differ only in entry point. Production NEVER colocates them.
-`ANANT_DEV_MONOPROCESS=1` colocates for local dev only and is ignored
+`ORYX_DEV_MONOPROCESS=1` colocates for local dev only and is ignored
 outside `ENVIRONMENT=dev` (hard-stopped in code).
 
 ## Required environment

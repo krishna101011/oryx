@@ -1,4 +1,4 @@
-# ORYX — Phase 5 Architecture Blueprint
+﻿# ORYX — Phase 5 Architecture Blueprint
 **Document:** `docs/PHASE_5_ARCHITECTURE.md`
 **Version:** Rev 1 — Authoritative and Complete
 **Status:** ARCHITECTURE FROZEN — IMPLEMENTATION APPROVED (freeze approved 2026-06-16)
@@ -330,7 +330,7 @@ READ-ONLY ACCESS (Phase 5 reads, never writes):
 ### 6.1 Folder Structure
 
 ```
-apps/backend/src/anant/services/
+apps/backend/src/oryx/services/
 ├── drafts/
 │   ├── __init__.py
 │   ├── router.py           CRUD + generate + regenerate endpoints

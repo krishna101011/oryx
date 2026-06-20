@@ -1,4 +1,4 @@
-"""API pull provider tests — SSRF, auth methods, cursor paging, mapping."""
+﻿"""API pull provider tests — SSRF, auth methods, cursor paging, mapping."""
 from __future__ import annotations
 
 import socket
@@ -8,33 +8,33 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from anant.services.intake.providers.api_pull.client import (
+from oryx.services.intake.providers.api_pull.client import (
     FetchedResponse,
     ResolvedCredentials,
 )
-from anant.services.intake.providers.api_pull.config_schema import (
+from oryx.services.intake.providers.api_pull.config_schema import (
     ApiPullSourceConfig,
     EndpointSpec,
 )
-from anant.services.intake.providers.api_pull.mapper import (
+from oryx.services.intake.providers.api_pull.mapper import (
     extract_cursor,
     extract_items,
     response_to_raw_items,
 )
-from anant.services.intake.providers.api_pull.safety import assert_url_safe
-from anant.services.intake.providers.api_pull.sync import (
+from oryx.services.intake.providers.api_pull.safety import assert_url_safe
+from oryx.services.intake.providers.api_pull.sync import (
     ApiPullProvider,
     cursor_from_report,
 )
-from anant.services.intake.providers.base import (
+from oryx.services.intake.providers.base import (
     IntakeSourceKind,
     ValidationStatus,
 )
-from anant.services.intake.providers.errors import (
+from oryx.services.intake.providers.errors import (
     ProviderError,
     ProviderErrorKind,
 )
-from anant.services.intake.providers.webhook.config_schema import (
+from oryx.services.intake.providers.webhook.config_schema import (
     WebhookFieldMapping,
 )
 
@@ -197,7 +197,7 @@ async def test_sync_yields_items_and_persists_final_cursor() -> None:
 
     p = ApiPullProvider(credentials_provider=fake_creds)
     with patch(
-        "anant.services.intake.providers.api_pull.sync.fetch_endpoint", fake_fetch
+        "oryx.services.intake.providers.api_pull.sync.fetch_endpoint", fake_fetch
     ):
         items = []
         async for raw in p.sync(
@@ -228,12 +228,12 @@ async def test_sync_respects_starting_cursor_from_prior_run() -> None:
     async def fake_creds() -> ResolvedCredentials:
         return ResolvedCredentials(token="t")
 
-    from anant.services.intake.providers.base import SyncCursor
+    from oryx.services.intake.providers.base import SyncCursor
     starting = SyncCursor(value={"endpoints": {"/v1/items": "previous-cursor"}})
 
     p = ApiPullProvider(credentials_provider=fake_creds)
     with patch(
-        "anant.services.intake.providers.api_pull.sync.fetch_endpoint", fake_fetch
+        "oryx.services.intake.providers.api_pull.sync.fetch_endpoint", fake_fetch
     ):
         async for _ in p.sync(
             workspace_id=uuid.uuid4(),
@@ -260,7 +260,7 @@ async def test_sync_stops_at_max_pages_safety_bound() -> None:
 
     p = ApiPullProvider(credentials_provider=fake_creds)
     with patch(
-        "anant.services.intake.providers.api_pull.sync.fetch_endpoint", fake_fetch
+        "oryx.services.intake.providers.api_pull.sync.fetch_endpoint", fake_fetch
     ):
         items = []
         async for raw in p.sync(
@@ -279,7 +279,7 @@ async def test_sync_stops_at_max_pages_safety_bound() -> None:
 
 
 def test_cursor_from_report_round_trip() -> None:
-    from anant.services.intake.providers.api_pull.sync import ApiPullSyncReport
+    from oryx.services.intake.providers.api_pull.sync import ApiPullSyncReport
     report = ApiPullSyncReport(
         endpoint_cursors={"/v1/a": "c1", "/v1/b": "c2"}, items_yielded=10
     )
@@ -298,7 +298,7 @@ def test_provider_metadata_locked() -> None:
 
 @pytest.mark.asyncio
 async def test_client_applies_bearer_auth_header() -> None:
-    from anant.services.intake.providers.api_pull import client as cli
+    from oryx.services.intake.providers.api_pull import client as cli
     captured_headers: dict[str, str] = {}
 
     async def fake_request(self, url, **kw):
@@ -325,7 +325,7 @@ async def test_client_applies_bearer_auth_header() -> None:
 
 @pytest.mark.asyncio
 async def test_client_applies_api_key_header_with_custom_name() -> None:
-    from anant.services.intake.providers.api_pull import client as cli
+    from oryx.services.intake.providers.api_pull import client as cli
     captured: dict[str, str] = {}
 
     async def fake_request(self, url, **kw):
@@ -355,7 +355,7 @@ async def test_client_applies_api_key_header_with_custom_name() -> None:
 
 @pytest.mark.asyncio
 async def test_client_oauth2_cc_requires_token_url_and_client_secret() -> None:
-    from anant.services.intake.providers.api_pull import client as cli
+    from oryx.services.intake.providers.api_pull import client as cli
     cfg = _config(
         auth_method="oauth2_client_credentials",
         oauth2_token_url="https://api.vendor.test/oauth/token",

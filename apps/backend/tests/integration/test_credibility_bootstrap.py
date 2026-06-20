@@ -1,4 +1,4 @@
-"""Source-credibility bootstrap against Postgres (Phase 4 Wave C, ADR-031).
+﻿"""Source-credibility bootstrap against Postgres (Phase 4 Wave C, ADR-031).
 
 Pins the arithmetic that migration 0006 depends on:
   - a catalog source with editorial_confidence 75 bootstraps to accuracy 0.75
@@ -8,7 +8,7 @@ Pins the arithmetic that migration 0006 depends on:
 The INSERT below is the SAME statement migration 0006 runs; we replay it over
 freshly seeded sources because the migration already executed at upgrade time.
 
-Runs only when ANANT_TEST_DB is set (with migrations applied).
+Runs only when ORYX_TEST_DB is set (with migrations applied).
 """
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ BOOTSTRAP_SQL = text(
 
 @pytest.mark.asyncio
 async def test_bootstrap_maps_editorial_confidence_and_neutral_prior(sm) -> None:
-    from anant.core.models import (
+    from oryx.core.models import (
         Account,
         IntakeSource,
         SourceCatalog,
@@ -55,7 +55,7 @@ async def test_bootstrap_maps_editorial_confidence_and_neutral_prior(sm) -> None
     async with sm() as session:
         account = Account(
             id=uuid.uuid4(),
-            email=f"boot+{marker}@anant.test",
+            email=f"boot+{marker}@oryx.test",
             password_hash="x",
             password_changed_at=datetime.now(UTC),
             status="active",

@@ -1,4 +1,4 @@
-"""Alembic env — async-aware. Reads DATABASE_URL from Settings."""
+﻿"""Alembic env — async-aware. Reads DATABASE_URL from Settings."""
 from __future__ import annotations
 
 import asyncio
@@ -11,11 +11,11 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-# Make `anant` importable when running `alembic` from apps/backend.
+# Make `oryx` importable when running `alembic` from apps/backend.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from anant.config import get_settings  # noqa: E402
-from anant.core.db import Base  # noqa: E402
+from oryx.config import get_settings  # noqa: E402
+from oryx.core.db import Base  # noqa: E402
 
 # Alembic Config
 config = context.config

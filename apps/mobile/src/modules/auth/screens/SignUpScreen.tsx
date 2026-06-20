@@ -26,7 +26,7 @@ export const SignUpScreen: React.FC = () => {
       await dispatch(signup(email.trim(), password, displayName.trim()));
     } catch (e) {
       if (isApiError(e)) setError(e.message);
-      else setError('Unable to sign up. Try again.');
+      else setError('Could not reach the server. Check that the backend is running and try again.');
     } finally {
       setLoading(false);
     }

@@ -1,8 +1,8 @@
-"""Manual ingest endpoint end-to-end (CR-8).
+﻿"""Manual ingest endpoint end-to-end (CR-8).
 
 Covers: platform-admin gating, full pipeline (normalize → dedupe →
 persist → outbox), dedupe on resubmission, audit trail, validation.
-Runs only when ANANT_TEST_DB is set (with migrations applied).
+Runs only when ORYX_TEST_DB is set (with migrations applied).
 """
 from __future__ import annotations
 
@@ -18,8 +18,8 @@ pytestmark = pytest.mark.requires_db
 
 @pytest.fixture
 def app():
-    os.environ.setdefault("DATABASE_URL", os.environ["ANANT_TEST_DB"])
-    from anant.main import create_app
+    os.environ.setdefault("DATABASE_URL", os.environ["ORYX_TEST_DB"])
+    from oryx.main import create_app
     return create_app()
 
 
@@ -27,15 +27,15 @@ def app():
 def sm():
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-    engine = create_async_engine(os.environ["ANANT_TEST_DB"])
+    engine = create_async_engine(os.environ["ORYX_TEST_DB"])
     return async_sessionmaker(bind=engine, expire_on_commit=False)
 
 
 async def _admin_with_workspace(client: AsyncClient, sm) -> tuple[str, str]:
     """Signup, promote to platform admin, return (token, workspace_id)."""
-    from anant.core.models import Account, WorkspaceMember
+    from oryx.core.models import Account, WorkspaceMember
 
-    email = f"manual+{uuid.uuid4().hex[:8]}@anant.test"
+    email = f"manual+{uuid.uuid4().hex[:8]}@oryx.test"
     res = await client.post(
         "/v1/auth/signup",
         json={
@@ -70,7 +70,7 @@ async def test_non_admin_is_denied(app, sm) -> None:
         res = await client.post(
             "/v1/auth/signup",
             json={
-                "email": f"plain+{uuid.uuid4().hex[:8]}@anant.test",
+                "email": f"plain+{uuid.uuid4().hex[:8]}@oryx.test",
                 "password": "StrongPass123",
                 "displayName": "Plain User",
                 "deviceId": str(uuid.uuid4()),
@@ -90,7 +90,7 @@ async def test_non_admin_is_denied(app, sm) -> None:
 
 @pytest.mark.asyncio
 async def test_manual_ingest_runs_full_pipeline(app, sm) -> None:
-    from anant.core.models import (
+    from oryx.core.models import (
         IntakeAuditLog,
         IntakeItem,
         IntakeItemNormalized,
@@ -156,7 +156,7 @@ async def test_manual_ingest_runs_full_pipeline(app, sm) -> None:
 
 @pytest.mark.asyncio
 async def test_resubmission_dedupes_instead_of_duplicating(app, sm) -> None:
-    from anant.core.models import IntakeItem
+    from oryx.core.models import IntakeItem
 
     url = f"https://example.test/dedupe/{uuid.uuid4().hex[:8]}"
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:

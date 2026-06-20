@@ -1,4 +1,4 @@
-"""/v1/auth/me returns the full bootstrap envelope in one round-trip."""
+﻿"""/v1/auth/me returns the full bootstrap envelope in one round-trip."""
 from __future__ import annotations
 
 import os
@@ -12,8 +12,8 @@ pytestmark = pytest.mark.requires_db
 
 @pytest.fixture
 def app():
-    os.environ.setdefault("DATABASE_URL", os.environ["ANANT_TEST_DB"])
-    from anant.main import create_app
+    os.environ.setdefault("DATABASE_URL", os.environ["ORYX_TEST_DB"])
+    from oryx.main import create_app
     return create_app()
 
 
@@ -21,7 +21,7 @@ def app():
 async def test_me_envelope_contains_every_section(app) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
         signup = await client.post("/v1/auth/signup", json={
-            "email": f"test+{uuid.uuid4().hex[:8]}@anant.test",
+            "email": f"test+{uuid.uuid4().hex[:8]}@oryx.test",
             "password": "StrongPass123", "displayName": "Me",
             "deviceId": str(uuid.uuid4()), "deviceLabel": "iPhone", "devicePlatform": "ios",
         })
@@ -47,7 +47,7 @@ async def test_me_envelope_contains_every_section(app) -> None:
 async def test_mfa_endpoints_return_501_cleanly(app) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
         signup = await client.post("/v1/auth/signup", json={
-            "email": f"test+{uuid.uuid4().hex[:8]}@anant.test",
+            "email": f"test+{uuid.uuid4().hex[:8]}@oryx.test",
             "password": "StrongPass123", "displayName": "Me",
             "deviceId": "d", "deviceLabel": "l", "devicePlatform": "ios",
         })

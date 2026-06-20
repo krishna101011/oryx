@@ -1,10 +1,10 @@
-"""ConflictDetectorAI parsing + safety posture (Wave D). No network."""
+﻿"""ConflictDetectorAI parsing + safety posture (Wave D). No network."""
 from __future__ import annotations
 
 import pytest
 
-from anant.services.claims.extractor import AnthropicResult
-from anant.services.conflicts.detector import (
+from oryx.services.claims.extractor import AnthropicResult
+from oryx.services.conflicts.detector import (
     NO_CONFLICT,
     ConflictDetectorAI,
     _parse,
@@ -103,7 +103,7 @@ async def test_detect_happy_path(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(
-        "anant.services.conflicts.detector.call_anthropic", fake_call
+        "oryx.services.conflicts.detector.call_anthropic", fake_call
     )
     result = await ConflictDetectorAI().detect(
         subject="Acme", a_predicate="rose", a_object="10%",
@@ -120,7 +120,7 @@ async def test_detect_parse_failure_is_no_conflict(monkeypatch) -> None:
         return AnthropicResult(text="garbage", input_tokens=3, output_tokens=2)
 
     monkeypatch.setattr(
-        "anant.services.conflicts.detector.call_anthropic", fake_call
+        "oryx.services.conflicts.detector.call_anthropic", fake_call
     )
     result = await ConflictDetectorAI().detect(
         subject="Acme", a_predicate="rose", a_object=None,

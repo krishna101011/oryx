@@ -1,7 +1,7 @@
-"""Text sanitizer + title normalizer + link extraction."""
+﻿"""Text sanitizer + title normalizer + link extraction."""
 from __future__ import annotations
 
-from anant.services.normalization.text_sanitizer import (
+from oryx.services.normalization.text_sanitizer import (
     extract_links,
     normalize_title,
     sanitize_html_to_text,

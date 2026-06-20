@@ -1,4 +1,4 @@
-"""ClaimExtractorAI — JSON contract parsing, caps, and failure flagging.
+﻿"""ClaimExtractorAI — JSON contract parsing, caps, and failure flagging.
 
 DB-free; the Anthropic HTTP call is monkeypatched at the module seam.
 """
@@ -8,8 +8,8 @@ import json
 
 import pytest
 
-from anant.services.claims import extractor as extractor_module
-from anant.services.claims.extractor import (
+from oryx.services.claims import extractor as extractor_module
+from oryx.services.claims.extractor import (
     EXTRACTOR_VERSION,
     MAX_CLAIMS_PER_ITEM,
     AnthropicResult,
@@ -134,7 +134,7 @@ async def test_fenced_json_output_is_salvaged(monkeypatch: pytest.MonkeyPatch) -
 async def test_oversized_input_is_truncated_before_the_call(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from anant.services.claims.extractor import EXTRACTOR_INPUT_MAX_CHARS
+    from oryx.services.claims.extractor import EXTRACTOR_INPUT_MAX_CHARS
 
     captured: dict = {}
 

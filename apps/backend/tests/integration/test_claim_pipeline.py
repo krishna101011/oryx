@@ -1,9 +1,9 @@
-"""Claim pipeline end-to-end against Postgres (Phase 4 Wave A).
+﻿"""Claim pipeline end-to-end against Postgres (Phase 4 Wave A).
 
 Fake AI components are injected through the ClaimService seams — the full
 DB path (idempotency guard, atomic fan-out, budget ledger, outbox rows,
 causation chain) runs against real tables with zero network.
-Runs only when ANANT_TEST_DB is set (with migrations applied).
+Runs only when ORYX_TEST_DB is set (with migrations applied).
 """
 from __future__ import annotations
 
@@ -20,14 +20,14 @@ async def _seed_item(sm) -> tuple[uuid.UUID, uuid.UUID, str]:
     """Workspace + source + one ingested item (with normalized row).
 
     Returns (workspace_id, intake_item_id, intake_event_id)."""
-    from anant.core.models import Account, IntakeSource, OutboxEvent, Workspace
-    from anant.services.intake.providers.base import RawItem
-    from anant.services.intake.service import IntakeService
+    from oryx.core.models import Account, IntakeSource, OutboxEvent, Workspace
+    from oryx.services.intake.providers.base import RawItem
+    from oryx.services.intake.service import IntakeService
 
     async with sm() as session:
         account = Account(
             id=uuid.uuid4(),
-            email=f"claims+{uuid.uuid4().hex[:8]}@anant.test",
+            email=f"claims+{uuid.uuid4().hex[:8]}@oryx.test",
             password_hash="x",
             password_changed_at=datetime.now(UTC),
             status="active",
@@ -85,7 +85,7 @@ class FakeExtractor:
     version = 1
 
     def __init__(self, triples=None, tokens: int = 120, fail_if_called: bool = False):
-        from anant.services.claims.models import ClaimTriple
+        from oryx.services.claims.models import ClaimTriple
 
         self._fail = fail_if_called
         self.calls = 0
@@ -110,7 +110,7 @@ class FakeExtractor:
         )
 
     async def extract(self, body_text: str):
-        from anant.services.claims.extractor import ExtractionResult
+        from oryx.services.claims.extractor import ExtractionResult
 
         if self._fail:
             raise AssertionError("extractor must not be called on this path")
@@ -128,7 +128,7 @@ class FakeClassifier:
         self.calls = 0
 
     async def classify(self, claim_text: str, context: str):
-        from anant.services.claims.classifier import ClassificationResult
+        from oryx.services.claims.classifier import ClassificationResult
 
         self.calls += 1
         return ClassificationResult(
@@ -137,7 +137,7 @@ class FakeClassifier:
 
 
 def _service(sm, extractor=None, classifier=None):
-    from anant.services.claims.service import ClaimService
+    from oryx.services.claims.service import ClaimService
 
     return ClaimService(
         sm,
@@ -148,8 +148,8 @@ def _service(sm, extractor=None, classifier=None):
 
 @pytest.mark.asyncio
 async def test_full_pipeline_extracts_types_and_emits_chained_events(sm) -> None:
-    from anant.core.models import Claim, OutboxEvent
-    from anant.services.claims.events.constants import CLAIM_EXTRACTED, CLAIM_TYPED
+    from oryx.core.models import Claim, OutboxEvent
+    from oryx.services.claims.events.constants import CLAIM_EXTRACTED, CLAIM_TYPED
 
     ws_id, item_id, intake_event_id = await _seed_item(sm)
     service = _service(sm)
@@ -208,7 +208,7 @@ async def test_full_pipeline_extracts_types_and_emits_chained_events(sm) -> None
 
 @pytest.mark.asyncio
 async def test_redelivery_is_idempotent(sm) -> None:
-    from anant.core.models import Claim, OutboxEvent
+    from oryx.core.models import Claim, OutboxEvent
 
     ws_id, item_id, intake_event_id = await _seed_item(sm)
     extractor = FakeExtractor()
@@ -243,7 +243,7 @@ async def test_redelivery_is_idempotent(sm) -> None:
 @pytest.mark.asyncio
 async def test_redelivery_resumes_unfinished_classification(sm) -> None:
     """Crash between fan-out and typing must not strand claims untyped."""
-    from anant.core.models import Claim
+    from oryx.core.models import Claim
 
     ws_id, item_id, intake_event_id = await _seed_item(sm)
 
@@ -273,10 +273,10 @@ async def test_redelivery_resumes_unfinished_classification(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_deleted_workspace_dead_letters(sm) -> None:
-    from anant.core.models import Workspace
-    from anant.services.claims.service import ClaimExtractionHandler
-    from anant.services.queue.bus import DomainEvent
-    from anant.services.queue.drainer import PermanentDeliveryError
+    from oryx.core.models import Workspace
+    from oryx.services.claims.service import ClaimExtractionHandler
+    from oryx.services.queue.bus import DomainEvent
+    from oryx.services.queue.drainer import PermanentDeliveryError
 
     ws_id, item_id, _ = await _seed_item(sm)
     async with sm() as session:
@@ -287,7 +287,7 @@ async def test_deleted_workspace_dead_letters(sm) -> None:
         )
         await session.commit()
 
-    from anant.services.intake.events_constants import INTAKE_ITEM_RECEIVED
+    from oryx.services.intake.events_constants import INTAKE_ITEM_RECEIVED
 
     handler = ClaimExtractionHandler(sm, service=_service(sm))
     event = DomainEvent(
@@ -309,8 +309,8 @@ async def test_deleted_workspace_dead_letters(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_missing_normalized_row_is_transient(sm) -> None:
-    from anant.core.models import IntakeItemNormalized
-    from anant.services.claims.service import NormalizedRowMissingError
+    from oryx.core.models import IntakeItemNormalized
+    from oryx.services.claims.service import NormalizedRowMissingError
 
     ws_id, item_id, _ = await _seed_item(sm)
     async with sm() as session:
@@ -332,8 +332,8 @@ async def test_missing_normalized_row_is_transient(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_budget_exhausted_before_extraction_defers(sm) -> None:
-    from anant.core.models import WorkspaceAIBudget
-    from anant.services.claims.service import BudgetExhaustedError
+    from oryx.core.models import WorkspaceAIBudget
+    from oryx.services.claims.service import BudgetExhaustedError
 
     ws_id, item_id, _ = await _seed_item(sm)
     async with sm() as session:
@@ -359,8 +359,8 @@ async def test_budget_exhausted_before_extraction_defers(sm) -> None:
 async def test_budget_exhausted_mid_pipeline_flags_claims_for_review(sm) -> None:
     """Extractor spend consumes the whole budget → classification skipped,
     claims stay unclassified with requires_analyst_review, no CLAIM_TYPED."""
-    from anant.core.models import Claim, OutboxEvent, WorkspaceAIBudget
-    from anant.services.claims.events.constants import CLAIM_TYPED
+    from oryx.core.models import Claim, OutboxEvent, WorkspaceAIBudget
+    from oryx.services.claims.events.constants import CLAIM_TYPED
 
     ws_id, item_id, intake_event_id = await _seed_item(sm)
     async with sm() as session:
@@ -413,10 +413,10 @@ async def test_budget_exhausted_mid_pipeline_flags_claims_for_review(sm) -> None
 @pytest.mark.asyncio
 async def test_classifier_circuit_open_flags_claims_without_typing(sm) -> None:
     """Wave B retrofit: open circuit → claim flagged, unclassified, no TYPED."""
-    from anant.core.ai_circuit_breaker import CircuitOpenError
-    from anant.core.models import Claim, OutboxEvent
-    from anant.services.claims.events.constants import CLAIM_TYPED
-    from anant.services.intake.providers.errors import ProviderErrorKind
+    from oryx.core.ai_circuit_breaker import CircuitOpenError
+    from oryx.core.models import Claim, OutboxEvent
+    from oryx.services.claims.events.constants import CLAIM_TYPED
+    from oryx.services.intake.providers.errors import ProviderErrorKind
 
     ws_id, item_id, intake_event_id = await _seed_item(sm)
 
@@ -452,8 +452,8 @@ async def test_classifier_circuit_open_flags_claims_without_typing(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_duplicate_claim_text_is_silent_noop(sm) -> None:
-    from anant.core.models import Claim
-    from anant.services.claims.models import ClaimTriple
+    from oryx.core.models import Claim
+    from oryx.services.claims.models import ClaimTriple
 
     ws_id, item_id, _ = await _seed_item(sm)
     twice = [

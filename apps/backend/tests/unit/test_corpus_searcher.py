@@ -1,4 +1,4 @@
-"""BM25Searcher — two-stage query strategy and row mapping, via fakes.
+﻿"""BM25Searcher — two-stage query strategy and row mapping, via fakes.
 
 The actual FTS SQL runs against Postgres in the integration suite; here
 we verify the strategy: primary query, subject-only fallback, empty-query
@@ -12,8 +12,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from anant.services.evidence.corpus_searcher import BM25Searcher
-from anant.services.evidence.models import EXCERPT_CHARS
+from oryx.services.evidence.corpus_searcher import BM25Searcher
+from oryx.services.evidence.models import EXCERPT_CHARS
 
 
 class FakeResult:

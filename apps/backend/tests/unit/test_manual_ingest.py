@@ -1,9 +1,9 @@
-"""Manual ingest policy — deterministic external_id + rate limiting (CR-8)."""
+﻿"""Manual ingest policy — deterministic external_id + rate limiting (CR-8)."""
 from __future__ import annotations
 
 import uuid
 
-from anant.services.intake.admin_router import (
+from oryx.services.intake.admin_router import (
     _manual_external_id,
     _manual_ingest_hits,
     _manual_ingest_rate_ok,

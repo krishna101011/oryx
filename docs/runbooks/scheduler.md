@@ -1,6 +1,6 @@
-# Runbook — intake.scheduler
+﻿# Runbook — intake.scheduler
 
-**Process:** `python -m anant.services.intake.scheduler`
+**Process:** `python -m oryx.services.intake.scheduler`
 **Owns:** source due-time selection, provider sync dispatch, webhook-idempotency purge
 **Related:** ADR-025 (topology), drainer runbook, intake troubleshooting guide
 
@@ -22,7 +22,7 @@
 
 ```
 # start (prod: one instance via the process supervisor)
-python -m anant.services.intake.scheduler
+python -m oryx.services.intake.scheduler
 
 # graceful stop: SIGTERM / Ctrl-C. In-flight syncs finish their item;
 # cursors are only advanced after a completed sync, so a kill mid-sync

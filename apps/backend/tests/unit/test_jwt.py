@@ -1,4 +1,4 @@
-"""JWT signing and verification."""
+﻿"""JWT signing and verification."""
 from __future__ import annotations
 
 import time
@@ -8,9 +8,9 @@ from datetime import UTC, datetime
 import jwt as pyjwt
 import pytest
 
-from anant.config import get_settings
-from anant.core.errors import AuthRefreshInvalidError, AuthTokenExpiredError
-from anant.core.security.jwt import issue_access_token, verify_access_token
+from oryx.config import get_settings
+from oryx.core.errors import AuthRefreshInvalidError, AuthTokenExpiredError
+from oryx.core.security.jwt import issue_access_token, verify_access_token
 
 
 def _ids() -> tuple[str, str, str]:

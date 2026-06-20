@@ -1,4 +1,4 @@
-# ORYX — Security Notes (Phase 2)
+﻿# ORYX — Security Notes (Phase 2)
 
 This document captures Phase 2's security posture: what the code guarantees, what the tests verify, and what is explicitly the operator's responsibility.
 
@@ -137,11 +137,11 @@ Integration tests require a reachable Postgres with the Phase 2 migration applie
 
 ```bash
 # 1. bring up a disposable test DB (docker-compose example)
-docker run -d --rm --name anant-test-pg \
+docker run -d --rm --name oryx-test-pg \
   -e POSTGRES_USER=anant -e POSTGRES_PASSWORD=anant -e POSTGRES_DB=anant \
   -p 55432:5432 postgres:16
-export ANANT_TEST_DB=postgresql+asyncpg://anant:anant@localhost:55432/anant
-export DATABASE_URL="$ANANT_TEST_DB"
+export ORYX_TEST_DB=postgresql+asyncpg://anant:anant@localhost:55432/anant
+export DATABASE_URL="$ORYX_TEST_DB"
 uv run alembic upgrade head
 
 # 2. run the full suite
@@ -151,7 +151,7 @@ uv run pytest -q
 uv run pytest -m security -q
 
 # 4. tear down
-docker stop anant-test-pg
+docker stop oryx-test-pg
 ```
 
 CI runs the unit suite always and the integration suite when the test DB service is available.

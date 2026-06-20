@@ -1,10 +1,10 @@
-"""ObjectComposer pure logic (Wave E): epistemic-type selection + the
+﻿"""ObjectComposer pure logic (Wave E): epistemic-type selection + the
 weighted-minimum score with epistemic ceilings. No DB."""
 from __future__ import annotations
 
 import pytest
 
-from anant.services.intelligence.composer import compute_score, select_epistemic_type
+from oryx.services.intelligence.composer import compute_score, select_epistemic_type
 
 # ---------------- epistemic type = weakest constituent ----------------
 

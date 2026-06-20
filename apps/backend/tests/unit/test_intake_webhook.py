@@ -1,4 +1,4 @@
-"""Webhook provider tests — HMAC, replay window, idempotency, mapper.
+﻿"""Webhook provider tests — HMAC, replay window, idempotency, mapper.
 
 Covers Phase 3 §6 + CR-4. Router endpoint is exercised by integration
 tests (requires_db); these unit tests pin the pure-function contracts.
@@ -10,24 +10,24 @@ import uuid
 
 import pytest
 
-from anant.services.intake.providers.base import (
+from oryx.services.intake.providers.base import (
     IntakeSourceKind,
     ValidationStatus,
 )
-from anant.services.intake.providers.errors import (
+from oryx.services.intake.providers.errors import (
     ProviderError,
     ProviderErrorKind,
 )
-from anant.services.intake.providers.webhook.config_schema import (
+from oryx.services.intake.providers.webhook.config_schema import (
     REPLAY_WINDOW_SECONDS,
     WebhookFieldMapping,
 )
-from anant.services.intake.providers.webhook.mapper import (
+from oryx.services.intake.providers.webhook.mapper import (
     json_to_raw_item,
     lookup_path,
 )
-from anant.services.intake.providers.webhook.provider import WebhookProvider
-from anant.services.intake.providers.webhook.secrets import (
+from oryx.services.intake.providers.webhook.provider import WebhookProvider
+from oryx.services.intake.providers.webhook.secrets import (
     generate_secret,
     hash_secret_for_audit,
     sign_request,

@@ -1,4 +1,4 @@
-# ADR-005 — TypeScript-First Contracts, Pydantic Mirror Generated
+﻿# ADR-005 — TypeScript-First Contracts, Pydantic Mirror Generated
 
 **Status:** Accepted
 **Date:** 2026-06-06
@@ -14,7 +14,7 @@ Frontend is TypeScript. Backend is Python. They must agree on every payload. The
 
 ## Decision
 
-`packages/shared-types/` is the **source of truth**, written in TypeScript. A build script (`infra/scripts/gen-pydantic.ts`) converts each TS file into a matching pydantic model committed at `apps/backend/src/anant/shared/types.py`. CI runs `pnpm drift:check` on every PR; mismatch fails the build.
+`packages/shared-types/` is the **source of truth**, written in TypeScript. A build script (`infra/scripts/gen-pydantic.ts`) converts each TS file into a matching pydantic model committed at `apps/backend/src/oryx/shared/types.py`. CI runs `pnpm drift:check` on every PR; mismatch fails the build.
 
 Frontend imports TS directly. Backend imports the generated pydantic mirror.
 

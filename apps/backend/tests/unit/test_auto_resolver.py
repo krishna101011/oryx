@@ -1,4 +1,4 @@
-"""Auto-resolve decision logic (Wave D, ADR-033).
+﻿"""Auto-resolve decision logic (Wave D, ADR-033).
 
 The mandatory invariant: a conflict auto-resolves ONLY when ALL FIVE conditions
 hold. Each test below flips exactly one condition to failing and asserts that
@@ -6,7 +6,7 @@ resolution is blocked; the baseline asserts all-five-pass resolves.
 """
 from __future__ import annotations
 
-from anant.services.conflicts.resolver import evaluate_auto_resolve
+from oryx.services.conflicts.resolver import evaluate_auto_resolve
 
 # A fixture that satisfies all five conditions; tests perturb one field each.
 BASELINE = dict(

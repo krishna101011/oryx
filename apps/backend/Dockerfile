@@ -17,4 +17,4 @@ RUN uv pip install --system .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "anant.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "oryx.main:app", "--host", "0.0.0.0", "--port", "8000"]

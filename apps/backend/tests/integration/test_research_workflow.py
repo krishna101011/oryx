@@ -1,4 +1,4 @@
-"""Research workspace + packet workflow end-to-end (Wave E)."""
+﻿"""Research workspace + packet workflow end-to-end (Wave E)."""
 from __future__ import annotations
 
 import uuid
@@ -11,13 +11,13 @@ pytestmark = pytest.mark.requires_db
 
 
 async def _seed(sm) -> dict:
-    from anant.core.models import Account, IntakeSource, Workspace
+    from oryx.core.models import Account, IntakeSource, Workspace
 
     now = datetime.now(UTC)
     async with sm() as session:
         account = Account(
             id=uuid.uuid4(),
-            email=f"res+{uuid.uuid4().hex[:8]}@anant.test",
+            email=f"res+{uuid.uuid4().hex[:8]}@oryx.test",
             password_hash="x",
             password_changed_at=now,
             status="active",
@@ -50,9 +50,9 @@ async def _seed(sm) -> dict:
 
 async def _make_object(sm, ids: dict, *, status: str = "verified") -> uuid.UUID:
     """Ingest an item and insert one intelligence object with a given status."""
-    from anant.core.models import IntelligenceObject
-    from anant.services.intake.providers.base import RawItem
-    from anant.services.intake.service import IntakeService
+    from oryx.core.models import IntelligenceObject
+    from oryx.services.intake.providers.base import RawItem
+    from oryx.services.intake.service import IntakeService
 
     now = datetime.now(UTC)
     async with sm() as session:
@@ -92,7 +92,7 @@ async def _make_object(sm, ids: dict, *, status: str = "verified") -> uuid.UUID:
 
 
 def _svc(sm):
-    from anant.services.research.service import ResearchService
+    from oryx.services.research.service import ResearchService
 
     return ResearchService(sm)
 
@@ -170,7 +170,7 @@ async def test_add_list_remove_item(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_add_item_note_too_long_rejected(sm) -> None:
-    from anant.core.errors import BadRequestError
+    from oryx.core.errors import BadRequestError
 
     ids = await _seed(sm)
     rws_id = await _new_ws(sm, ids)
@@ -251,7 +251,7 @@ async def test_readiness_rejected_blocks(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_mark_ready_blocked_returns_409(sm) -> None:
-    from anant.core.errors import PreconditionFailedError
+    from oryx.core.errors import PreconditionFailedError
 
     ids = await _seed(sm)
     rws_id = await _new_ws(sm, ids)
@@ -269,8 +269,8 @@ async def test_mark_ready_blocked_returns_409(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_acknowledge_unblocks_then_ready(sm) -> None:
-    from anant.core.models import OutboxEvent, ResearchPacket
-    from anant.services.research.events.constants import PACKET_READY
+    from oryx.core.models import OutboxEvent, ResearchPacket
+    from oryx.services.research.events.constants import PACKET_READY
 
     ids = await _seed(sm)
     rws_id = await _new_ws(sm, ids)
@@ -324,7 +324,7 @@ async def test_list_packets_by_status(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_me_count_helpers(sm) -> None:
-    from anant.services.research.repository import ResearchRepository
+    from oryx.services.research.repository import ResearchRepository
 
     ids = await _seed(sm)
     rws_id = await _new_ws(sm, ids)

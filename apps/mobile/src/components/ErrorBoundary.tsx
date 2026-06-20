@@ -1,18 +1,19 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { logger } from '../lib/logger';
 
 interface State {
   error: Error | null;
+  stack: string | null;
 }
 
 export class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   State
 > {
-  override state: State = { error: null };
+  override state: State = { error: null, stack: null };
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
@@ -21,13 +22,20 @@ export class ErrorBoundary extends React.Component<
       message: error.message,
       stack: info.componentStack ?? null,
     });
+    this.setState({ stack: info.componentStack ?? null });
   }
 
   override render(): React.ReactNode {
     if (this.state.error) {
       return (
         <View style={styles.container}>
-          {/* Intentionally minimal — design-system theme may not be available if the error is inside ThemeProvider */}
+          <Text style={styles.title}>Something went wrong</Text>
+          <Text style={styles.message}>{this.state.error.message}</Text>
+          {__DEV__ && this.state.stack ? (
+            <ScrollView style={styles.stackScroll}>
+              <Text style={styles.stack}>{this.state.stack}</Text>
+            </ScrollView>
+          ) : null}
         </View>
       );
     }
@@ -36,8 +44,34 @@ export class ErrorBoundary extends React.Component<
 }
 
 const styles = StyleSheet.create({
-  // The boundary may render when ThemeProvider itself crashed, so the
-  // token hook is unavailable here by construction.
-  // eslint-disable-next-line no-restricted-syntax
-  container: { flex: 1, backgroundColor: '#0A0A0A' },
+  container: {
+    flex: 1,
+    backgroundColor: '#0A0A0F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  title: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  message: {
+    color: '#FF6B6B',
+    fontSize: 13,
+    fontFamily: 'monospace',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  stackScroll: {
+    maxHeight: 300,
+    width: '100%',
+  },
+  stack: {
+    color: '#888888',
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
 });

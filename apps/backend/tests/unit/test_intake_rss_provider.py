@@ -1,4 +1,4 @@
-"""RSS provider — config validation, parsing, mapping, cursor advancement.
+﻿"""RSS provider — config validation, parsing, mapping, cursor advancement.
 
 Tests against a fixture; no real network. Network behavior is exercised
 by Wave G integration tests.
@@ -12,17 +12,17 @@ from unittest.mock import patch
 
 import pytest
 
-from anant.services.intake.providers.base import (
+from oryx.services.intake.providers.base import (
     IntakeSourceKind,
     ValidationStatus,
 )
-from anant.services.intake.providers.rss.client import (
+from oryx.services.intake.providers.rss.client import (
     FetchOutcome,
     FetchResult,
 )
-from anant.services.intake.providers.rss.mapper import parsed_item_to_raw
-from anant.services.intake.providers.rss.parser import parse_feed
-from anant.services.intake.providers.rss.sync import (
+from oryx.services.intake.providers.rss.mapper import parsed_item_to_raw
+from oryx.services.intake.providers.rss.parser import parse_feed
+from oryx.services.intake.providers.rss.sync import (
     RssProvider,
     cursor_from_report,
 )
@@ -156,7 +156,7 @@ async def test_sync_yields_items_on_200() -> None:
         )
     )
     p = RssProvider()
-    with patch("anant.services.intake.providers.rss.sync.fetch_feed", fake):
+    with patch("oryx.services.intake.providers.rss.sync.fetch_feed", fake):
         items = []
         async for raw in p.sync(
             workspace_id=uuid.uuid4(),
@@ -184,7 +184,7 @@ async def test_sync_yields_nothing_on_304_and_keeps_cursor() -> None:
         )
     )
     p = RssProvider()
-    with patch("anant.services.intake.providers.rss.sync.fetch_feed", fake):
+    with patch("oryx.services.intake.providers.rss.sync.fetch_feed", fake):
         async for _ in p.sync(
             workspace_id=uuid.uuid4(),
             intake_source_id=uuid.uuid4(),
@@ -209,7 +209,7 @@ async def test_sync_surfaces_301_for_caller_to_persist_cr10() -> None:
         )
     )
     p = RssProvider()
-    with patch("anant.services.intake.providers.rss.sync.fetch_feed", fake):
+    with patch("oryx.services.intake.providers.rss.sync.fetch_feed", fake):
         async for _ in p.sync(
             workspace_id=uuid.uuid4(),
             intake_source_id=uuid.uuid4(),
@@ -234,7 +234,7 @@ async def test_cursor_built_from_etag_and_last_modified() -> None:
         )
     )
     p = RssProvider()
-    with patch("anant.services.intake.providers.rss.sync.fetch_feed", fake):
+    with patch("oryx.services.intake.providers.rss.sync.fetch_feed", fake):
         async for _ in p.sync(
             workspace_id=uuid.uuid4(),
             intake_source_id=uuid.uuid4(),
@@ -258,10 +258,10 @@ async def test_sync_forwards_existing_cursor_to_fetch() -> None:
             content_type=None, final_url=None,
         )
     )
-    from anant.services.intake.providers.base import SyncCursor
+    from oryx.services.intake.providers.base import SyncCursor
     cursor = SyncCursor(value={"etag": '"old"', "last_modified": "x"})
     p = RssProvider()
-    with patch("anant.services.intake.providers.rss.sync.fetch_feed", fake):
+    with patch("oryx.services.intake.providers.rss.sync.fetch_feed", fake):
         async for _ in p.sync(
             workspace_id=uuid.uuid4(),
             intake_source_id=uuid.uuid4(),

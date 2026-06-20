@@ -1,4 +1,4 @@
-"""Phase 5 Wave A — drafts service: consumption, generation, idempotency, versions.
+﻿"""Phase 5 Wave A — drafts service: consumption, generation, idempotency, versions.
 
 Exercises the five invariants end-to-end against Postgres with the Sonnet call
 faked (everything else real):
@@ -32,7 +32,7 @@ class _FakeGenerator:
         self.calls = 0
 
     async def generate(self, *, objects, format, instructions=None):
-        from anant.services.drafts.models import GeneratedDraft
+        from oryx.services.drafts.models import GeneratedDraft
 
         self.calls += 1
         return GeneratedDraft(
@@ -43,7 +43,7 @@ class _FakeGenerator:
 
 
 async def _latest_event(session, name: str):
-    from anant.core.models import OutboxEvent
+    from oryx.core.models import OutboxEvent
 
     rows = (
         await session.execute(
@@ -58,7 +58,7 @@ async def _latest_event(session, name: str):
 async def _seed_packet(sm, *, status: str = "ready", with_objects: int = 2):
     """account + workspace + source + N (item, intelligence_object) + research
     workspace + a packet referencing those objects."""
-    from anant.core.models import (
+    from oryx.core.models import (
         Account,
         IntakeItem,
         IntakeSource,
@@ -72,7 +72,7 @@ async def _seed_packet(sm, *, status: str = "ready", with_objects: int = 2):
     async with sm() as session:
         account = Account(
             id=uuid.uuid4(),
-            email=f"d+{uuid.uuid4().hex[:8]}@anant.test",
+            email=f"d+{uuid.uuid4().hex[:8]}@oryx.test",
             password_hash="x",
             password_changed_at=now,
             status="active",
@@ -148,8 +148,8 @@ async def _seed_packet(sm, *, status: str = "ready", with_objects: int = 2):
 
 @pytest.mark.asyncio
 async def test_packet_consumer_sets_consumed_at_only(sm) -> None:
-    from anant.core.models import ContentDraft, ResearchPacket
-    from anant.services.drafts.service import DraftService
+    from oryx.core.models import ContentDraft, ResearchPacket
+    from oryx.services.drafts.service import DraftService
 
     ws_id, _account_id, packet_id, _ = await _seed_packet(sm, status="ready")
 
@@ -171,8 +171,8 @@ async def test_packet_consumer_sets_consumed_at_only(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_consume_packet_idempotent(sm) -> None:
-    from anant.core.models import ResearchPacket
-    from anant.services.drafts.service import DraftService
+    from oryx.core.models import ResearchPacket
+    from oryx.services.drafts.service import DraftService
 
     ws_id, _account_id, packet_id, _ = await _seed_packet(sm)
     svc = DraftService(sm)
@@ -188,14 +188,14 @@ async def test_consume_packet_idempotent(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_generate_creates_draft_version_and_citations(sm) -> None:
-    from anant.core.models import (
+    from oryx.core.models import (
         ContentDraft,
         DraftCitation,
         DraftVersion,
         ResearchPacket,
     )
-    from anant.services.drafts.events.constants import DRAFT_CREATED
-    from anant.services.drafts.service import DraftService
+    from oryx.services.drafts.events.constants import DRAFT_CREATED
+    from oryx.services.drafts.service import DraftService
 
     ws_id, account_id, packet_id, obj_ids = await _seed_packet(sm, with_objects=2)
     gen = _FakeGenerator(text="Acme raised five billion dollars", tokens=42)
@@ -244,8 +244,8 @@ async def test_generate_creates_draft_version_and_citations(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_generate_idempotent_one_draft_per_packet(sm) -> None:
-    from anant.core.models import ContentDraft
-    from anant.services.drafts.service import DraftService
+    from oryx.core.models import ContentDraft
+    from oryx.services.drafts.service import DraftService
 
     ws_id, account_id, packet_id, _ = await _seed_packet(sm)
     gen = _FakeGenerator()
@@ -281,9 +281,9 @@ async def test_generate_idempotent_one_draft_per_packet(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_regenerate_appends_ai_version(sm) -> None:
-    from anant.core.models import ContentDraft, DraftVersion
-    from anant.services.drafts.events.constants import DRAFT_UPDATED
-    from anant.services.drafts.service import DraftService
+    from oryx.core.models import ContentDraft, DraftVersion
+    from oryx.services.drafts.events.constants import DRAFT_UPDATED
+    from oryx.services.drafts.service import DraftService
 
     ws_id, account_id, packet_id, _ = await _seed_packet(sm)
     draft = await DraftService(sm, generator=_FakeGenerator(text="v1 text")).generate_draft(
@@ -320,8 +320,8 @@ async def test_regenerate_appends_ai_version(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_save_version_appends_analyst_version(sm) -> None:
-    from anant.core.models import ContentDraft, DraftVersion
-    from anant.services.drafts.service import DraftService
+    from oryx.core.models import ContentDraft, DraftVersion
+    from oryx.services.drafts.service import DraftService
 
     ws_id, account_id, packet_id, _ = await _seed_packet(sm)
     svc = DraftService(sm, generator=_FakeGenerator(text="ai v1"))
@@ -360,8 +360,8 @@ async def test_save_version_appends_analyst_version(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_save_empty_content_rejected(sm) -> None:
-    from anant.core.errors import BadRequestError
-    from anant.services.drafts.service import DraftService
+    from oryx.core.errors import BadRequestError
+    from oryx.services.drafts.service import DraftService
 
     ws_id, account_id, packet_id, _ = await _seed_packet(sm)
     svc = DraftService(sm, generator=_FakeGenerator())
@@ -385,8 +385,8 @@ async def test_save_empty_content_rejected(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_generate_from_non_ready_packet_blocked(sm) -> None:
-    from anant.core.errors import PreconditionFailedError
-    from anant.services.drafts.service import DraftService
+    from oryx.core.errors import PreconditionFailedError
+    from oryx.services.drafts.service import DraftService
 
     ws_id, account_id, packet_id, _ = await _seed_packet(sm, status="assembling")
     with pytest.raises(PreconditionFailedError):
@@ -401,9 +401,9 @@ async def test_generate_from_non_ready_packet_blocked(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_generate_budget_exhausted_blocks(sm) -> None:
-    from anant.core.errors import RateLimitedError
-    from anant.core.models import ContentDraft, WorkspaceAIBudget
-    from anant.services.drafts.service import DraftService
+    from oryx.core.errors import RateLimitedError
+    from oryx.core.models import ContentDraft, WorkspaceAIBudget
+    from oryx.services.drafts.service import DraftService
 
     ws_id, account_id, packet_id, _ = await _seed_packet(sm)
     async with sm() as session:

@@ -1,10 +1,10 @@
-"""Verification pipeline end-to-end against Postgres (Phase 4 Wave C).
+﻿"""Verification pipeline end-to-end against Postgres (Phase 4 Wave C).
 
 The engine and scorer are pure (no AI), so nothing is faked here — this
 drives the REAL service over real tables: claim + evidence links in, a
 verification_run + credibility update + audit row + CLAIM_VERIFIED out.
 
-Runs only when ANANT_TEST_DB is set (with migrations applied).
+Runs only when ORYX_TEST_DB is set (with migrations applied).
 """
 from __future__ import annotations
 
@@ -20,21 +20,21 @@ pytestmark = pytest.mark.requires_db
 async def _seed(sm, *, epistemic_type: str = "claim", with_link: bool = True) -> dict:
     """Workspace + source + one ingested item + a typed claim, optionally with
     one corroborating evidence link. Returns the ids the tests assert on."""
-    from anant.core.models import (
+    from oryx.core.models import (
         Account,
         ClaimEvidenceLink,
         Evidence,
         IntakeSource,
         Workspace,
     )
-    from anant.services.claims.repository import ClaimsRepository
-    from anant.services.intake.providers.base import RawItem
-    from anant.services.intake.service import IntakeService
+    from oryx.services.claims.repository import ClaimsRepository
+    from oryx.services.intake.providers.base import RawItem
+    from oryx.services.intake.service import IntakeService
 
     async with sm() as session:
         account = Account(
             id=uuid.uuid4(),
-            email=f"verif+{uuid.uuid4().hex[:8]}@anant.test",
+            email=f"verif+{uuid.uuid4().hex[:8]}@oryx.test",
             password_hash="x",
             password_changed_at=datetime.now(UTC),
             status="active",
@@ -126,20 +126,20 @@ async def _seed(sm, *, epistemic_type: str = "claim", with_link: bool = True) ->
 
 
 def _service(sm):
-    from anant.services.verification.service import VerificationService
+    from oryx.services.verification.service import VerificationService
 
     return VerificationService(sm)
 
 
 @pytest.mark.asyncio
 async def test_supported_claim_verifies_and_updates_credibility(sm) -> None:
-    from anant.core.models import (
+    from oryx.core.models import (
         OutboxEvent,
         SourceCredibilityRecord,
         VerificationAuditLog,
         VerificationRun,
     )
-    from anant.services.verification.events.constants import CLAIM_VERIFIED
+    from oryx.services.verification.events.constants import CLAIM_VERIFIED
 
     ids = await _seed(sm)
     run_id = await _service(sm).verify_claim(
@@ -215,12 +215,12 @@ async def test_supported_claim_verifies_and_updates_credibility(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_redelivery_is_idempotent(sm) -> None:
-    from anant.core.models import (
+    from oryx.core.models import (
         OutboxEvent,
         SourceCredibilityRecord,
         VerificationRun,
     )
-    from anant.services.verification.events.constants import CLAIM_VERIFIED
+    from oryx.services.verification.events.constants import CLAIM_VERIFIED
 
     ids = await _seed(sm)
     first = await _service(sm).verify_claim(
@@ -260,11 +260,11 @@ async def test_redelivery_is_idempotent(sm) -> None:
 @pytest.mark.asyncio
 async def test_evidence_collected_event_drives_verification(sm) -> None:
     """The EVIDENCE_COLLECTED → verified wiring, through the handler."""
-    from anant.core.models import OutboxEvent, VerificationRun
-    from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
-    from anant.services.queue.bus import DomainEvent
-    from anant.services.verification.events.constants import CLAIM_VERIFIED
-    from anant.services.verification.service import VerificationHandler
+    from oryx.core.models import OutboxEvent, VerificationRun
+    from oryx.services.evidence.events.constants import EVIDENCE_COLLECTED
+    from oryx.services.queue.bus import DomainEvent
+    from oryx.services.verification.events.constants import CLAIM_VERIFIED
+    from oryx.services.verification.service import VerificationHandler
 
     ids = await _seed(sm)
     event = DomainEvent(
@@ -310,7 +310,7 @@ async def test_evidence_collected_event_drives_verification(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_unclassified_claim_is_unverifiable_without_score(sm) -> None:
-    from anant.core.models import VerificationRun
+    from oryx.core.models import VerificationRun
 
     # No epistemic type set, no evidence — the unscorable path.
     ids = await _seed(sm, epistemic_type="unclassified", with_link=False)
@@ -329,11 +329,11 @@ async def test_unclassified_claim_is_unverifiable_without_score(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_deleted_workspace_dead_letters(sm) -> None:
-    from anant.core.models import Workspace
-    from anant.services.evidence.events.constants import EVIDENCE_COLLECTED
-    from anant.services.queue.bus import DomainEvent
-    from anant.services.queue.drainer import PermanentDeliveryError
-    from anant.services.verification.service import VerificationHandler
+    from oryx.core.models import Workspace
+    from oryx.services.evidence.events.constants import EVIDENCE_COLLECTED
+    from oryx.services.queue.bus import DomainEvent
+    from oryx.services.queue.drainer import PermanentDeliveryError
+    from oryx.services.verification.service import VerificationHandler
 
     ids = await _seed(sm)
     async with sm() as session:

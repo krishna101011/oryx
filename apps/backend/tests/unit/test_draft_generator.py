@@ -1,4 +1,4 @@
-"""DraftGeneratorAI — prompt structure + model selection (Wave A invariants #1, #5).
+﻿"""DraftGeneratorAI — prompt structure + model selection (Wave A invariants #1, #5).
 
 No DB / no network: these exercise the pure prompt-building surface and the
 model constant. The source-only constraint and Sonnet selection are contractual,
@@ -8,14 +8,14 @@ from __future__ import annotations
 
 import uuid
 
-from anant.services.drafts.generator import (
+from oryx.services.drafts.generator import (
     ANTHROPIC_MODEL_SONNET,
     SOURCE_ONLY_MARKER,
     DraftGeneratorAI,
     build_generation_prompt,
     build_system_context,
 )
-from anant.services.drafts.models import ObjectSnapshot
+from oryx.services.drafts.models import ObjectSnapshot
 
 
 def _obj(headline: str = "Acme raised $5B") -> ObjectSnapshot:

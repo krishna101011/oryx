@@ -1,10 +1,10 @@
-"""Smoke test — proves the contract loop is closed."""
+﻿"""Smoke test — proves the contract loop is closed."""
 from __future__ import annotations
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from anant.main import app
+from oryx.main import app
 
 
 @pytest.mark.asyncio
@@ -15,7 +15,7 @@ async def test_health_returns_envelope() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["data"]["status"] == "ok"
-    assert body["data"]["service"] == "anant-backend"
+    assert body["data"]["service"] == "oryx-backend"
     assert "requestId" in body["meta"]
     assert "serverTime" in body["meta"]
 

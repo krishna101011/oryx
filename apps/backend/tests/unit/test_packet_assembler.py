@@ -1,7 +1,7 @@
-"""Packet readiness gate pure logic (Wave E)."""
+﻿"""Packet readiness gate pure logic (Wave E)."""
 from __future__ import annotations
 
-from anant.services.research.models import ObjectReadinessInput, evaluate_readiness
+from oryx.services.research.models import ObjectReadinessInput, evaluate_readiness
 
 
 def _obj(oid: str, status: str) -> ObjectReadinessInput:
