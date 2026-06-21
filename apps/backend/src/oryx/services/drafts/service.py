@@ -134,7 +134,8 @@ class DraftService:
                 return existing  # one draft per packet — return it unchanged
             object_ids = list(packet.intelligence_object_ids or [])
             packet_name = packet.name
-            # Resolve template (and lazy-seed defaults) in this session.
+            # Intentionally nested in this transaction: if seeding fails the
+            # packet is not marked consumed, keeping the boundary atomic.
             resolved_template = await self._template_svc.resolve_template(
                 workspace_id, format, template_id, session
             )
