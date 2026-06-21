@@ -31,7 +31,7 @@ class _FakeGenerator:
         self._tokens = tokens
         self.calls = 0
 
-    async def generate(self, *, objects, format, instructions=None):
+    async def generate(self, *, objects, format, instructions=None, template=None):
         from oryx.services.drafts.models import GeneratedDraft
 
         self.calls += 1

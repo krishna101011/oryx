@@ -40,6 +40,9 @@ export * from './research';
 // ---- Phase 5 Wave A ----
 export * from './drafts';
 
+// ---- Phase 5 Wave B ----
+export * from './templates';
+
 export * as Verification from './verification';
 export * as Scoring from './scoring';
 export * as Content from './content';

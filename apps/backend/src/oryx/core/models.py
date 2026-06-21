@@ -1109,3 +1109,48 @@ class DraftCitation(Base):
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+# ============================================================================
+# Phase 5 Wave B — content templates
+# ============================================================================
+
+
+class ContentTemplate(Base):
+    """Reusable format definition. One default per (workspace, format) enforced
+    by the partial UNIQUE index uq_templates_one_default_per_format."""
+
+    __tablename__ = "content_templates"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    format: Mapped[str] = mapped_column(
+        Enum(
+            "tweet_thread", "linkedin_post", "newsletter_section",
+            "article", "report_summary", "custom",
+            name="content_format_enum",
+            create_type=False,
+        ),
+        nullable=False,
+    )
+    tone: Mapped[str] = mapped_column(
+        Enum(
+            "formal", "analytical", "conversational", "authoritative", "concise",
+            name="content_tone_enum",
+        ),
+        nullable=False,
+        default="analytical",
+    )
+    max_words: Mapped[int | None] = mapped_column(Integer)
+    min_words: Mapped[int | None] = mapped_column(Integer)
+    structure_hint: Mapped[str | None] = mapped_column(Text)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

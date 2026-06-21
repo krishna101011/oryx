@@ -39,6 +39,7 @@ from oryx.services.drafts.repository import DraftsRepository
 from oryx.services.queue.bus import DomainEvent
 from oryx.services.queue.drainer import PermanentDeliveryError
 from oryx.services.queue.outbox import enqueue_event
+from oryx.services.templates.service import TemplateService
 
 logger = get_logger(__name__)
 
@@ -63,9 +64,11 @@ class DraftService:
         sessionmaker: async_sessionmaker[AsyncSession],
         *,
         generator: DraftGeneratorAI | None = None,
+        template_service: TemplateService | None = None,
     ) -> None:
         self._sm = sessionmaker
         self._generator = generator or DraftGeneratorAI()
+        self._template_svc = template_service or TemplateService(sessionmaker)
 
     # ---------------- packet consumption (handler path) ----------------
 
@@ -104,6 +107,7 @@ class DraftService:
         instructions: str | None,
         account_id: uuid.UUID,
         workspace_id: uuid.UUID,
+        template_id: uuid.UUID | None = None,
         correlation_id: str | None = None,
     ) -> ContentDraft:
         # ---- 1. Validate packet + idempotency (invariant #3) ----
@@ -130,10 +134,16 @@ class DraftService:
                 return existing  # one draft per packet — return it unchanged
             object_ids = list(packet.intelligence_object_ids or [])
             packet_name = packet.name
+            # Resolve template (and lazy-seed defaults) in this session.
+            resolved_template = await self._template_svc.resolve_template(
+                workspace_id, format, template_id, session
+            )
             # Mark consumed (idempotent) — handoff marker. If the handler already
             # ran on PACKET_READY this is a no-op.
             await repo.mark_packet_consumed(packet_id)
             await session.commit()
+
+        resolved_template_id = resolved_template.id
 
         # ---- 2. Load source objects + budget gate ----
         async with self._sm() as session:
@@ -157,7 +167,10 @@ class DraftService:
 
         # ---- 3. Generate (Sonnet) — outside any transaction ----
         generated = await self._generator.generate(
-            objects=snapshots, format=format, instructions=instructions
+            objects=snapshots,
+            format=format,
+            instructions=instructions,
+            template=resolved_template,
         )
 
         # ---- 4. Record spend durably (tokens were really consumed) ----
@@ -180,6 +193,7 @@ class DraftService:
                 generation_model=self._generator.model,
                 generation_version=self._generator.version,
                 word_count=generated.word_count,
+                template_id=resolved_template_id,
             )
             if draft is None:
                 # Lost the one-per-packet race — return the winner's draft.
@@ -363,6 +377,123 @@ class DraftService:
                 workspace_id=workspace_id,
                 actor_kind="account",
                 actor_id=str(edited_by),
+                correlation_id=correlation_id,
+            )
+            await session.commit()
+            refreshed = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            assert refreshed is not None
+            return refreshed
+
+    # ---------------- format switching (Wave B) ----------------
+
+    async def switch_format(
+        self,
+        *,
+        draft_id: uuid.UUID,
+        new_format: str,
+        template_id: uuid.UUID | None,
+        workspace_id: uuid.UUID,
+        account_id: uuid.UUID,
+        correlation_id: str | None = None,
+    ) -> ContentDraft:
+        """Switch a draft to a new format and regenerate its content.
+
+        Same status guard as regenerate (draft/changes_requested only).
+        Resolves a template for the new format, updates the draft row,
+        and appends a new AI-generated version — all in a single transaction.
+        """
+        # ---- Load draft + packet objects (same snapshot path as regenerate) ----
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            draft = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            if draft is None:
+                raise NotFoundError("Draft not found")
+            if draft.status not in ("draft", "changes_requested"):
+                raise PreconditionFailedError(
+                    "Format can only be switched on drafts in 'draft' or "
+                    "'changes_requested' status",
+                    details={"status": draft.status},
+                )
+            packet = await repo.get_packet(
+                workspace_id=workspace_id, packet_id=draft.packet_id
+            )
+            object_ids = list(packet.intelligence_object_ids or []) if packet else []
+            objects = await repo.get_objects(
+                workspace_id=workspace_id, ids=object_ids
+            )
+            # Resolve template for the NEW format (lazy-seeds defaults if needed).
+            resolved_template = await self._template_svc.resolve_template(
+                workspace_id, new_format, template_id, session
+            )
+            if await repo.budget_remaining(workspace_id) <= 0:
+                logger.warning(
+                    "content.budget_exceeded",
+                    extra={
+                        "workspace_id": str(workspace_id),
+                        "stage": "draft_switch_format",
+                    },
+                )
+                raise RateLimitedError(
+                    "Daily AI budget reached — try again after reset"
+                )
+
+        snapshots = [_snapshot(o) for o in objects]
+
+        # ---- Generate with the new format + template (outside transaction) ----
+        generated = await self._generator.generate(
+            objects=snapshots,
+            format=new_format,
+            instructions=None,
+            template=resolved_template,
+        )
+        if generated.token_count:
+            async with self._sm() as session:
+                await DraftsRepository(session).add_tokens_used(
+                    workspace_id, generated.token_count
+                )
+                await session.commit()
+
+        # ---- Atomic: update format+template_id + append new version + event ----
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            await repo.update_draft_format(
+                draft_id=draft_id,
+                format=new_format,
+                template_id=resolved_template.id,
+            )
+            next_number = await repo.max_version_number(draft_id) + 1
+            await repo.insert_version(
+                draft_id=draft_id,
+                version_number=next_number,
+                content=generated.content,
+                edited_by=account_id,
+                is_ai_generated=True,
+                word_count=generated.word_count,
+                token_count=generated.token_count,
+            )
+            await repo.set_current_version(
+                draft_id=draft_id,
+                version_number=next_number,
+                word_count=generated.word_count,
+            )
+            await enqueue_event(
+                session,
+                name=DRAFT_UPDATED,
+                payload={
+                    "draftId": str(draft_id),
+                    "workspaceId": str(workspace_id),
+                    "versionNumber": next_number,
+                    "editedBy": str(account_id),
+                    "isAiGenerated": True,
+                    "formatChanged": new_format,
+                },
+                workspace_id=workspace_id,
+                actor_kind="account",
+                actor_id=str(account_id),
                 correlation_id=correlation_id,
             )
             await session.commit()

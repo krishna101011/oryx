@@ -111,6 +111,7 @@ class DraftsRepository:
         generation_model: str,
         generation_version: int,
         word_count: int | None,
+        template_id: uuid.UUID | None = None,
     ) -> ContentDraft | None:
         """Insert the draft. ON CONFLICT (workspace_id, packet_id) DO NOTHING —
         a concurrent generate wins and we return None (one draft per packet)."""
@@ -121,6 +122,7 @@ class DraftsRepository:
                 workspace_id=workspace_id,
                 account_id=account_id,
                 packet_id=packet_id,
+                template_id=template_id,
                 format=format,
                 title=title,
                 status="draft",
@@ -136,6 +138,23 @@ class DraftsRepository:
         if new_id is None:
             return None
         return await self.db.get(ContentDraft, new_id)
+
+    async def update_draft_format(
+        self,
+        *,
+        draft_id: uuid.UUID,
+        format: str,
+        template_id: uuid.UUID,
+    ) -> None:
+        await self.db.execute(
+            update(ContentDraft)
+            .where(ContentDraft.id == draft_id)
+            .values(
+                format=format,
+                template_id=template_id,
+                updated_at=datetime.now(UTC),
+            )
+        )
 
     async def list_drafts(
         self,

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import {
   Button,
@@ -10,16 +10,20 @@ import {
   Text,
   useTheme,
 } from '@oryx/design-system';
+import type { ContentFormat, ContentTemplate } from '@oryx/shared-types';
 import {
   useDraft,
   useDraftVersions,
   useRegenerateDraft,
   useSaveVersion,
+  useSwitchFormat,
 } from '../hooks/useDrafts';
 import { FormatBadge } from '../components/FormatBadge';
 import { DraftStatusPill } from '../components/DraftStatusPill';
 import { CitationTag } from '../components/CitationTag';
 import { VersionHistoryList } from '../components/VersionHistoryList';
+import { TemplatePicker } from '../components/TemplatePicker';
+import { CONTENT_FORMATS, FORMAT_LABEL } from '../theme/draftColors';
 
 export const DraftEditorScreen: React.FC = () => {
   const route = useRoute();
@@ -30,9 +34,13 @@ export const DraftEditorScreen: React.FC = () => {
   const versions = useDraftVersions(draftId);
   const save = useSaveVersion(draftId);
   const regen = useRegenerateDraft(draftId);
+  const switchFmt = useSwitchFormat(draftId);
 
   const [content, setContent] = useState('');
   const loadedVersion = useRef<number | null>(null);
+  const [showSwitchSheet, setShowSwitchSheet] = useState(false);
+  const [switchFormat, setSwitchFormat] = useState<ContentFormat>('article');
+  const [switchTemplate, setSwitchTemplate] = useState<ContentTemplate | null>(null);
 
   // Re-seed the editor whenever a new current version lands (generate,
   // regenerate, or save bumps currentVersion). Edits in between are preserved.
@@ -122,6 +130,94 @@ export const DraftEditorScreen: React.FC = () => {
           loading={regen.isPending}
           onPress={() => regen.mutate({})}
         />
+        <Spacer size={2} />
+        <Button
+          label="Switch Format"
+          variant="secondary"
+          fullWidth
+          loading={switchFmt.isPending}
+          onPress={() => {
+            setSwitchFormat(d.format as ContentFormat);
+            setSwitchTemplate(null);
+            setShowSwitchSheet(true);
+          }}
+        />
+
+        <Modal
+          visible={showSwitchSheet}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowSwitchSheet(false)}
+        >
+          <View style={styles.sheetOverlay}>
+            <View
+              style={[
+                styles.sheet,
+                { backgroundColor: theme.colors.bg.elevated },
+              ]}
+            >
+              <Text variant="h2">Switch Format</Text>
+              <Spacer size={3} />
+              <View style={styles.chips}>
+                {CONTENT_FORMATS.map((f) => {
+                  const sel = f === switchFormat;
+                  return (
+                    <Pressable
+                      key={f}
+                      onPress={() => {
+                        setSwitchFormat(f);
+                        setSwitchTemplate(null);
+                      }}
+                    >
+                      <View
+                        style={[
+                          styles.chip,
+                          {
+                            borderColor: sel
+                              ? theme.colors.accent.teal
+                              : theme.colors.border.subtle,
+                            backgroundColor: sel
+                              ? theme.colors.accent.tealGlow
+                              : undefined,
+                          },
+                        ]}
+                      >
+                        <Text variant="caption" color={sel ? 'primary' : 'secondary'}>
+                          {FORMAT_LABEL[f]}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <TemplatePicker
+                format={switchFormat}
+                selectedId={switchTemplate?.id ?? null}
+                onSelect={setSwitchTemplate}
+              />
+              <Spacer size={4} />
+              <Button
+                label="Switch & Regenerate"
+                variant="primary"
+                fullWidth
+                loading={switchFmt.isPending}
+                onPress={() => {
+                  switchFmt.mutate(
+                    { format: switchFormat, template_id: switchTemplate?.id ?? null },
+                    { onSuccess: () => setShowSwitchSheet(false) },
+                  );
+                }}
+              />
+              <Spacer size={2} />
+              <Button
+                label="Cancel"
+                variant="secondary"
+                fullWidth
+                onPress={() => setShowSwitchSheet(false)}
+              />
+            </View>
+          </View>
+        </Modal>
 
         <Spacer size={6} />
         <Text variant="bodySm" color="secondary">
@@ -139,6 +235,13 @@ export const DraftEditorScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   citations: { flexDirection: 'row', flexWrap: 'wrap' },
+  chip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   editor: {
     borderRadius: 10,
     borderWidth: 1,
@@ -151,5 +254,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'space-between',
+  },
+  sheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  sheetOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
 });

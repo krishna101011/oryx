@@ -28,6 +28,7 @@ from oryx.services.drafts.models import (
     GeneratedDraft,
     ObjectSnapshot,
 )
+from oryx.services.templates.models import ContentTemplate
 
 logger = get_logger(__name__)
 
@@ -86,17 +87,36 @@ def _render_object(obj: ObjectSnapshot) -> str:
 
 
 def build_generation_prompt(
-    *, objects: list[ObjectSnapshot], format: str, instructions: str | None
+    *,
+    objects: list[ObjectSnapshot],
+    format: str,
+    instructions: str | None,
+    template: ContentTemplate | None = None,
 ) -> tuple[str, str]:
-    """Build the (system, user) pair. Layer 1 → system; Layers 2-4 → user."""
+    """Build the (system, user) pair. Layer 1 → system; Layers 2-4 → user.
+
+    When a ContentTemplate is provided its tone/max_words/min_words/structure_hint
+    are used for Layer 2. FORMAT_GUIDANCE is retained as a defensive fallback
+    only — it should never be the primary path once Wave B is wired up.
+    """
     system = build_system_context(format)
 
     parts: list[str] = []
-    # Layer 2 — format specification.
+    # Layer 2 — format specification from template (Wave B) or static guidance (fallback).
     parts.append(f"FORMAT: {format}")
-    parts.append(
-        f"FORMAT GUIDANCE: {FORMAT_GUIDANCE.get(format, FORMAT_GUIDANCE['custom'])}"
-    )
+    if template is not None:
+        parts.append(f"TONE: {template.tone}")
+        if template.max_words is not None:
+            parts.append(f"MAX WORDS: {template.max_words}")
+        if template.min_words is not None:
+            parts.append(f"MIN WORDS: {template.min_words}")
+        if template.structure_hint:
+            parts.append(f"STRUCTURE: {template.structure_hint}")
+    else:
+        # Defensive fallback — should not reach here under normal Wave B operation.
+        parts.append(
+            f"FORMAT GUIDANCE: {FORMAT_GUIDANCE.get(format, FORMAT_GUIDANCE['custom'])}"
+        )
     # Layer 3 — source material (the only ground truth).
     parts.append("\nINTELLIGENCE OBJECTS (the only source material):")
     if objects:
@@ -152,11 +172,12 @@ class DraftGeneratorAI:
         objects: list[ObjectSnapshot],
         format: str,
         instructions: str | None = None,
+        template: ContentTemplate | None = None,
     ) -> GeneratedDraft:
         from oryx.core.ai_circuit_breaker import ai_circuit_breaker
 
         system, user = build_generation_prompt(
-            objects=objects, format=format, instructions=instructions
+            objects=objects, format=format, instructions=instructions, template=template
         )
         result = await ai_circuit_breaker.call(
             "draft_generator",

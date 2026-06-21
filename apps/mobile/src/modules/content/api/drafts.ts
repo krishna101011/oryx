@@ -50,4 +50,13 @@ export const draftsApi = {
     },
   ): Promise<ContentDraftDetail> =>
     apiClient().put<ContentDraftDetail, typeof body>(`/drafts/${id}/version`, body),
+
+  switchFormat: (
+    id: string,
+    body: { format: ContentFormat; template_id?: string | null },
+  ): Promise<ContentDraftDetail> =>
+    apiClient().post<ContentDraftDetail, typeof body>(
+      `/drafts/${id}/switch-format`,
+      body,
+    ),
 };

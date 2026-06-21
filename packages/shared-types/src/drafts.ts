@@ -80,3 +80,17 @@ export interface ContentCounts {
   scheduledCount: number;
   publishedThisWeek: number;
 }
+
+/** POST /drafts/generate request (Phase 5 Wave B). */
+export interface GenerateRequest {
+  packetId: string;
+  format: ContentFormat;
+  templateId?: string | null;
+  instructions?: string | null;
+}
+
+/** POST /drafts/{id}/switch-format request (Phase 5 Wave B). */
+export interface SwitchFormatRequest {
+  format: ContentFormat;
+  templateId?: string | null;
+}

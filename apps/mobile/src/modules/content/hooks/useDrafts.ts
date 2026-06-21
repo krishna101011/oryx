@@ -62,3 +62,16 @@ export function useSaveVersion(id: string) {
     },
   });
 }
+
+export function useSwitchFormat(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { format: ContentDraftDetail['format']; template_id?: string | null }) =>
+      draftsApi.switchFormat(id, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['content', 'draft', id] });
+      qc.invalidateQueries({ queryKey: ['content', 'draft', id, 'versions'] });
+      qc.invalidateQueries({ queryKey: ['content', 'drafts'] });
+    },
+  });
+}

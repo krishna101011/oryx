@@ -26,6 +26,7 @@ from oryx.services.drafts.schemas import (
     GenerateDraftRequest,
     RegenerateDraftRequest,
     SaveVersionRequest,
+    SwitchFormatRequest,
 )
 from oryx.services.drafts.service import DraftService
 
@@ -115,6 +116,7 @@ async def generate_draft(
         instructions=body.instructions,
         account_id=principal.account_id,
         workspace_id=ws.workspace_id,
+        template_id=uuid.UUID(body.template_id) if body.template_id else None,
     )
     return await _detail_response(svc, ws.workspace_id, draft.id, request)
 
@@ -159,6 +161,28 @@ async def save_version(
         edit_note=body.edit_note,
         account_id=principal.account_id,
         workspace_id=ws.workspace_id,
+    )
+    return await _detail_response(svc, ws.workspace_id, draft.id, request)
+
+
+@router.post(
+    "/{draft_id}/switch-format",
+    dependencies=[Depends(require_capability("content.write"))],
+)
+async def switch_format(
+    draft_id: uuid.UUID,
+    body: SwitchFormatRequest,
+    request: Request,
+    principal: CurrentPrincipal = Depends(get_principal),
+    ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+) -> dict[str, Any]:
+    svc = _svc()
+    draft = await svc.switch_format(
+        draft_id=draft_id,
+        new_format=body.format,
+        template_id=uuid.UUID(body.template_id) if body.template_id else None,
+        workspace_id=ws.workspace_id,
+        account_id=principal.account_id,
     )
     return await _detail_response(svc, ws.workspace_id, draft.id, request)
 

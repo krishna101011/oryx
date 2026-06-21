@@ -925,3 +925,57 @@ class ContentCounts(_Base):
     pending_review_count: int = Field(alias="pendingReviewCount")
     scheduled_count: int = Field(alias="scheduledCount")
     published_this_week: int = Field(alias="publishedThisWeek")
+
+
+class GenerateRequest(_Base):
+    packet_id: str = Field(alias="packetId")
+    format: ContentFormat
+    template_id: str | None = Field(default=None, alias="templateId")
+    instructions: str | None = Field(default=None)
+
+
+class SwitchFormatRequest(_Base):
+    format: ContentFormat
+    template_id: str | None = Field(default=None, alias="templateId")
+
+
+# ============================================================================
+# Phase 5 Wave B — content templates
+# ============================================================================
+
+ContentTone = Literal[
+    "formal",
+    "analytical",
+    "conversational",
+    "authoritative",
+    "concise",
+]
+
+
+class ContentTemplate(_Base):
+    id: str
+    workspace_id: str = Field(alias="workspaceId")
+    name: str
+    format: ContentFormat
+    tone: ContentTone
+    max_words: int | None = Field(default=None, alias="maxWords")
+    min_words: int | None = Field(default=None, alias="minWords")
+    structure_hint: str | None = Field(default=None, alias="structureHint")
+    is_default: bool = Field(alias="isDefault")
+
+
+class CreateTemplateRequest(_Base):
+    name: str
+    format: ContentFormat
+    tone: ContentTone = "analytical"
+    max_words: int | None = Field(default=None, alias="maxWords")
+    min_words: int | None = Field(default=None, alias="minWords")
+    structure_hint: str | None = Field(default=None, alias="structureHint")
+
+
+class UpdateTemplateRequest(_Base):
+    name: str | None = None
+    tone: ContentTone | None = None
+    max_words: int | None = Field(default=None, alias="maxWords")
+    min_words: int | None = Field(default=None, alias="minWords")
+    structure_hint: str | None = Field(default=None, alias="structureHint")

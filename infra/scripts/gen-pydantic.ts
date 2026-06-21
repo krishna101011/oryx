@@ -30,6 +30,7 @@ const SOURCES = [
   'intake.ts', 'verification.ts', 'scoring.ts', 'conflicts.ts',
   'intelligence.ts', 'research.ts', 'drafts.ts',
   'content.ts', 'publishing.ts', 'automation.ts', 'analytics.ts', 'training.ts',
+  'templates.ts',
 ];
 
 function main(): void {

@@ -9,10 +9,11 @@ import {
   Text,
   useTheme,
 } from '@oryx/design-system';
-import type { ContentFormat } from '@oryx/shared-types';
+import type { ContentFormat, ContentTemplate } from '@oryx/shared-types';
 import { usePackets } from '../../research/hooks/useResearch';
 import { useGenerateDraft } from '../hooks/useDrafts';
 import { CONTENT_FORMATS, FORMAT_LABEL } from '../theme/draftColors';
+import { TemplatePicker } from '../components/TemplatePicker';
 
 export const GenerateDraftScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -22,6 +23,7 @@ export const GenerateDraftScreen: React.FC = () => {
 
   const [packetId, setPacketId] = useState<string | null>(null);
   const [format, setFormat] = useState<ContentFormat>('article');
+  const [selectedTemplate, setSelectedTemplate] = useState<ContentTemplate | null>(null);
   const [instructions, setInstructions] = useState('');
 
   const readyPackets = (packets.data ?? []).filter((p) => p.status === 'ready');
@@ -32,6 +34,7 @@ export const GenerateDraftScreen: React.FC = () => {
       {
         packet_id: packetId,
         format,
+        template_id: selectedTemplate?.id ?? null,
         instructions: instructions.trim() || null,
       },
       {
@@ -91,7 +94,13 @@ export const GenerateDraftScreen: React.FC = () => {
           {CONTENT_FORMATS.map((f) => {
             const selected = f === format;
             return (
-              <Pressable key={f} onPress={() => setFormat(f)}>
+              <Pressable
+                key={f}
+                onPress={() => {
+                  setFormat(f);
+                  setSelectedTemplate(null);
+                }}
+              >
                 <View
                   style={[
                     styles.chip,
@@ -116,6 +125,12 @@ export const GenerateDraftScreen: React.FC = () => {
             );
           })}
         </View>
+
+        <TemplatePicker
+          format={format}
+          selectedId={selectedTemplate?.id ?? null}
+          onSelect={setSelectedTemplate}
+        />
 
         <Spacer size={4} />
         <Text variant="bodySm" color="secondary">

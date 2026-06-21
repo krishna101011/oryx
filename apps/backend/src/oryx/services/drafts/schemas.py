@@ -34,3 +34,8 @@ class SaveVersionRequest(BaseModel):
     content: str
     content_html: str | None = None
     edit_note: str | None = None
+
+
+class SwitchFormatRequest(BaseModel):
+    format: ContentFormat
+    template_id: str | None = None
