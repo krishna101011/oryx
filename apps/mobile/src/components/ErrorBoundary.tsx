@@ -43,6 +43,9 @@ export class ErrorBoundary extends React.Component<
   }
 }
 
+// The boundary may render when ThemeProvider itself crashed, so design-system
+// tokens are unavailable here by construction. Raw hex is intentional.
+/* eslint-disable no-restricted-syntax */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -75,3 +78,4 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
 });
+/* eslint-enable no-restricted-syntax */
