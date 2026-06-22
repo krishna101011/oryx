@@ -42,6 +42,7 @@ export const SettingsHomeScreen: React.FC = () => {
           label="Edit profile"
           description="Display name, headline"
           icon="User"
+          accent="teal"
           onPress={() => navigation.navigate('ProfileEdit' as never)}
         />
 
@@ -53,6 +54,7 @@ export const SettingsHomeScreen: React.FC = () => {
         <SettingsRow
           label="Change password"
           icon="KeyRound"
+          accent="indigo"
           onPress={() => navigation.navigate('ChangePassword' as never)}
         />
         <Spacer size={2} />
@@ -60,6 +62,7 @@ export const SettingsHomeScreen: React.FC = () => {
           label="Active sessions"
           description="Devices currently signed in"
           icon="MonitorSmartphone"
+          accent="indigo"
           onPress={() => navigation.navigate('ActiveSessions' as never)}
         />
 
@@ -72,6 +75,7 @@ export const SettingsHomeScreen: React.FC = () => {
           label="Notification preferences"
           description="Frequency and channels"
           icon="Bell"
+          accent="blue"
           onPress={() => navigation.navigate('AlertsSettings' as never)}
         />
 
@@ -84,6 +88,7 @@ export const SettingsHomeScreen: React.FC = () => {
           label="Trusted sources"
           description="Enable, disable, and override confidence"
           icon="ListChecks"
+          accent="violet"
           onPress={() => navigation.navigate('TrustedSources' as never)}
         />
         <Spacer size={2} />
@@ -91,6 +96,7 @@ export const SettingsHomeScreen: React.FC = () => {
           label="Source intake"
           description="Connections, sync health, activity"
           icon="Inbox"
+          accent="violet"
           onPress={() => navigation.navigate('IntakeHome' as never)}
         />
 
@@ -103,6 +109,7 @@ export const SettingsHomeScreen: React.FC = () => {
           label="Review queue"
           description="Claims to review and open conflicts"
           icon="ShieldCheck"
+          accent="teal"
           onPress={() => navigation.navigate('VerificationQueue' as never)}
         />
 

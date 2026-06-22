@@ -8,7 +8,7 @@ export type IconSize = 'sm' | 'md' | 'lg';
 export interface IconProps {
   name: IconName;
   size?: IconSize | number;
-  color?: 'primary' | 'secondary' | 'tertiary' | 'brand' | 'danger';
+  color?: 'primary' | 'secondary' | 'tertiary' | 'brand' | 'danger' | 'indigo' | 'violet' | 'blue';
 }
 
 const SIZE_MAP: Record<IconSize, number> = { sm: 16, md: 20, lg: 24 };
@@ -29,7 +29,13 @@ export const Icon: React.FC<IconProps> = ({
       ? t.colors.accent.teal
       : color === 'danger'
         ? t.colors.semantic.danger
-        : t.colors.text[color];
+        : color === 'indigo'
+          ? t.colors.accent.indigo
+          : color === 'violet'
+            ? t.colors.accent.violet
+            : color === 'blue'
+              ? t.colors.accent.blue
+              : t.colors.text[color];
 
   return <LucideIcon size={px} color={resolvedColor} strokeWidth={1.75} />;
 };
