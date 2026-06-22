@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   ContentDraft,
   ContentDraftDetail,
+  DraftReview,
   DraftVersion,
 } from '@oryx/shared-types';
 import { type GenerateBody, draftsApi } from '../api/drafts';
@@ -74,4 +75,59 @@ export function useSwitchFormat(id: string) {
       qc.invalidateQueries({ queryKey: ['content', 'drafts'] });
     },
   });
+}
+
+// ---- Wave C: review workflow ----
+
+/** The review queue reuses the Wave A filtered list (status=in_review). */
+export function useReviewQueue() {
+  return useQuery<ContentDraft[]>({
+    queryKey: ['content', 'drafts', 'in_review'],
+    queryFn: async () => (await draftsApi.listByStatus('in_review')).data,
+  });
+}
+
+export function useDraftReviews(id: string) {
+  return useQuery<DraftReview[]>({
+    queryKey: ['content', 'draft', id, 'reviews'],
+    queryFn: async () => (await draftsApi.listReviews(id)).data,
+  });
+}
+
+function useReviewAction<TBody>(
+  id: string,
+  fn: (id: string, body: TBody) => Promise<ContentDraftDetail>,
+) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: TBody) => fn(id, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['content', 'draft', id] });
+      qc.invalidateQueries({ queryKey: ['content', 'draft', id, 'reviews'] });
+      qc.invalidateQueries({ queryKey: ['content', 'drafts'] });
+    },
+  });
+}
+
+export function useSubmitReview(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => draftsApi.submitReview(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['content', 'draft', id] });
+      qc.invalidateQueries({ queryKey: ['content', 'drafts'] });
+    },
+  });
+}
+
+export function useApproveDraft(id: string) {
+  return useReviewAction<{ note?: string }>(id, draftsApi.approve);
+}
+
+export function useRejectDraft(id: string) {
+  return useReviewAction<{ note: string }>(id, draftsApi.reject);
+}
+
+export function useRequestChanges(id: string) {
+  return useReviewAction<{ note: string }>(id, draftsApi.requestChanges);
 }

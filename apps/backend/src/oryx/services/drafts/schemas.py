@@ -39,3 +39,18 @@ class SaveVersionRequest(BaseModel):
 class SwitchFormatRequest(BaseModel):
     format: ContentFormat
     template_id: str | None = None
+
+
+# --- Wave C: review workflow ---
+# `note` requirement for reject/request-changes is enforced in the service
+# layer (HTTP 400), not the schema, so the guard is owned in one place.
+class ApproveDraftRequest(BaseModel):
+    note: str | None = None
+
+
+class RejectDraftRequest(BaseModel):
+    note: str
+
+
+class RequestChangesRequest(BaseModel):
+    note: str

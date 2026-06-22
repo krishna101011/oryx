@@ -5,6 +5,7 @@ import type { ContentStackParamList } from './types';
 import { ContentHomeScreen } from '../modules/content/screens/ContentHomeScreen';
 import { GenerateDraftScreen } from '../modules/content/screens/GenerateDraftScreen';
 import { DraftEditorScreen } from '../modules/content/screens/DraftEditorScreen';
+import { ReviewQueueScreen } from '../modules/content/screens/ReviewQueueScreen';
 
 const Stack = createNativeStackNavigator<ContentStackParamList>();
 
@@ -32,6 +33,11 @@ export const ContentStack: React.FC = () => {
         name="DraftEditor"
         component={DraftEditorScreen}
         options={{ title: 'Draft' }}
+      />
+      <Stack.Screen
+        name="ReviewQueue"
+        component={ReviewQueueScreen}
+        options={{ title: 'Review queue' }}
       />
     </Stack.Navigator>
   );

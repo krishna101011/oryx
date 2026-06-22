@@ -1154,3 +1154,38 @@ class ContentTemplate(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+# ============================================================================
+# Phase 5 Wave C — review workflow + approval
+# ============================================================================
+
+
+class DraftReview(Base):
+    """Append-only audit row, one per review action (submit→approve/reject/
+    changes_requested). `note` is nullable at the DB layer (frozen schema); the
+    non-empty requirement for rejected/changes_requested is a service-layer
+    guard (Wave C Refinement 1), mirroring analyst_reviews."""
+
+    __tablename__ = "draft_reviews"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    draft_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("content_drafts.id", ondelete="CASCADE"), nullable=False
+    )
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+    )
+    outcome: Mapped[str] = mapped_column(
+        Enum(
+            "approved", "rejected", "changes_requested",
+            name="review_outcome_enum",
+        ),
+        nullable=False,
+    )
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    # idx_draft_reviews_draft (draft_id, created_at DESC) lives in migration 0011.

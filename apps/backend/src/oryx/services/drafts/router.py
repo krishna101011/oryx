@@ -21,10 +21,13 @@ from oryx.core.dependencies import (
     get_request_id,
     require_capability,
 )
-from oryx.core.models import ContentDraft, DraftVersion
+from oryx.core.models import ContentDraft, DraftReview, DraftVersion
 from oryx.services.drafts.schemas import (
+    ApproveDraftRequest,
     GenerateDraftRequest,
     RegenerateDraftRequest,
+    RejectDraftRequest,
+    RequestChangesRequest,
     SaveVersionRequest,
     SwitchFormatRequest,
 )
@@ -69,6 +72,18 @@ def _version_dict(v: DraftVersion) -> dict[str, Any]:
         "tokenCount": v.token_count,
         "isAiGenerated": v.is_ai_generated,
         "createdAt": v.created_at.isoformat(),
+    }
+
+
+def _review_dict(r: DraftReview) -> dict[str, Any]:
+    return {
+        "id": str(r.id),
+        "draftId": str(r.draft_id),
+        "versionNumber": r.version_number,
+        "accountId": str(r.account_id),
+        "outcome": r.outcome,
+        "note": r.note,
+        "createdAt": r.created_at.isoformat(),
     }
 
 
@@ -185,6 +200,106 @@ async def switch_format(
         account_id=principal.account_id,
     )
     return await _detail_response(svc, ws.workspace_id, draft.id, request)
+
+
+# ---------------- review workflow (Wave C) ----------------
+
+
+@router.post(
+    "/{draft_id}/submit-review",
+    dependencies=[Depends(require_capability("content.write"))],
+)
+async def submit_review(
+    draft_id: uuid.UUID,
+    request: Request,
+    principal: CurrentPrincipal = Depends(get_principal),
+    ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+) -> dict[str, Any]:
+    svc = _svc()
+    draft = await svc.submit_review(
+        draft_id=draft_id,
+        account_id=principal.account_id,
+        workspace_id=ws.workspace_id,
+    )
+    return await _detail_response(svc, ws.workspace_id, draft.id, request)
+
+
+@router.post(
+    "/{draft_id}/approve",
+    dependencies=[Depends(require_capability("content.write"))],
+)
+async def approve_draft(
+    draft_id: uuid.UUID,
+    body: ApproveDraftRequest,
+    request: Request,
+    principal: CurrentPrincipal = Depends(get_principal),
+    ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+) -> dict[str, Any]:
+    svc = _svc()
+    draft = await svc.approve_draft(
+        draft_id=draft_id,
+        account_id=principal.account_id,
+        workspace_id=ws.workspace_id,
+        note=body.note,
+    )
+    return await _detail_response(svc, ws.workspace_id, draft.id, request)
+
+
+@router.post(
+    "/{draft_id}/reject",
+    dependencies=[Depends(require_capability("content.write"))],
+)
+async def reject_draft(
+    draft_id: uuid.UUID,
+    body: RejectDraftRequest,
+    request: Request,
+    principal: CurrentPrincipal = Depends(get_principal),
+    ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+) -> dict[str, Any]:
+    svc = _svc()
+    draft = await svc.reject_draft(
+        draft_id=draft_id,
+        account_id=principal.account_id,
+        workspace_id=ws.workspace_id,
+        note=body.note,
+    )
+    return await _detail_response(svc, ws.workspace_id, draft.id, request)
+
+
+@router.post(
+    "/{draft_id}/request-changes",
+    dependencies=[Depends(require_capability("content.write"))],
+)
+async def request_changes(
+    draft_id: uuid.UUID,
+    body: RequestChangesRequest,
+    request: Request,
+    principal: CurrentPrincipal = Depends(get_principal),
+    ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+) -> dict[str, Any]:
+    svc = _svc()
+    draft = await svc.request_changes(
+        draft_id=draft_id,
+        account_id=principal.account_id,
+        workspace_id=ws.workspace_id,
+        note=body.note,
+    )
+    return await _detail_response(svc, ws.workspace_id, draft.id, request)
+
+
+@router.get(
+    "/{draft_id}/reviews",
+    dependencies=[Depends(require_capability("content.read"))],
+)
+async def list_reviews(
+    draft_id: uuid.UUID,
+    request: Request,
+    ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+) -> dict[str, Any]:
+    rows = await _svc().list_reviews(
+        workspace_id=ws.workspace_id, draft_id=draft_id
+    )
+    return envelope([_review_dict(r) for r in rows], request_id=get_request_id(request))
 
 
 # ---------------- reads ----------------

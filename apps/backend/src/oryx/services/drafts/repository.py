@@ -14,10 +14,14 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oryx.core.models import (
+    Account,
     ContentDraft,
     DraftCitation,
+    DraftReview,
     DraftVersion,
     IntelligenceObject,
+    OutboxEvent,
+    Preferences,
     ResearchPacket,
     Workspace,
     WorkspaceAIBudget,
@@ -186,6 +190,15 @@ class DraftsRepository:
             )
         )
 
+    async def set_draft_status(self, *, draft_id: uuid.UUID, status: str) -> None:
+        """Status-only transition (Wave C). Used by the review actions and by
+        the changes_requested → draft auto-revert on edit / format switch."""
+        await self.db.execute(
+            update(ContentDraft)
+            .where(ContentDraft.id == draft_id)
+            .values(status=status, updated_at=datetime.now(UTC))
+        )
+
     # ---------------- versions (append-only) ----------------
 
     async def max_version_number(self, draft_id: uuid.UUID) -> int:
@@ -301,3 +314,70 @@ class DraftsRepository:
             )
         )
         await self.db.execute(stmt)
+
+    # ---------------- reviews (Wave C) ----------------
+
+    async def insert_review(
+        self,
+        *,
+        draft_id: uuid.UUID,
+        version_number: int,
+        account_id: uuid.UUID,
+        outcome: str,
+        note: str | None,
+    ) -> DraftReview:
+        row = DraftReview(
+            id=uuid.uuid4(),
+            draft_id=draft_id,
+            version_number=version_number,
+            account_id=account_id,
+            outcome=outcome,
+            note=note,
+        )
+        self.db.add(row)
+        await self.db.flush()
+        return row
+
+    async def list_reviews(self, draft_id: uuid.UUID) -> list[DraftReview]:
+        result = await self.db.execute(
+            select(DraftReview)
+            .where(DraftReview.draft_id == draft_id)
+            .order_by(DraftReview.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_account(self, account_id: uuid.UUID) -> Account | None:
+        return await self.db.get(Account, account_id)
+
+    async def get_verification_strictness(self, account_id: uuid.UUID) -> str | None:
+        """Account-scoped review policy (Phase 2 preferences table). Returns
+        None when the account has no preferences row — the caller defaults to
+        'balanced' (same-account approval blocked)."""
+        result = await self.db.execute(
+            select(Preferences.verification_strictness).where(
+                Preferences.account_id == account_id
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def latest_event_id_for_draft(
+        self, draft_id: uuid.UUID, event_names: tuple[str, ...]
+    ) -> str | None:
+        """Causation parent: the most recent outbox event for this draft whose
+        name is in `event_names`, tried in order (Wave C passes
+        (DRAFT_UPDATED, DRAFT_CREATED) per the architecture doc's chain)."""
+        draft_str = str(draft_id)
+        for name in event_names:
+            result = await self.db.execute(
+                select(OutboxEvent.id)
+                .where(
+                    OutboxEvent.event_name == name,
+                    OutboxEvent.event["payload"]["draftId"].astext == draft_str,
+                )
+                .order_by(OutboxEvent.created_at.desc())
+                .limit(1)
+            )
+            event_id = result.scalar_one_or_none()
+            if event_id is not None:
+                return str(event_id)
+        return None

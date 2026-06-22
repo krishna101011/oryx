@@ -28,6 +28,16 @@ export const ContentHomeScreen: React.FC = () => {
             navigation.navigate('GenerateDraft')
           }
         />
+        <Spacer size={2} />
+        <Button
+          label="Review queue"
+          variant="secondary"
+          fullWidth
+          onPress={() =>
+            // @ts-expect-error param-less navigate within the content stack
+            navigation.navigate('ReviewQueue')
+          }
+        />
 
         <Spacer size={6} />
         {drafts.isLoading ? (

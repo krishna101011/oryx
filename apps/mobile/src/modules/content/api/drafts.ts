@@ -8,6 +8,8 @@ import type {
   ContentDraft,
   ContentDraftDetail,
   ContentFormat,
+  DraftReview,
+  DraftStatus,
   DraftVersion,
 } from '@oryx/shared-types';
 import { apiClient } from '../../../lib/api/client';
@@ -22,6 +24,11 @@ export interface GenerateBody {
 export const draftsApi = {
   list: (): Promise<ApiResponse<ContentDraft[]>> =>
     apiClient().getEnvelope<ContentDraft[]>('/drafts'),
+
+  // Wave C: the review queue reuses the Wave A filtered-list endpoint —
+  // there is deliberately no dedicated review-queue endpoint.
+  listByStatus: (status: DraftStatus): Promise<ApiResponse<ContentDraft[]>> =>
+    apiClient().getEnvelope<ContentDraft[]>(`/drafts?status=${status}`),
 
   get: (id: string): Promise<ContentDraftDetail> =>
     apiClient().get<ContentDraftDetail>(`/drafts/${id}`),
@@ -59,4 +66,27 @@ export const draftsApi = {
       `/drafts/${id}/switch-format`,
       body,
     ),
+
+  // ---- Wave C: review workflow ----
+
+  submitReview: (id: string): Promise<ContentDraftDetail> =>
+    apiClient().post<ContentDraftDetail>(`/drafts/${id}/submit-review`),
+
+  approve: (id: string, body: { note?: string }): Promise<ContentDraftDetail> =>
+    apiClient().post<ContentDraftDetail, typeof body>(`/drafts/${id}/approve`, body),
+
+  reject: (id: string, body: { note: string }): Promise<ContentDraftDetail> =>
+    apiClient().post<ContentDraftDetail, typeof body>(`/drafts/${id}/reject`, body),
+
+  requestChanges: (
+    id: string,
+    body: { note: string },
+  ): Promise<ContentDraftDetail> =>
+    apiClient().post<ContentDraftDetail, typeof body>(
+      `/drafts/${id}/request-changes`,
+      body,
+    ),
+
+  listReviews: (id: string): Promise<ApiResponse<DraftReview[]>> =>
+    apiClient().getEnvelope<DraftReview[]>(`/drafts/${id}/reviews`),
 };

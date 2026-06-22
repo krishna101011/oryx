@@ -43,6 +43,9 @@ export * from './drafts';
 // ---- Phase 5 Wave B ----
 export * from './templates';
 
+// ---- Phase 5 Wave C ----
+export * from './review';
+
 export * as Verification from './verification';
 export * as Scoring from './scoring';
 export * as Content from './content';

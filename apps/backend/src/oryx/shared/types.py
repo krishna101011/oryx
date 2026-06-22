@@ -979,3 +979,32 @@ class UpdateTemplateRequest(_Base):
     max_words: int | None = Field(default=None, alias="maxWords")
     min_words: int | None = Field(default=None, alias="minWords")
     structure_hint: str | None = Field(default=None, alias="structureHint")
+
+
+# ============================================================================
+# Phase 5 Wave C — review workflow
+# ============================================================================
+
+ReviewOutcome = Literal["approved", "rejected", "changes_requested"]
+
+
+class DraftReview(_Base):
+    id: str
+    draft_id: str = Field(alias="draftId")
+    version_number: int = Field(alias="versionNumber")
+    account_id: str = Field(alias="accountId")
+    outcome: ReviewOutcome
+    note: str | None = None
+    created_at: datetime = Field(alias="createdAt")
+
+
+class ApproveDraftRequest(_Base):
+    note: str | None = None
+
+
+class RejectDraftRequest(_Base):
+    note: str
+
+
+class RequestChangesRequest(_Base):
+    note: str

@@ -31,8 +31,18 @@ from oryx.core.errors import (
     RateLimitedError,
 )
 from oryx.core.logging import get_logger
-from oryx.core.models import ContentDraft, DraftVersion, IntelligenceObject
-from oryx.services.drafts.events.constants import DRAFT_CREATED, DRAFT_UPDATED
+from oryx.core.models import (
+    ContentDraft,
+    DraftReview,
+    DraftVersion,
+    IntelligenceObject,
+)
+from oryx.services.drafts.events.constants import (
+    DRAFT_APPROVED,
+    DRAFT_CREATED,
+    DRAFT_REJECTED,
+    DRAFT_UPDATED,
+)
 from oryx.services.drafts.generator import DraftGeneratorAI
 from oryx.services.drafts.models import ObjectSnapshot
 from oryx.services.drafts.repository import DraftsRepository
@@ -56,6 +66,31 @@ def _snapshot(obj: IntelligenceObject) -> ObjectSnapshot:
 
 def _word_count(text: str) -> int:
     return len(text.split())
+
+
+def _require_note(note: str | None) -> str:
+    """Wave C Refinement 1: 'rejected' and 'changes_requested' must carry a
+    reason. Service-layer 400 on empty/whitespace, before any DB work — the
+    same contract analyst_reviews uses. Returns the trimmed note."""
+    trimmed = (note or "").strip()
+    if not trimmed:
+        raise BadRequestError("A note is required for this review outcome")
+    return trimmed
+
+
+def _self_approval_allowed(
+    *, is_platform_admin: bool, strictness: str, is_self: bool
+) -> bool:
+    """Review policy (§15.3). A reviewer approving someone else's draft is
+    always fine. Approving your OWN draft is the rubber-stamp risk: allowed only
+    when the reviewing account is a platform admin, or its
+    verification_strictness is 'loose'. 'balanced'/'strict' (and the absent
+    default, which the caller maps to 'balanced') block it."""
+    if not is_self:
+        return True
+    if is_platform_admin:
+        return True
+    return strictness == "loose"
 
 
 class DraftService:
@@ -325,6 +360,11 @@ class DraftService:
             word_count=_word_count(content),
             token_count=None,
             correlation_id=correlation_id,
+            # Wave C Refinement 2: an analyst edit on a draft that was sent back
+            # for changes pulls it out of 'changes_requested' and back to 'draft'
+            # (the single re-entry point for submit-review). AI regeneration does
+            # NOT trigger this — only an explicit analyst save.
+            revert_changes_requested=True,
         )
 
     async def _append_version(
@@ -340,6 +380,7 @@ class DraftService:
         content_html: str | None = None,
         edit_note: str | None = None,
         correlation_id: str | None = None,
+        revert_changes_requested: bool = False,
     ) -> ContentDraft:
         async with self._sm() as session:
             repo = DraftsRepository(session)
@@ -348,6 +389,9 @@ class DraftService:
             )
             if draft is None:
                 raise NotFoundError("Draft not found")
+            # Status read BEFORE the write — used for the changes_requested
+            # auto-revert (Wave C Refinement 2).
+            prior_status = draft.status
             next_number = await repo.max_version_number(draft_id) + 1
             await repo.insert_version(
                 draft_id=draft_id,
@@ -365,6 +409,8 @@ class DraftService:
                 version_number=next_number,
                 word_count=word_count,
             )
+            if revert_changes_requested and prior_status == "changes_requested":
+                await repo.set_draft_status(draft_id=draft_id, status="draft")
             await enqueue_event(
                 session,
                 name=DRAFT_UPDATED,
@@ -419,6 +465,9 @@ class DraftService:
                     "'changes_requested' status",
                     details={"status": draft.status},
                 )
+            # Captured before the AI call / write for the changes_requested
+            # auto-revert (Wave C Refinement 2).
+            prior_status = draft.status
             packet = await repo.get_packet(
                 workspace_id=workspace_id, packet_id=draft.packet_id
             )
@@ -481,6 +530,8 @@ class DraftService:
                 version_number=next_number,
                 word_count=generated.word_count,
             )
+            if prior_status == "changes_requested":
+                await repo.set_draft_status(draft_id=draft_id, status="draft")
             await enqueue_event(
                 session,
                 name=DRAFT_UPDATED,
@@ -503,6 +554,252 @@ class DraftService:
             )
             assert refreshed is not None
             return refreshed
+
+    # ---------------- review workflow (Wave C) ----------------
+
+    async def submit_review(
+        self,
+        *,
+        draft_id: uuid.UUID,
+        account_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        correlation_id: str | None = None,
+    ) -> ContentDraft:
+        """draft → in_review. Callable ONLY from 'draft' (Refinement 2): a draft
+        sent back for changes re-enters this flow by being edited back to
+        'draft' first, never by submitting directly from 'changes_requested'."""
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            draft = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            if draft is None:
+                raise NotFoundError("Draft not found")
+            if draft.status != "draft":
+                raise PreconditionFailedError(
+                    "Only a draft in 'draft' status can be submitted for review",
+                    details={"status": draft.status},
+                )
+            await repo.set_draft_status(draft_id=draft_id, status="in_review")
+            await enqueue_event(
+                session,
+                name=DRAFT_UPDATED,
+                payload={
+                    "draftId": str(draft_id),
+                    "workspaceId": str(workspace_id),
+                    "versionNumber": draft.current_version,
+                    "submittedBy": str(account_id),
+                    "statusChange": "in_review",
+                },
+                workspace_id=workspace_id,
+                actor_kind="account",
+                actor_id=str(account_id),
+                correlation_id=correlation_id,
+            )
+            await session.commit()
+            refreshed = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            assert refreshed is not None
+            return refreshed
+
+    async def approve_draft(
+        self,
+        *,
+        draft_id: uuid.UUID,
+        account_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        note: str | None,
+        correlation_id: str | None = None,
+    ) -> ContentDraft:
+        """in_review → approved. Self-approval is gated by §15.3 review policy;
+        a clean approval needs no note (Refinement 1)."""
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            draft = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            if draft is None:
+                raise NotFoundError("Draft not found")
+            if draft.status != "in_review":
+                raise PreconditionFailedError(
+                    "Only a draft in 'in_review' status can be approved",
+                    details={"status": draft.status},
+                )
+            # Self-approval eligibility — keyed on the REVIEWING account's own
+            # preference (account-scoped per Phase 2). Absent prefs → 'balanced'.
+            is_self = account_id == draft.account_id
+            account = await repo.get_account(account_id)
+            is_platform_admin = bool(account and account.is_platform_admin)
+            strictness = (
+                await repo.get_verification_strictness(account_id) or "balanced"
+            )
+            if not _self_approval_allowed(
+                is_platform_admin=is_platform_admin,
+                strictness=strictness,
+                is_self=is_self,
+            ):
+                raise PreconditionFailedError(
+                    "A different reviewer must approve this draft",
+                    details={"policy": strictness},
+                )
+            clean_note = (note or "").strip() or None
+            await repo.insert_review(
+                draft_id=draft_id,
+                version_number=draft.current_version,
+                account_id=account_id,
+                outcome="approved",
+                note=clean_note,
+            )
+            await repo.set_draft_status(draft_id=draft_id, status="approved")
+            # Causation chain (§8.2): approved ← most recent updated, else created.
+            causation_id = await repo.latest_event_id_for_draft(
+                draft_id, (DRAFT_UPDATED, DRAFT_CREATED)
+            )
+            await enqueue_event(
+                session,
+                name=DRAFT_APPROVED,
+                payload={
+                    "draftId": str(draft_id),
+                    "workspaceId": str(workspace_id),
+                    "reviewedBy": str(account_id),
+                    "versionNumber": draft.current_version,
+                },
+                workspace_id=workspace_id,
+                actor_kind="account",
+                actor_id=str(account_id),
+                causation_id=causation_id,
+                correlation_id=correlation_id,
+            )
+            await session.commit()
+            refreshed = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            assert refreshed is not None
+            return refreshed
+
+    async def reject_draft(
+        self,
+        *,
+        draft_id: uuid.UUID,
+        account_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        note: str,
+        correlation_id: str | None = None,
+    ) -> ContentDraft:
+        """in_review → rejected. Note required (Refinement 1). No self-account
+        restriction — rejecting your own work carries no rubber-stamp risk."""
+        clean_note = _require_note(note)
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            draft = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            if draft is None:
+                raise NotFoundError("Draft not found")
+            if draft.status != "in_review":
+                raise PreconditionFailedError(
+                    "Only a draft in 'in_review' status can be rejected",
+                    details={"status": draft.status},
+                )
+            await repo.insert_review(
+                draft_id=draft_id,
+                version_number=draft.current_version,
+                account_id=account_id,
+                outcome="rejected",
+                note=clean_note,
+            )
+            await repo.set_draft_status(draft_id=draft_id, status="rejected")
+            await enqueue_event(
+                session,
+                name=DRAFT_REJECTED,
+                payload={
+                    "draftId": str(draft_id),
+                    "workspaceId": str(workspace_id),
+                    "reviewedBy": str(account_id),
+                    "reason": clean_note,
+                },
+                workspace_id=workspace_id,
+                actor_kind="account",
+                actor_id=str(account_id),
+                correlation_id=correlation_id,
+            )
+            await session.commit()
+            refreshed = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            assert refreshed is not None
+            return refreshed
+
+    async def request_changes(
+        self,
+        *,
+        draft_id: uuid.UUID,
+        account_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        note: str,
+        correlation_id: str | None = None,
+    ) -> ContentDraft:
+        """in_review → changes_requested. Note required (Refinement 1). Reuses
+        DRAFT_UPDATED — this is an internal lifecycle status, not a distinct
+        event. No self-account restriction."""
+        clean_note = _require_note(note)
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            draft = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            if draft is None:
+                raise NotFoundError("Draft not found")
+            if draft.status != "in_review":
+                raise PreconditionFailedError(
+                    "Only a draft in 'in_review' status can have changes "
+                    "requested",
+                    details={"status": draft.status},
+                )
+            await repo.insert_review(
+                draft_id=draft_id,
+                version_number=draft.current_version,
+                account_id=account_id,
+                outcome="changes_requested",
+                note=clean_note,
+            )
+            await repo.set_draft_status(
+                draft_id=draft_id, status="changes_requested"
+            )
+            await enqueue_event(
+                session,
+                name=DRAFT_UPDATED,
+                payload={
+                    "draftId": str(draft_id),
+                    "workspaceId": str(workspace_id),
+                    "versionNumber": draft.current_version,
+                    "reviewedBy": str(account_id),
+                    "statusChange": "changes_requested",
+                },
+                workspace_id=workspace_id,
+                actor_kind="account",
+                actor_id=str(account_id),
+                correlation_id=correlation_id,
+            )
+            await session.commit()
+            refreshed = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            assert refreshed is not None
+            return refreshed
+
+    async def list_reviews(
+        self, *, workspace_id: uuid.UUID, draft_id: uuid.UUID
+    ) -> list[DraftReview]:
+        async with self._sm() as session:
+            repo = DraftsRepository(session)
+            draft = await repo.get_draft(
+                workspace_id=workspace_id, draft_id=draft_id
+            )
+            if draft is None:
+                raise NotFoundError("Draft not found")
+            return await repo.list_reviews(draft_id)
 
     # ---------------- reads ----------------
 

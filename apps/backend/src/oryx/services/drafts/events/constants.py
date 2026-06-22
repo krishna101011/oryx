@@ -8,3 +8,8 @@ from __future__ import annotations
 
 DRAFT_CREATED = "content.draft.created"
 DRAFT_UPDATED = "content.draft.updated"
+
+# Wave C — review workflow. submit-review and changes_requested deliberately
+# reuse DRAFT_UPDATED (they are draft-lifecycle updates, not distinct events).
+DRAFT_APPROVED = "content.draft.approved"
+DRAFT_REJECTED = "content.draft.rejected"

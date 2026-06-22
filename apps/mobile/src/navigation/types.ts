@@ -53,6 +53,8 @@ export type ContentStackParamList = {
   ContentHome: undefined;
   GenerateDraft: undefined;
   DraftEditor: { draftId: string };
+  // Phase 5 Wave C — drafts awaiting review
+  ReviewQueue: undefined;
 };
 
 export type RootTabParamList = {
