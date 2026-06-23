@@ -16,7 +16,10 @@ Claude Code (this tool): all implementation — code, migrations, tests, commits
 - `.claude/skills/oryx-architect/SKILL.md` — conventions, brand, naming, design
   philosophy, and the "Operational Reality" gotchas log.
 - `docs/PHASE_5_ARCHITECTURE.md` (and `PHASE_1/2/3_ARCHITECTURE.md`) — frozen
-  architecture. (No standalone Phase 4 doc exists; Phase 4 is covered inline.)
+  architecture.
+- `docs/PHASE_4_ARCHITECTURE.md` — Phase 4 (Verify/Analyze/Research) architecture.
+  NOTE: this file is a PDF (Rev 3, predates the `anant`→`oryx` rename); known
+  describe-vs-built drift is recorded in `docs/PHASE_4_ARCHITECTURE.drift.md`.
 - `docs/adr/INDEX.md` — all architecture decision records.
 - Auto-memory: `~/.claude/projects/<project>/memory/MEMORY.md` is loaded every
   session; its linked files capture recurring operational facts.
