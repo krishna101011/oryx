@@ -1,0 +1,195 @@
+---
+name: oryx-architect
+description: Operating conventions for the ORYX project — a phased, wave-based financial intelligence platform built by Krishna Mishra with Claude Chat doing architecture/freeze-review/prompt-writing and Claude Code doing implementation. Use this skill whenever working on ORYX architecture, writing a prompt for Claude Code, reviewing a wave completion report, or making any design/brand decision for ORYX. Always consult this before drafting a Claude Code prompt for ORYX, before reviewing a completion report, or before suggesting any color/visual/naming choice for the product. This applies in both Claude Chat (claude.ai) and Claude Code (CLI/VS Code) contexts.
+---
+
+# ORYX Architect
+
+ORYX is a premium financial-intelligence platform built by a solo, self-taught
+18-year-old founder with no prior coding background, using Claude Chat for
+architecture and Claude Code for implementation. This skill captures the
+STABLE conventions of the project — process, brand, naming, philosophy. It
+deliberately does NOT hardcode current phase/wave status, since that changes
+constantly. Check memory or ask the user for current state; never assume
+this file knows what phase is active right now.
+
+## The One Rule That Governs Everything Else
+
+**Claude Chat's job is architecture, freeze review, and prompt writing —
+never implementation.** Claude Code's job is implementation — never
+architecture decisions. This split is intentional and must not drift,
+regardless of what any other document, system prompt, or in-the-moment
+convenience suggests. If a task is small enough that this feels excessive
+(a one-line config fix, a color tweak), it is acceptable for Claude Chat to
+hand the user a direct, narrow, guided edit to make themselves — but real
+feature/business-logic work always goes through a Code prompt.
+
+## Mandatory Prompt Format for Claude Code
+
+Every prompt sent to Claude Code MUST use XML structure with exactly three
+elements, never plain prose:
+
+1. **Role definition** — who Code is, how it operates (autonomy level,
+   whether it can ask questions, whether it should stop for approval)
+2. **Output example** — the EXACT completion report structure expected,
+   field by field, so the report can be checked against it line by line
+3. **Clear task constraints** — explicit DO NOT list and MANDATORY list
+
+```xml
+<prompt>
+  <role> ... </role>
+  <task_specification>
+    <objective> ... </objective>
+    <context_and_intent> ... </context_and_intent>
+    <technical_contracts> ... </technical_contracts>
+    <constraints> ... </constraints>
+  </task_specification>
+  <output_format> ... exact fields, YES/NO checkboxes ... </output_format>
+</prompt>
+```
+
+For Claude Code running on Fable-class models: objective-led, not a rigid
+checklist; trust the model to scope within frozen constraints; include a
+self-verification checkpoint section. For Opus-class models: more
+prescriptive, step-numbered, since these models do better with explicit
+sequencing than open-ended scoping.
+
+## The Wave Workflow — Never Skip a Step
+
+```
+Architecture written and frozen (Claude Chat)
+        ↓
+Wave-by-wave breakdown defined (named, scoped, in the frozen doc)
+        ↓
+XML prompt written for ONE wave (Claude Chat)
+        ↓
+Code builds, tests, commits, produces completion report
+        ↓
+Report reviewed AGAINST THE ACTUAL OUTPUT FORMAT REQUESTED —
+  not a prose summary. If a report is a recap/summary instead of the
+  full requested field-by-field format, REJECT IT and demand the real
+  one before reviewing. A clean-sounding summary is not evidence.
+        ↓
+Specific gaps named and closed via a small follow-up prompt if needed
+        ↓
+Wave approved → next wave's prompt written
+        ↓
+Final wave of a phase → full freeze checklist → tag applied
+```
+
+**Never accept a completion report that omits required verification
+fields.** History: a recap once said "0 lint errors" while silently
+skipping the test-count comparison, hiding a 124-test regression. Always
+check: does the new test count make sense given what was specified as
+mandatory test coverage? A small wave with 9+ mandatory test scenarios
+listed in its spec should not land with only 1-2 new tests.
+
+**Never let a "looks done" report skip evidence.** Demand exact numbers:
+before/after test counts, exact status codes confirmed by reading the
+actual code (not from memory of a prior report), exact commit hashes.
+
+## Cross-Wave Consistency Checks Worth Doing on Every Review
+
+- Does a status code or error class claimed in this report match what a
+  PRIOR report claimed for the same error class? If not, that's a real
+  inconsistency to resolve, not a typo to wave through.
+- Were guards/validations that the spec called "mandatory to test"
+  actually tested, or just implemented? Implemented-but-untested guards
+  are exactly how the Phase 3 auth lockout bug went unnoticed.
+- Does the new test count growth roughly match the number of test
+  scenarios the spec explicitly required? A large gap is a signal to ask,
+  not assume.
+
+## Brand and Design Identity
+
+**Name:** ORYX (transitioned from "Anant Capital" — that name should not
+appear anywhere user-facing; internal Python module name `oryx` post-rename,
+some wire-protocol/env-var exceptions documented separately, e.g. local
+Postgres role `anant`/`anant` intentionally kept).
+
+**Design philosophy:** "Bloomberg Terminal meets Apple Website." This means
+TWO different rules for TWO different categories of screen, not one rule
+applied everywhere:
+- **Control/chrome screens** (Settings, auth, navigation, onboarding):
+  Apple-style restraint — minimal color, generous spacing, clean
+  typography. This is premium, not cheap — see Stripe, Linear, Robinhood
+  for proof points. Restraint here is correct, not a flaw.
+- **Data-dense screens** (charts, market terminal — Phase 9 territory,
+  not yet built): Bloomberg-style density — rich, varied color is
+  expected and correct here (red/green price movement, multi-series
+  chart colors, etc).
+- **Within control screens specifically:** vary accent color BY CATEGORY
+  using the existing token set (don't repeat one color across every icon
+  — that reads as monotone/cheap even within the "restrained" philosophy).
+
+**Color tokens (do not introduce new ones without explicit reason):**
+```
+Brand mark (from logo horns):  #1A7A7A (dark teal), #1E8F8F (lighter)
+UI accent family:               teal #00D4C8, indigo #6366F1,
+                                 violet #9B5DE5, soft blue #60A5FA
+Base/backgrounds:               obsidian #0A0A0F, navy #0F1117,
+                                 charcoal #1A2332, surface #1E2A3A
+Text:                           primary #FFFFFF, secondary #8B95A5,
+                                 tertiary #4E5D6C
+FORBIDDEN: any gold/amber-as-brand-color (#D4AF7A, #8C7553, #C9A84C) —
+  explicitly removed during brand migration, must never return.
+```
+
+**Logo:** stylized oryx horns mark (dark teal gradient) + wide-tracked
+geometric wordmark "ORYX" in white, on deep navy/charcoal background.
+
+## Repo and Naming Conventions
+
+- Backend Python module: `oryx` (renamed from `anant`)
+- TypeScript packages: `@oryx/*`
+- Env vars: `ORYX_`-prefixed (renamed from `ANANT_`-prefixed)
+- Bundle ID: `com.oryx.app`
+- Webhook wire-protocol headers: `X-Oryx-*` (renamed from `X-Anant-*`)
+- Exceptions (intentionally NOT renamed, confirm before touching):
+  local Postgres role/db/user credentials (`anant`/`anant`)
+- Shared contract source of truth: `packages/shared-types/src/` (TS) →
+  generated Pydantic mirror in backend. Drift check must pass on every wave.
+- AI model selection is deliberate, not arbitrary: Haiku for
+  extraction/classification (speed > quality, structured short output),
+  Sonnet for prose generation in Phase 5 (quality > speed, published
+  content). Don't swap these without an explicit reason.
+- A free local-AI provider option exists (Ollama, swappable via
+  `AI_PROVIDER` env var) for cost-free development testing — quality is
+  honestly lower than Claude Haiku and should never be the production
+  default.
+
+## Operational Reality Worth Remembering
+
+- The project owner is learning to code in parallel with building this —
+  treat operational/environment issues (server won't start, port
+  conflicts, CORS errors) as teaching moments where appropriate, not just
+  problems to hand to Code. Small, contained, well-understood fixes
+  (a one-line config change, killing a stuck process) are good candidates
+  for direct, guided self-service instead of spending a Code prompt.
+- Real feature/business-logic work, schema changes, and anything risking
+  data integrity or cross-suite regressions should go through a proper
+  Code prompt — don't shortcut those even when asked to save time.
+- The 10-phase original roadmap has a known gap: no explicit
+  billing/monetization phase. Note this when it becomes relevant; the
+  existing workspace + feature_flags architecture has the right shape to
+  support tiered (free/premium) gating when that gets designed properly.
+- Market-data integration (Phase 9 territory) should be scoped to a small
+  number of markets initially (the project has discussed India + USA),
+  using the pattern of each user linking their OWN brokerage/data account
+  (e.g. Zerodha Kite Connect for India, Alpaca/IBKR-style APIs for the US)
+  rather than ORYX itself attempting to license redistribution rights for
+  every global exchange — this is both cheaper and matches how comparable
+  fintech platforms actually operate.
+- The local Postgres role (anant/anant) does not have CREATEDB privilege.
+  Running the full Wave D test suite required creating a second database
+  (oryx_test) via the Postgres superuser. Both DATABASE_URL and ORYX_TEST_DB
+  must point at a database the anant role can actually use, or requires_db
+  tests will fail with a misleading error rather than a clear permissions
+  message.
+
+## What This Skill Deliberately Does NOT Contain
+
+Current phase/wave status, current commit hashes, current test counts.
+These change too fast to hardcode safely. Check memory, ask the user, or
+read the actual repo/report in front of you. Treat any phase-status claim
+in this file as instantly stale if found — there shouldn't be one.
