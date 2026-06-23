@@ -1008,3 +1008,65 @@ class RejectDraftRequest(_Base):
 
 class RequestChangesRequest(_Base):
     note: str
+
+
+# ============================================================================
+# Phase 5 Wave D — publish targets + publications
+# ============================================================================
+
+PublishChannel = Literal[
+    "twitter_x",
+    "linkedin",
+    "email_newsletter",
+    "notion",
+    "webhook",
+    "export",
+]
+
+PublicationStatus = Literal[
+    "pending",
+    "delivering",
+    "delivered",
+    "failed",
+    "cancelled",
+]
+
+
+class PublishTarget(_Base):
+    # No credentials field — write-only, never serialized (§13.2).
+    id: str
+    workspace_id: str = Field(alias="workspaceId")
+    name: str
+    channel: PublishChannel
+    config: dict[str, object]
+    is_active: bool = Field(alias="isActive")
+    last_health_at: str | None = Field(default=None, alias="lastHealthAt")
+    last_health_ok: bool | None = Field(default=None, alias="lastHealthOk")
+    created_at: str = Field(alias="createdAt")
+
+
+class Publication(_Base):
+    id: str
+    draft_id: str = Field(alias="draftId")
+    version_number: int = Field(alias="versionNumber")
+    target_id: str = Field(alias="targetId")
+    workspace_id: str = Field(alias="workspaceId")
+    status: PublicationStatus
+    external_id: str | None = Field(default=None, alias="externalId")
+    external_url: str | None = Field(default=None, alias="externalUrl")
+    error_message: str | None = Field(default=None, alias="errorMessage")
+    published_at: str | None = Field(default=None, alias="publishedAt")
+    created_at: str = Field(alias="createdAt")
+
+
+class PublishRequest(_Base):
+    target_ids: list[str] = Field(alias="targetIds")
+
+
+class PublishTargetResult(_Base):
+    target_id: str = Field(alias="targetId")
+    publication_id: str | None = Field(default=None, alias="publicationId")
+    status: Literal["delivered", "failed", "pending", "skipped"]
+    external_id: str | None = Field(default=None, alias="externalId")
+    external_url: str | None = Field(default=None, alias="externalUrl")
+    error_message: str | None = Field(default=None, alias="errorMessage")

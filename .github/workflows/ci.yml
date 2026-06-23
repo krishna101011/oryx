@@ -85,6 +85,9 @@ jobs:
           src/oryx/services/intelligence
           src/oryx/services/research
           src/oryx/services/drafts
+          src/oryx/services/publishing
+          src/oryx/services/targets
+          src/oryx/core/credential_crypto.py
           src/oryx/services/admin
           src/oryx/core/scoring_version.py
           src/oryx/core/ai_circuit_breaker.py

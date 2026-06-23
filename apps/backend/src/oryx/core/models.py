@@ -1189,3 +1189,83 @@ class DraftReview(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     # idx_draft_reviews_draft (draft_id, created_at DESC) lives in migration 0011.
+
+
+# ============================================================================
+# Phase 5 Wave D — publish targets + publications (channel delivery)
+# ============================================================================
+
+
+class PublishTarget(Base):
+    """A configured per-workspace delivery channel. `credentials` +
+    `credentials_iv` hold AES-256-GCM ciphertext/IV and are NEVER serialized to
+    an API response (write-only — see services/targets/schemas.py)."""
+
+    __tablename__ = "publish_targets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    channel: Mapped[str] = mapped_column(
+        Enum(
+            "twitter_x", "linkedin", "email_newsletter", "notion",
+            "webhook", "export",
+            name="publish_channel_enum",
+            create_type=False,
+        ),
+        nullable=False,
+    )
+    credentials: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    credentials_iv: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_health_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_health_ok: Mapped[bool | None] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class Publication(Base):
+    """One delivery attempt for (draft, version, target). The UNIQUE constraint
+    uq_publications_draft_version_target (draft_id, version_number, target_id) is
+    the idempotency guarantee — the engine inserts ON CONFLICT DO NOTHING and
+    re-reads the winner (§16.2)."""
+
+    __tablename__ = "publications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    draft_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("content_drafts.id"), nullable=False
+    )
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("publish_targets.id"), nullable=False
+    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(
+        Enum(
+            "pending", "delivering", "delivered", "failed", "cancelled",
+            name="publication_status_enum",
+            create_type=False,
+        ),
+        nullable=False,
+        default="pending",
+    )
+    external_id: Mapped[str | None] = mapped_column(Text)
+    external_url: Mapped[str | None] = mapped_column(Text)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    # uq_publications_draft_version_target + idx_publications_* live in migration 0012.

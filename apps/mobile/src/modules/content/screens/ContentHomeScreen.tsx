@@ -38,6 +38,31 @@ export const ContentHomeScreen: React.FC = () => {
             navigation.navigate('ReviewQueue')
           }
         />
+        <Spacer size={2} />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="Publish targets"
+              variant="secondary"
+              fullWidth
+              onPress={() =>
+                // @ts-expect-error param-less navigate within the content stack
+                navigation.navigate('PublishTargets')
+              }
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="History"
+              variant="secondary"
+              fullWidth
+              onPress={() =>
+                // @ts-expect-error param-less navigate within the content stack
+                navigation.navigate('PublishHistory')
+              }
+            />
+          </View>
+        </View>
 
         <Spacer size={6} />
         {drafts.isLoading ? (

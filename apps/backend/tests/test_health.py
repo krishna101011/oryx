@@ -34,10 +34,11 @@ async def test_unknown_route_returns_envelope_error() -> None:
 async def test_phase1_stub_router_still_mounts() -> None:
     # The stub smoke check tracks whichever service is still a Phase 1 ping
     # stub. It has migrated /users → /verification (Wave C) → /research
-    # (Wave E reclaimed /research) → /content (Phase 5 Wave A made content real,
-    # so it moves on to /publishing, the next still-stubbed service).
+    # (Wave E reclaimed /research) → /content (Phase 5 Wave A made content real)
+    # → /publishing (Phase 5 Wave D made publishing real, so it moves on to
+    # /automation, the next still-stubbed service — Phase 6).
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/v1/publishing/ping")
+        response = await client.get("/v1/automation/ping")
     assert response.status_code == 200
-    assert response.json()["data"] == {"service": "publishing", "pong": True}
+    assert response.json()["data"] == {"service": "automation", "pong": True}

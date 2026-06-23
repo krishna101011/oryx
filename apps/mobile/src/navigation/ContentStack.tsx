@@ -6,6 +6,8 @@ import { ContentHomeScreen } from '../modules/content/screens/ContentHomeScreen'
 import { GenerateDraftScreen } from '../modules/content/screens/GenerateDraftScreen';
 import { DraftEditorScreen } from '../modules/content/screens/DraftEditorScreen';
 import { ReviewQueueScreen } from '../modules/content/screens/ReviewQueueScreen';
+import { PublishTargetScreen } from '../modules/content/screens/PublishTargetScreen';
+import { PublishHistoryScreen } from '../modules/content/screens/PublishHistoryScreen';
 
 const Stack = createNativeStackNavigator<ContentStackParamList>();
 
@@ -38,6 +40,16 @@ export const ContentStack: React.FC = () => {
         name="ReviewQueue"
         component={ReviewQueueScreen}
         options={{ title: 'Review queue' }}
+      />
+      <Stack.Screen
+        name="PublishTargets"
+        component={PublishTargetScreen}
+        options={{ title: 'Publish targets' }}
+      />
+      <Stack.Screen
+        name="PublishHistory"
+        component={PublishHistoryScreen}
+        options={{ title: 'Publish history' }}
       />
     </Stack.Navigator>
   );

@@ -46,10 +46,12 @@ export * from './templates';
 // ---- Phase 5 Wave C ----
 export * from './review';
 
+// ---- Phase 5 Wave D ----
+export * from './publishing';
+
 export * as Verification from './verification';
 export * as Scoring from './scoring';
 export * as Content from './content';
-export * as Publishing from './publishing';
 export * as Automation from './automation';
 export * as Analytics from './analytics';
 export * as Training from './training';

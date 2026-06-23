@@ -163,7 +163,10 @@ def create_app() -> FastAPI:
     # Phase 5 Wave B: content templates.
     from oryx.services.templates.router import router as templates_router
     app.include_router(templates_router, prefix=p)
+    # Phase 5 Wave D: publish targets + channel delivery.
     app.include_router(publishing_router, prefix=p)
+    from oryx.services.targets.router import router as targets_router
+    app.include_router(targets_router, prefix=p)
     app.include_router(automation_router, prefix=p)
     app.include_router(analytics_router, prefix=p)
     app.include_router(training_router, prefix=p)

@@ -70,6 +70,19 @@ class Settings(BaseSettings):
     # core/security/secrets.py refuses to run without it.
     intake_kms_key: str | None = None
 
+    # --- Phase 5 Wave D: publish-target credential encryption ---
+    # AES-256-GCM master key for publish_targets.credentials (§10.3). Stored
+    # base64-encoded so a raw 32-byte key survives .env transport (same shape
+    # the secret would take in a real secrets manager). core/credential_crypto.py
+    # refuses to run without a 32-byte key after decoding.
+    # WARNING: the local .env value is an OBVIOUS dev-only placeholder — it MUST
+    # be replaced with a securely-generated 32-byte secret before staging/prod.
+    oryx_publish_key: str | None = None
+
+    # Local output directory for the Export channel (§10.2). No external API —
+    # publish() writes a Markdown file here and returns its path as external_url.
+    publish_export_dir: str = "outputs/publish"
+
     # --- Phase 3: Gmail OAuth ---
     gmail_client_id: str | None = None
     gmail_client_secret: str | None = None

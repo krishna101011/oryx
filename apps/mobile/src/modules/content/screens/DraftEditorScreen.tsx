@@ -22,12 +22,15 @@ import {
   useSubmitReview,
   useSwitchFormat,
 } from '../hooks/useDrafts';
+import type { PublishTargetResult } from '@oryx/shared-types';
 import { FormatBadge } from '../components/FormatBadge';
 import { DraftStatusPill } from '../components/DraftStatusPill';
 import { CitationTag } from '../components/CitationTag';
+import { ChannelBadge } from '../components/ChannelBadge';
 import { VersionHistoryList } from '../components/VersionHistoryList';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { CONTENT_FORMATS, FORMAT_LABEL } from '../theme/draftColors';
+import { usePublishDraft, useTargets } from '../hooks/usePublishing';
 import { isApiError } from '../../../lib/errors';
 
 type ReviewAction = 'approve' | 'reject' | 'request_changes';
@@ -74,6 +77,30 @@ export const DraftEditorScreen: React.FC = () => {
 
   const reviewPending =
     approve.isPending || reject.isPending || requestChanges.isPending;
+
+  // Wave D — publish (only when status === 'approved').
+  const targets = useTargets();
+  const publish = usePublishDraft(draftId);
+  const [showPublish, setShowPublish] = useState(false);
+  const [selectedTargets, setSelectedTargets] = useState<Set<string>>(new Set());
+  const [publishResults, setPublishResults] = useState<PublishTargetResult[] | null>(
+    null,
+  );
+
+  const toggleTarget = (id: string) =>
+    setSelectedTargets((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const runPublish = () => {
+    setPublishResults(null);
+    publish.mutate(Array.from(selectedTargets), {
+      onSuccess: (results) => setPublishResults(results),
+    });
+  };
 
   const openReview = (action: ReviewAction) => {
     setReviewAction(action);
@@ -214,6 +241,23 @@ export const DraftEditorScreen: React.FC = () => {
               loading={submitReview.isPending}
               disabled={!content.trim()}
               onPress={() => submitReview.mutate()}
+            />
+          </>
+        )}
+
+        {/* Wave D — publish (only once 'approved'). */}
+        {d.status === 'approved' && (
+          <>
+            <Spacer size={2} />
+            <Button
+              label="Publish"
+              variant="primary"
+              fullWidth
+              onPress={() => {
+                setSelectedTargets(new Set());
+                setPublishResults(null);
+                setShowPublish(true);
+              }}
             />
           </>
         )}
@@ -392,6 +436,95 @@ export const DraftEditorScreen: React.FC = () => {
           </View>
         </Modal>
 
+        {/* Wave D — target picker + per-target results. */}
+        <Modal
+          visible={showPublish}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowPublish(false)}
+        >
+          <View style={styles.sheetOverlay}>
+            <View style={[styles.sheet, { backgroundColor: theme.colors.bg.elevated }]}>
+              <Text variant="h2">Publish</Text>
+              <Spacer size={2} />
+              <Text variant="caption" color="tertiary">
+                Select the targets to deliver to.
+              </Text>
+              <Spacer size={3} />
+              {(targets.data ?? []).filter((t) => t.isActive).length === 0 ? (
+                <Text variant="bodySm" color="secondary">
+                  No active targets. Add one under Publish targets first.
+                </Text>
+              ) : (
+                (targets.data ?? [])
+                  .filter((t) => t.isActive)
+                  .map((t) => {
+                    const sel = selectedTargets.has(t.id);
+                    return (
+                      <Pressable key={t.id} onPress={() => toggleTarget(t.id)}>
+                        <View
+                          style={[
+                            styles.targetRow,
+                            {
+                              borderColor: sel
+                                ? theme.colors.accent.teal
+                                : theme.colors.border.subtle,
+                            },
+                          ]}
+                        >
+                          <ChannelBadge channel={t.channel} />
+                          <Text variant="body" color={sel ? 'primary' : 'secondary'}>
+                            {t.name}
+                          </Text>
+                          <Text variant="caption" color={sel ? 'brand' : 'tertiary'}>
+                            {sel ? 'Selected' : 'Tap to select'}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })
+              )}
+
+              {publishResults ? (
+                <>
+                  <Spacer size={3} />
+                  <Text variant="bodySm" color="secondary">
+                    Results
+                  </Text>
+                  <Spacer size={2} />
+                  {publishResults.map((r) => (
+                    <Text
+                      key={r.targetId}
+                      variant="caption"
+                      color={r.status === 'delivered' ? 'brand' : 'danger'}
+                    >
+                      {r.status.toUpperCase()}
+                      {r.errorMessage ? ` — ${r.errorMessage}` : ''}
+                    </Text>
+                  ))}
+                </>
+              ) : null}
+
+              <Spacer size={4} />
+              <Button
+                label="Publish now"
+                variant="primary"
+                fullWidth
+                loading={publish.isPending}
+                disabled={selectedTargets.size === 0}
+                onPress={runPublish}
+              />
+              <Spacer size={2} />
+              <Button
+                label="Close"
+                variant="secondary"
+                fullWidth
+                onPress={() => setShowPublish(false)}
+              />
+            </View>
+          </View>
+        </Modal>
+
         <Spacer size={6} />
         <Text variant="bodySm" color="secondary">
           Version history
@@ -445,5 +578,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  targetRow: {
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 8,
+    padding: 12,
   },
 });
