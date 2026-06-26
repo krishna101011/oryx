@@ -1263,9 +1263,53 @@ class Publication(Base):
     external_url: Mapped[str | None] = mapped_column(Text)
     error_message: Mapped[str | None] = mapped_column(Text)
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # WHEN the last engine-level attempt happened (HOW MANY = attempt_count). The
+    # transient-failure path stamps it so the Wave E retry re-drive can compute
+    # backoff (§16.3). Added in migration 0013.
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     # uq_publications_draft_version_target + idx_publications_* live in migration 0012.
+
+
+class CalendarEntry(Base):
+    """One explicit schedule of (draft, target) for a future time (Phase 5
+    Wave E). UNIQUE (draft_id, target_id) — a draft can schedule each target at
+    most once. The CalendarScheduler fires 'scheduled' rows whose scheduled_at
+    has arrived through the existing publishing engine."""
+
+    __tablename__ = "calendar_entries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    draft_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("content_drafts.id"), nullable=False
+    )
+    target_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("publish_targets.id"), nullable=False
+    )
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum(
+            "scheduled", "published", "cancelled", "failed",
+            name="calendar_status_enum",
+            create_type=False,
+        ),
+        nullable=False,
+        default="scheduled",
+    )
+    publication_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("publications.id")
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    # uq_calendar_entries_draft_target + idx_calendar_* live in migration 0013.

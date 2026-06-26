@@ -63,6 +63,16 @@ export const ContentHomeScreen: React.FC = () => {
             />
           </View>
         </View>
+        <Spacer size={2} />
+        <Button
+          label="Calendar"
+          variant="secondary"
+          fullWidth
+          onPress={() =>
+            // @ts-expect-error param-less navigate within the content stack
+            navigation.navigate('Calendar')
+          }
+        />
 
         <Spacer size={6} />
         {drafts.isLoading ? (

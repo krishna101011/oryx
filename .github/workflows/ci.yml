@@ -87,6 +87,7 @@ jobs:
           src/oryx/services/drafts
           src/oryx/services/publishing
           src/oryx/services/targets
+          src/oryx/services/calendar
           src/oryx/core/credential_crypto.py
           src/oryx/services/admin
           src/oryx/core/scoring_version.py

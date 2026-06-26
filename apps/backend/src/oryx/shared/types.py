@@ -1070,3 +1070,33 @@ class PublishTargetResult(_Base):
     external_id: str | None = Field(default=None, alias="externalId")
     external_url: str | None = Field(default=None, alias="externalUrl")
     error_message: str | None = Field(default=None, alias="errorMessage")
+
+
+# ============================================================================
+# Phase 5 Wave E — content calendar + scheduling
+# ============================================================================
+
+CalendarStatus = Literal[
+    "scheduled",
+    "published",
+    "cancelled",
+    "failed",
+]
+
+
+class CalendarEntry(_Base):
+    id: str
+    workspace_id: str = Field(alias="workspaceId")
+    draft_id: str = Field(alias="draftId")
+    target_id: str = Field(alias="targetId")
+    scheduled_at: str = Field(alias="scheduledAt")
+    status: CalendarStatus
+    publication_id: str | None = Field(default=None, alias="publicationId")
+    created_by: str = Field(alias="createdBy")
+    created_at: str = Field(alias="createdAt")
+
+
+class ScheduleDraftRequest(_Base):
+    draft_id: str = Field(alias="draftId")
+    target_id: str = Field(alias="targetId")
+    scheduled_at: str = Field(alias="scheduledAt")

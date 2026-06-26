@@ -58,6 +58,8 @@ export type ContentStackParamList = {
   // Phase 5 Wave D — publish targets + delivery history
   PublishTargets: undefined;
   PublishHistory: undefined;
+  // Phase 5 Wave E — content calendar
+  Calendar: undefined;
 };
 
 export type RootTabParamList = {

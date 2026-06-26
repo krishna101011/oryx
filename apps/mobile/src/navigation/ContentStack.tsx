@@ -8,6 +8,7 @@ import { DraftEditorScreen } from '../modules/content/screens/DraftEditorScreen'
 import { ReviewQueueScreen } from '../modules/content/screens/ReviewQueueScreen';
 import { PublishTargetScreen } from '../modules/content/screens/PublishTargetScreen';
 import { PublishHistoryScreen } from '../modules/content/screens/PublishHistoryScreen';
+import { CalendarScreen } from '../modules/content/screens/CalendarScreen';
 
 const Stack = createNativeStackNavigator<ContentStackParamList>();
 
@@ -50,6 +51,11 @@ export const ContentStack: React.FC = () => {
         name="PublishHistory"
         component={PublishHistoryScreen}
         options={{ title: 'Publish history' }}
+      />
+      <Stack.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{ title: 'Calendar' }}
       />
     </Stack.Navigator>
   );

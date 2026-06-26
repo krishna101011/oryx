@@ -104,7 +104,11 @@ class PublicationsRepository:
         self, *, publication_id: uuid.UUID, attempt_count: int, error_message: str
     ) -> None:
         """Transient failure under the attempt ceiling: stay 'pending' (the
-        drainer/retry mechanism re-drives it) but record the attempt + error."""
+        Wave E retry re-drive re-invokes it) but record the attempt + error.
+
+        last_attempt_at is stamped alongside attempt_count (Wave E): the re-drive
+        needs WHEN, not just HOW MANY, to compute whether enough backoff has
+        elapsed (§16.3)."""
         await self.db.execute(
             update(Publication)
             .where(Publication.id == publication_id)
@@ -112,8 +116,21 @@ class PublicationsRepository:
                 status="pending",
                 attempt_count=attempt_count,
                 error_message=error_message,
+                last_attempt_at=datetime.now(UTC),
             )
         )
+
+    async def list_retry_candidates(self) -> list[Publication]:
+        """All workspaces' transiently-stuck publications: status='pending' with
+        an attempt already recorded but below the Wave D ceiling (attempt_count
+        1..4). The Wave E retry re-drive applies per-row backoff in Python."""
+        result = await self.db.execute(
+            select(Publication).where(
+                Publication.status == "pending",
+                Publication.attempt_count.between(1, 4),
+            )
+        )
+        return list(result.scalars().all())
 
     async def list_for_workspace(
         self,

@@ -3,10 +3,11 @@
 Run locally:
     uv run uvicorn oryx.main:app --reload --port 8000
 
-Process topology (CR-7 / ADR-025): production runs three processes —
-this API plus `python -m oryx.services.intake.scheduler` and
-`python -m oryx.services.queue.drainer`. Local dev may colocate all
-three by setting oryx_dev_monoprocess=1 (dev environment only).
+Process topology (CR-7 / ADR-025): production runs the API plus three
+worker processes — `python -m oryx.services.intake.scheduler`,
+`python -m oryx.services.queue.drainer`, and (Phase 5 Wave E)
+`python -m oryx.services.calendar.scheduler`. Local dev may colocate
+them all by setting oryx_dev_monoprocess=1 (dev environment only).
 """
 from __future__ import annotations
 
@@ -82,6 +83,7 @@ async def _lifespan(app: FastAPI):
         # Imports stay local so the API process never pays for (or
         # accidentally depends on) worker wiring in the normal topology.
         from oryx.core.db import get_sessionmaker
+        from oryx.services.calendar.scheduler import CalendarScheduler
         from oryx.services.intake.scheduler import IntakeScheduler
         from oryx.services.queue.drainer import OutboxDrainer, build_bus
 
@@ -92,9 +94,14 @@ async def _lifespan(app: FastAPI):
             tick_seconds=settings.scheduler_tick_seconds,
         )
         drainer = OutboxDrainer(sm, build_bus(), batch_size=settings.drainer_batch_size)
+        # Phase 5 Wave E: content-calendar firing + transient-retry re-drive.
+        calendar_scheduler = CalendarScheduler(sm)
         tasks = [
             asyncio.create_task(scheduler.run_forever(), name="intake.scheduler"),
             asyncio.create_task(drainer.run_forever(), name="queue.drainer"),
+            asyncio.create_task(
+                calendar_scheduler.run_forever(), name="calendar.scheduler"
+            ),
         ]
     yield
     for task in tasks:
@@ -167,6 +174,9 @@ def create_app() -> FastAPI:
     app.include_router(publishing_router, prefix=p)
     from oryx.services.targets.router import router as targets_router
     app.include_router(targets_router, prefix=p)
+    # Phase 5 Wave E: content calendar + scheduling.
+    from oryx.services.calendar.router import router as calendar_router
+    app.include_router(calendar_router, prefix=p)
     app.include_router(automation_router, prefix=p)
     app.include_router(analytics_router, prefix=p)
     app.include_router(training_router, prefix=p)

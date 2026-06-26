@@ -1,0 +1,1 @@
+"""Calendar event-name constants."""

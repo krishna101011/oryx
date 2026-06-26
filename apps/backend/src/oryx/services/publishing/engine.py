@@ -77,9 +77,13 @@ class PublishingEngine:
             )
             if draft is None:
                 raise NotFoundError("Draft not found")
-            if draft.status not in ("approved", "published"):
+            if draft.status not in ("approved", "published", "scheduled"):
                 # 'published' is allowed so re-publishing to a NEW target after a
                 # prior partial success still works (idempotency guards the rest).
+                # 'scheduled' (Wave E) is allowed because the calendar scheduler
+                # fires drafts that scheduling has already promoted to
+                # 'scheduled'; a successful delivery still moves them to
+                # 'published' below.
                 raise PreconditionFailedError(
                     "Only an approved draft can be published",
                     details={"status": draft.status},

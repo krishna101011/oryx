@@ -1,7 +1,11 @@
 /* eslint-disable no-restricted-syntax -- Phase 5 Wave A fixes draft status +
    format hex values by spec (blueprint §11.6). These are fixed semantic
    palettes, identical across themes; the only place raw hex is allowed. */
-import type { ContentFormat, DraftStatus } from '@oryx/shared-types';
+import type {
+  CalendarStatus,
+  ContentFormat,
+  DraftStatus,
+} from '@oryx/shared-types';
 
 const GREY = '#4E5D6C';
 const SECONDARY = '#8B95A5';
@@ -30,6 +34,29 @@ export function draftStatusColor(status: DraftStatus): string {
       return GREY; // draft, archived
   }
 }
+
+// Phase 5 Wave E — calendar dot colors. Reuses the existing semantic palette
+// (no new hex): scheduled → indigo, published → green, failed → red. Cancelled
+// uses the muted grey already used for inert draft states.
+export function calendarStatusColor(status: CalendarStatus): string {
+  switch (status) {
+    case 'scheduled':
+      return INDIGO;
+    case 'published':
+      return GREEN;
+    case 'failed':
+      return RED;
+    default:
+      return GREY; // cancelled
+  }
+}
+
+export const CALENDAR_STATUS_LABEL: Record<CalendarStatus, string> = {
+  scheduled: 'Scheduled',
+  published: 'Published',
+  cancelled: 'Cancelled',
+  failed: 'Failed',
+};
 
 export function formatColor(format: ContentFormat): string {
   switch (format) {

@@ -49,6 +49,9 @@ export * from './review';
 // ---- Phase 5 Wave D ----
 export * from './publishing';
 
+// ---- Phase 5 Wave E ----
+export * from './calendar';
+
 export * as Verification from './verification';
 export * as Scoring from './scoring';
 export * as Content from './content';

@@ -31,7 +31,16 @@ import { VersionHistoryList } from '../components/VersionHistoryList';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { CONTENT_FORMATS, FORMAT_LABEL } from '../theme/draftColors';
 import { usePublishDraft, useTargets } from '../hooks/usePublishing';
+import { useScheduleDraft } from '../hooks/useCalendar';
 import { isApiError } from '../../../lib/errors';
+
+// Quick presets for the "Schedule for later" picker — dependency-free, web-safe.
+const SCHEDULE_PRESETS: { label: string; offsetMs: number }[] = [
+  { label: 'In 1 hour', offsetMs: 60 * 60 * 1000 },
+  { label: 'In 4 hours', offsetMs: 4 * 60 * 60 * 1000 },
+  { label: 'Tomorrow', offsetMs: 24 * 60 * 60 * 1000 },
+  { label: 'Next week', offsetMs: 7 * 24 * 60 * 60 * 1000 },
+];
 
 type ReviewAction = 'approve' | 'reject' | 'request_changes';
 
@@ -100,6 +109,50 @@ export const DraftEditorScreen: React.FC = () => {
     publish.mutate(Array.from(selectedTargets), {
       onSuccess: (results) => setPublishResults(results),
     });
+  };
+
+  // Wave E — schedule for later (one target + future time).
+  const schedule = useScheduleDraft(draftId);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleTarget, setScheduleTarget] = useState<string | null>(null);
+  const [scheduleAtIso, setScheduleAtIso] = useState<string>('');
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [scheduleDone, setScheduleDone] = useState(false);
+
+  const openSchedule = () => {
+    setScheduleTarget(null);
+    setScheduleError(null);
+    setScheduleDone(false);
+    // Default to one hour out so the field is never empty / in the past.
+    setScheduleAtIso(new Date(Date.now() + 60 * 60 * 1000).toISOString());
+    setShowSchedule(true);
+  };
+
+  const runSchedule = () => {
+    setScheduleError(null);
+    if (!scheduleTarget) {
+      setScheduleError('Select a target.');
+      return;
+    }
+    const when = new Date(scheduleAtIso);
+    if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) {
+      setScheduleError('Pick a valid future time.');
+      return;
+    }
+    schedule.mutate(
+      {
+        draft_id: draftId,
+        target_id: scheduleTarget,
+        scheduled_at: when.toISOString(),
+      },
+      {
+        onSuccess: () => setScheduleDone(true),
+        onError: (e) =>
+          setScheduleError(
+            isApiError(e) ? e.message : 'Could not schedule. Try again.',
+          ),
+      },
+    );
   };
 
   const openReview = (action: ReviewAction) => {
@@ -245,7 +298,7 @@ export const DraftEditorScreen: React.FC = () => {
           </>
         )}
 
-        {/* Wave D — publish (only once 'approved'). */}
+        {/* Wave D — publish + Wave E — schedule (once 'approved'). */}
         {d.status === 'approved' && (
           <>
             <Spacer size={2} />
@@ -258,6 +311,26 @@ export const DraftEditorScreen: React.FC = () => {
                 setPublishResults(null);
                 setShowPublish(true);
               }}
+            />
+            <Spacer size={2} />
+            <Button
+              label="Schedule for later"
+              variant="secondary"
+              fullWidth
+              onPress={openSchedule}
+            />
+          </>
+        )}
+
+        {/* Wave E — a scheduled draft can schedule additional targets. */}
+        {d.status === 'scheduled' && (
+          <>
+            <Spacer size={2} />
+            <Button
+              label="Schedule another target"
+              variant="secondary"
+              fullWidth
+              onPress={openSchedule}
             />
           </>
         )}
@@ -520,6 +593,136 @@ export const DraftEditorScreen: React.FC = () => {
                 variant="secondary"
                 fullWidth
                 onPress={() => setShowPublish(false)}
+              />
+            </View>
+          </View>
+        </Modal>
+
+        {/* Wave E — schedule-for-later sheet. */}
+        <Modal
+          visible={showSchedule}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowSchedule(false)}
+        >
+          <View style={styles.sheetOverlay}>
+            <View style={[styles.sheet, { backgroundColor: theme.colors.bg.elevated }]}>
+              <Text variant="h2">Schedule for later</Text>
+              <Spacer size={2} />
+              <Text variant="caption" color="tertiary">
+                Pick a target and a future time. The scheduler publishes it then.
+              </Text>
+              <Spacer size={3} />
+
+              {(targets.data ?? []).filter((t) => t.isActive).length === 0 ? (
+                <Text variant="bodySm" color="secondary">
+                  No active targets. Add one under Publish targets first.
+                </Text>
+              ) : (
+                (targets.data ?? [])
+                  .filter((t) => t.isActive)
+                  .map((t) => {
+                    const sel = scheduleTarget === t.id;
+                    return (
+                      <Pressable key={t.id} onPress={() => setScheduleTarget(t.id)}>
+                        <View
+                          style={[
+                            styles.targetRow,
+                            {
+                              borderColor: sel
+                                ? theme.colors.accent.teal
+                                : theme.colors.border.subtle,
+                            },
+                          ]}
+                        >
+                          <ChannelBadge channel={t.channel} />
+                          <Text variant="body" color={sel ? 'primary' : 'secondary'}>
+                            {t.name}
+                          </Text>
+                          <Text variant="caption" color={sel ? 'brand' : 'tertiary'}>
+                            {sel ? 'Selected' : 'Tap to select'}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })
+              )}
+
+              <Spacer size={3} />
+              <Text variant="bodySm" color="secondary">
+                When
+              </Text>
+              <Spacer size={2} />
+              <View style={styles.chips}>
+                {SCHEDULE_PRESETS.map((p) => (
+                  <Pressable
+                    key={p.label}
+                    onPress={() =>
+                      setScheduleAtIso(new Date(Date.now() + p.offsetMs).toISOString())
+                    }
+                  >
+                    <View
+                      style={[
+                        styles.chip,
+                        { borderColor: theme.colors.border.subtle },
+                      ]}
+                    >
+                      <Text variant="caption" color="secondary">
+                        {p.label}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+              <Spacer size={2} />
+              <TextInput
+                value={scheduleAtIso}
+                onChangeText={setScheduleAtIso}
+                placeholder="YYYY-MM-DDTHH:MM:SSZ"
+                placeholderTextColor={theme.colors.text.tertiary}
+                autoCapitalize="none"
+                style={[
+                  styles.noteInput,
+                  {
+                    color: theme.colors.text.primary,
+                    borderColor: theme.colors.border.subtle,
+                    minHeight: 44,
+                  },
+                ]}
+              />
+
+              {scheduleError ? (
+                <>
+                  <Spacer size={2} />
+                  <Text variant="caption" color="danger">
+                    {scheduleError}
+                  </Text>
+                </>
+              ) : null}
+              {scheduleDone ? (
+                <>
+                  <Spacer size={2} />
+                  <Text variant="caption" color="brand">
+                    Scheduled.
+                  </Text>
+                </>
+              ) : null}
+
+              <Spacer size={4} />
+              <Button
+                label="Schedule"
+                variant="primary"
+                fullWidth
+                loading={schedule.isPending}
+                disabled={!scheduleTarget}
+                onPress={runSchedule}
+              />
+              <Spacer size={2} />
+              <Button
+                label="Close"
+                variant="secondary"
+                fullWidth
+                onPress={() => setShowSchedule(false)}
               />
             </View>
           </View>
