@@ -186,6 +186,28 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   must point at a database the anant role can actually use, or requires_db
   tests will fail with a misleading error rather than a clear permissions
   message.
+- The requires_db suite isolates by minting fresh uuids per test and never
+  rolls back (services COMMIT their own sessions) — so oryx_test ACCUMULATES
+  rows across runs. Any test of a GLOBAL background worker (intake scheduler,
+  outbox drainer, the Wave E calendar scheduler's Pass B retry re-drive) must
+  therefore assert on the SPECIFIC seeded row's end state, never on a global
+  count or a shared fake-adapter's total call count — leftover due rows from
+  prior runs will be swept up in the same tick and make global-count asserts
+  flaky. To prove "publish_draft was NOT called for entry X", assert zero
+  publication rows for that draft (the engine inserts the pending row before
+  any adapter call), not `fake.publish_calls == 0`.
+- Background workers in this codebase are ALWAYS standalone processes
+  (`python -m oryx.services.<x>.scheduler` / `.drainer`), each a tick loop +
+  run_forever + amain, colocated into the API lifespan only when
+  oryx_dev_monoprocess=1 in dev (CR-7/ADR-025). A new periodic job follows
+  this exact shape — do not invent in-request background tasks. run_forever
+  runs its first tick immediately (before the first sleep), which is the
+  startup catch-up for downtime backlogs.
+- publish_draft's draft-status guard accepts approved/published/scheduled.
+  Wave E added 'scheduled' because scheduling promotes a draft approved→
+  scheduled and the calendar scheduler must then be able to fire it; a
+  successful delivery still advances it to 'published'. A future caller that
+  needs to publish from another status must widen this guard deliberately.
 
 ## What This Skill Deliberately Does NOT Contain
 
