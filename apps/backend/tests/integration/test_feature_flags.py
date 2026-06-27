@@ -30,11 +30,15 @@ async def test_default_flags_returned_for_new_account(app) -> None:
             "/v1/feature-flags", headers={"Authorization": f"Bearer {access}"}
         )
         flags = res.json()["data"]
-        # Seeded defaults from migration 0001
+        # Seeded defaults from migration 0001, as resolved in the dev test
+        # environment (ENVIRONMENT=dev). resolver._DEV_DEFAULT_ON force-enables
+        # the two built-screen flags in dev so they don't show "Coming soon";
+        # genuinely-unbuilt flags stay at their migration default (off).
         assert flags["ff_settings"] is True
         assert flags["ff_dashboard"] is True
         assert flags["ff_activity"] is True
         assert flags["ff_mfa"] is False
-        assert flags["ff_research"] is False
+        assert flags["ff_research"] is True  # dev default-on (migration default is False)
+        assert flags["ff_content_drafts"] is True  # dev default-on (migration default is False)
         assert flags["ff_intake_gmail"] is False
         assert flags["ff_team_workspaces"] is False

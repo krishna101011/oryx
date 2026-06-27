@@ -15,6 +15,7 @@ import type {
   ActivityItem,
 } from '@oryx/shared-types';
 import { apiClient } from '../../../lib/api/client';
+import { EmptyState } from '../../../components/EmptyState';
 
 export const ActivityHomeScreen: React.FC = () => {
   const queryClient = useQueryClient();
@@ -50,11 +51,10 @@ export const ActivityHomeScreen: React.FC = () => {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {items.length === 0 ? (
-          <Card variant="default">
-            <Text variant="body" color="secondary">
-              Nothing here yet.
-            </Text>
-          </Card>
+          <EmptyState
+            title="Nothing to report"
+            description="Security events and account activity will show up here as they happen."
+          />
         ) : (
           items.map((item) => (
             <View key={item.id}>

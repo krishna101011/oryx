@@ -85,12 +85,16 @@ export const DashboardScreen: React.FC = () => {
         </View>
       </Card>
 
-      <Spacer size={6} />
-      <Divider variant="subtle" />
-      <Spacer size={4} />
-      <Text variant="caption" color="tertiary">
-        PHASE 1 — FOUNDATION
-      </Text>
+      {__DEV__ && (
+        <>
+          <Spacer size={6} />
+          <Divider variant="subtle" />
+          <Spacer size={4} />
+          <Text variant="caption" color="tertiary">
+            PHASE 1 — FOUNDATION
+          </Text>
+        </>
+      )}
     </Screen>
   );
 };
