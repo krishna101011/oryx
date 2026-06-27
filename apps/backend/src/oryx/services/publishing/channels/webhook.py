@@ -28,6 +28,7 @@ from oryx.services.publishing.channels.base import (
     TransientChannelError,
 )
 from oryx.services.publishing.channels.formatting import single_segment
+from oryx.services.publishing.citations import CitationSummary
 
 _INTERNAL_ATTEMPTS = 3
 
@@ -63,6 +64,7 @@ class WebhookChannel:
         draft_title: str,
         credentials: dict[str, Any],
         config: dict[str, Any],
+        citations: list[CitationSummary] | None = None,
     ) -> PublishResult:
         url = config.get("url")
         secret = credentials.get("secret")
@@ -73,11 +75,24 @@ class WebhookChannel:
                 f"{self.channel_type}: credentials.secret is required"
             )
 
-        payload = {
+        payload: dict[str, Any] = {
             "title": draft_title,
             "content": content,
             "published_at": int(time.time()),
         }
+        # Citations ride as a distinct structured field, NEVER mixed into content
+        # (the webhook feeds other systems, not human readers). Default None keeps
+        # any pre-patch call site backward-compatible; an explicit [] is sent as
+        # an empty array for a zero-citation draft.
+        if citations is not None:
+            payload["citations"] = [
+                {
+                    "headline": c.headline,
+                    "confidenceTier": c.confidence_tier,
+                    "epistemicType": c.epistemic_type,
+                }
+                for c in citations
+            ]
         body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         timestamp = int(time.time())
         headers = {

@@ -31,6 +31,11 @@ from oryx.services.publishing.channels.base import (
     TransientChannelError,
 )
 from oryx.services.publishing.channels.registry import get_channel
+from oryx.services.publishing.citations import (
+    CitationSummary,
+    format_citation_footer,
+    load_draft_citations,
+)
 from oryx.services.publishing.events.constants import (
     CONTENT_PUBLISH_FAILED,
     CONTENT_PUBLISHED,
@@ -98,6 +103,10 @@ class PublishingEngine:
                 )
             content = version.content
             draft_title = draft.title
+            # Provenance (post-freeze citation patch): load ONCE per publish call,
+            # not per target — citations don't vary by target. Zero citations is
+            # handled gracefully downstream (empty footer / empty webhook array).
+            citations = await load_draft_citations(draft_id, session)
             # Causation parent for content.published (§8.2): the approval event.
             causation_id = await repo.latest_event_id_for_draft(
                 draft_id, (DRAFT_APPROVED,)
@@ -111,6 +120,7 @@ class PublishingEngine:
                     draft_id=draft_id,
                     version_number=version_number,
                     content=content,
+                    citations=citations,
                     draft_title=draft_title,
                     target_id=target_id,
                     workspace_id=workspace_id,
@@ -143,6 +153,7 @@ class PublishingEngine:
         draft_id: uuid.UUID,
         version_number: int,
         content: str,
+        citations: list[CitationSummary],
         draft_title: str,
         target_id: uuid.UUID,
         workspace_id: uuid.UUID,
@@ -218,14 +229,30 @@ class PublishingEngine:
 
         # --- d. Adapter call OUTSIDE any transaction (network I/O) ---
         adapter = get_channel(channel)
+        # Provenance footer (post-freeze patch): every channel EXCEPT webhook gets
+        # the citation footer appended to its content string before formatting.
+        # Webhook keeps content untouched and receives citations as a separate
+        # structured field on publish() instead (it feeds systems, not readers).
+        if channel == "webhook":
+            publish_content = content
+        else:
+            publish_content = content + format_citation_footer(
+                citations, channel, content=content
+            )
         try:
             # format_content first (§ step d) — empty means nothing to publish.
-            segments = adapter.format_content(content, None)
+            segments = adapter.format_content(publish_content, None)
             if not segments:
                 raise PermanentChannelError("No content to publish")
-            result = await adapter.publish(
-                content, draft_title, credentials, config
-            )
+            if channel == "webhook":
+                result = await adapter.publish(
+                    publish_content, draft_title, credentials, config,
+                    citations=citations,
+                )
+            else:
+                result = await adapter.publish(
+                    publish_content, draft_title, credentials, config
+                )
         except PermanentChannelError as exc:
             return await self._record_failed(
                 draft_id=draft_id,

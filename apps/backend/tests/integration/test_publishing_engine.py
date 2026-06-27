@@ -37,10 +37,13 @@ class _DeliverChannel:
     def format_content(self, content, max_length):
         return [content]
 
-    async def publish(self, content, draft_title, credentials, config):
+    async def publish(self, content, draft_title, credentials, config, citations=None):
+        # citations is accepted (optional) so this fake satisfies the webhook
+        # adapter's post-freeze signature; non-webhook channels are never passed it.
         from oryx.services.publishing.channels.base import PublishResult
 
         self.publish_calls += 1
+        self.last_citations = citations
         return PublishResult(
             external_id=f"ext-{self.publish_calls}",
             external_url="https://example.test/post",

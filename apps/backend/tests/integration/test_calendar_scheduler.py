@@ -44,7 +44,9 @@ class _DeliverChannel:
     def format_content(self, content, max_length):
         return [content]
 
-    async def publish(self, content, draft_title, credentials, config):
+    async def publish(self, content, draft_title, credentials, config, citations=None):
+        # citations accepted (optional) for the webhook adapter's post-freeze
+        # signature; the scheduler publishes via this fake registered as webhook.
         from oryx.services.publishing.channels.base import PublishResult
 
         self.publish_calls += 1
@@ -56,7 +58,7 @@ class _DeliverChannel:
 
 
 class _TransientFailChannel(_DeliverChannel):
-    async def publish(self, content, draft_title, credentials, config):
+    async def publish(self, content, draft_title, credentials, config, citations=None):
         from oryx.services.publishing.channels.base import TransientChannelError
 
         self.publish_calls += 1

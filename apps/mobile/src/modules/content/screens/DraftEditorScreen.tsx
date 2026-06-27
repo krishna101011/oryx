@@ -236,6 +236,10 @@ export const DraftEditorScreen: React.FC = () => {
             ))
           )}
         </View>
+        <Spacer size={1} />
+        <Text variant="caption" color="tertiary">
+          These sources will be included automatically when published.
+        </Text>
 
         <Spacer size={4} />
         <TextInput

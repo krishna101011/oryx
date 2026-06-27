@@ -80,3 +80,20 @@ than re-implemented per adapter.
 | ABC base class with inheritance | Heavier than needed; the structural Protocol gives the same contract and a trivial fake. |
 | Return a status enum instead of raising | Loses the permanent/transient distinction at the type level; forces the engine to re-derive retry-eligibility from strings. |
 | One generic "HTTP channel" config-driven adapter | Cannot model Twitter threading, SMTP, Notion blocks, or file export under one config shape without becoming a mini-DSL. |
+
+---
+
+## Addendum (dated 2026-06-27) — Citation Provenance Patch
+
+Published content now carries provenance back to the `intelligence_objects` it
+cited (Wave A `draft_citations`), sized to each channel: the engine loads
+citations once per publish and appends a `format_citation_footer(...)` string to
+the content of every prose channel (a short capped list for twitter_x / linkedin
+/ email_newsletter, the full list for notion / export), while **webhook** keeps
+content untouched and receives the citations as a separate structured
+`payload["citations"]` array via one new optional `publish()` parameter
+(`citations=None`). This is purely additive and backward-compatible — the
+`PublishChannel` protocol's four methods are unchanged, the new parameter defaults
+to `None` so every existing call site and the six adapters keep working, and
+confidence tiers reuse the canonical `confidenceBand` thresholds rather than
+introducing a new scheme. It is not a protocol redesign.
