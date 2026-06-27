@@ -1,6 +1,8 @@
 # Architecture Decision Records — Index
 
-28 ADRs filed through Phase 5 Wave A.
+37 ADRs filed through Phase 5 (freeze). ADR-038–046 were filed by the Phase 5
+freeze wave (Wave F); the highest pre-existing ADR was 037, so no renumbering was
+needed (the architecture doc's proposed 038–046 were all free).
 
 - ADR-001: Monorepo with pnpm workspaces — ADR-001-monorepo.md
 - ADR-002: Expo Managed Workflow — ADR-002-expo-managed.md
@@ -30,3 +32,12 @@
 - ADR-035: AI Cost Control — ADR-035-ai-cost-control.md
 - ADR-036: Epistemic Type System — ADR-036-epistemic-type-system.md
 - ADR-037: Claims–Evidence Separation — ADR-037-claims-evidence-separation.md
+- ADR-038: AI Model Selection for Draft Generation — ADR-038-ai-model-selection-generation.md
+- ADR-039: Draft Version Control Model — ADR-039-draft-version-control-model.md
+- ADR-040: Channel Adapter Protocol — ADR-040-channel-adapter-protocol.md
+- ADR-041: Publish-Target Credential Encryption Strategy — ADR-041-credential-encryption-strategy.md
+- ADR-042: Review Policy and Self-Approval Eligibility — ADR-042-review-policy-by-workspace.md
+- ADR-043: Packet Consumption Semantics — ADR-043-packet-consumption-semantics.md
+- ADR-044: Publishing Idempotency — ADR-044-publishing-idempotency.md
+- ADR-045: Content Calendar Scheduler — ADR-045-content-calendar-scheduler.md
+- ADR-046: Phase 5 → Phase 6 Boundary — ADR-046-phase5-phase6-boundary.md

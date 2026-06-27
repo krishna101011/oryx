@@ -24,6 +24,9 @@ echo "→ backend lint + type-check (CI py-job parity)"
 ( cd apps/backend && uv run --no-sync ruff check src tests && pnpm run type-check )
 
 echo "→ backend tests"
-( cd apps/backend && uv run --no-sync pytest )
+# `python -m pytest` (not bare `uv run pytest`): under Git Bash on this Windows
+# setup, `uv run pytest`/`uv run mypy` intermittently emit no output and exit 1
+# spuriously; invoking via the module runs reliably. CI (ci.yml) is unaffected.
+( cd apps/backend && uv run --no-sync python -m pytest )
 
 echo "✓ all checks passed"

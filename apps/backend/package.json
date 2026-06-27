@@ -5,7 +5,7 @@
   "description": "ORYX backend (Python). This file exists so pnpm can run lint/type-check via shell commands.",
   "scripts": {
     "lint": "uv run --no-sync ruff check src tests",
-    "type-check": "uv run --no-sync mypy --follow-imports=silent src/oryx/services/queue src/oryx/services/dedupe src/oryx/services/claims src/oryx/services/evidence src/oryx/services/verification src/oryx/services/conflicts src/oryx/services/review src/oryx/services/intelligence src/oryx/services/research src/oryx/services/admin src/oryx/core/scoring_version.py src/oryx/core/ai_circuit_breaker.py src/oryx/services/normalization src/oryx/services/intake/scheduler.py src/oryx/services/intake/sync_runner.py src/oryx/services/intake/workspace_cascade.py src/oryx/services/intake/admin_router.py src/oryx/core/security/secrets.py src/oryx/services/drafts",
+    "type-check": "uv run --no-sync python -m mypy --follow-imports=silent src/oryx/services/queue src/oryx/services/dedupe src/oryx/services/claims src/oryx/services/evidence src/oryx/services/verification src/oryx/services/conflicts src/oryx/services/review src/oryx/services/intelligence src/oryx/services/research src/oryx/services/drafts src/oryx/services/publishing src/oryx/services/targets src/oryx/services/calendar src/oryx/core/credential_crypto.py src/oryx/services/admin src/oryx/core/scoring_version.py src/oryx/core/ai_circuit_breaker.py src/oryx/services/normalization src/oryx/services/intake/scheduler.py src/oryx/services/intake/sync_runner.py src/oryx/services/intake/workspace_cascade.py src/oryx/services/intake/admin_router.py src/oryx/core/security/secrets.py",
     "test": "uv run --no-sync pytest"
   }
 }

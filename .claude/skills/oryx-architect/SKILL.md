@@ -208,6 +208,36 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   scheduled and the calendar scheduler must then be able to fire it; a
   successful delivery still advances it to 'published'. A future caller that
   needs to publish from another status must widen this guard deliberately.
+- STALE ENV-VAR PREFIX TRAP (anant→oryx rename, silent class of bug). The
+  Settings class (config.py) has NO env_prefix — field names map directly to
+  env var names, case-insensitively, and SettingsConfigDict uses extra="ignore".
+  That combination means any leftover `ANANT_`-prefixed line in a developer's
+  local, gitignored `.env` binds to NOTHING after the rename: it's silently
+  ignored (no error, no warning), and the field falls back to its default. The
+  failure is invisible — e.g. `ANANT_DEV_MONOPROCESS=1` looks set but the API
+  starts with monoprocess OFF and no background workers, with zero diagnostic.
+  This applies to EVERY renamed var, not just one. When onboarding a collaborator
+  or debugging "I set it but it's not taking effect", do a one-time audit: list
+  every field on Settings, then confirm each line in the real `.env` uses the
+  current name (the only ORYX_-prefixed fields today are oryx_publish_key and
+  oryx_dev_monoprocess; most other fields are unprefixed, e.g. ENVIRONMENT,
+  DATABASE_URL, ANTHROPIC_API_KEY). Any `ANANT_*` line found is dead — rename it.
+  Audit done 2026-06-26: the real apps/backend/.env was clean (no ANANT_* lines
+  survived; only ORYX_DEV_MONOPROCESS and ORYX_PUBLISH_KEY are ORYX_-prefixed and
+  both correct). Note the intentional exception: the `anant` Postgres role/db/user
+  in DATABASE_URL is NOT an env-var-name issue and stays as-is (see Exceptions
+  above).
+- COLOCATED WORKERS NOW SELF-REPORT (Phase 5 Wave F fix for the trap above). The
+  per-worker `*.started` log lines (scheduler.started / drainer.started /
+  calendar_scheduler.started) live ONLY in each worker's standalone `amain()`.
+  In monoprocess/colocated mode the lifespan calls `run_forever()` directly, so
+  NONE of those fired — colocation produced zero startup evidence, which is what
+  made the stale-`ANANT_DEV_MONOPROCESS` failure invisible. main.py's lifespan
+  now emits `monoprocess.workers_started` (with the worker names + count) when
+  colocation engages and `monoprocess.disabled` when it doesn't. To confirm
+  workers are actually running in a real process, grep the API log for
+  `monoprocess.workers_started` — a unit-level `should_colocate()==True` assertion
+  does NOT prove the tasks were created. Documented in ADR-045.
 
 ## What This Skill Deliberately Does NOT Contain
 

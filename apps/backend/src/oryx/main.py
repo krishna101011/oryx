@@ -28,7 +28,7 @@ from oryx.core.errors import (
     unhandled_exception_handler,
     validation_exception_handler,
 )
-from oryx.core.logging import configure_logging
+from oryx.core.logging import configure_logging, get_logger
 from oryx.core.middleware import (
     RateLimitMiddleware,
     RequestIDMiddleware,
@@ -68,6 +68,8 @@ from oryx.services.training.router import router as training_router
 from oryx.services.verification.router import router as verification_router
 from oryx.services.workspaces.router import router as workspaces_router
 
+logger = get_logger(__name__)
+
 
 def should_colocate(settings) -> bool:
     """§14.3 — monoprocess is a dev convenience only; the env check is the
@@ -103,6 +105,17 @@ async def _lifespan(app: FastAPI):
                 calendar_scheduler.run_forever(), name="calendar.scheduler"
             ),
         ]
+        # Observable proof that colocation actually engaged. The standalone
+        # *.started lines only fire in each worker's amain(); colocated mode
+        # calls run_forever() directly, so without this line a misconfigured
+        # flag (e.g. a stale ANANT_DEV_MONOPROCESS that binds to nothing) would
+        # start the API with NO workers and zero diagnostic. See ADR-045.
+        logger.info(
+            "monoprocess.workers_started",
+            extra={"workers": [t.get_name() for t in tasks], "count": len(tasks)},
+        )
+    else:
+        logger.info("monoprocess.disabled", extra={"workers": [], "count": 0})
     yield
     for task in tasks:
         task.cancel()
