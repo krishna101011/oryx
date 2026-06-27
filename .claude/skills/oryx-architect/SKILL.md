@@ -239,6 +239,31 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   `monoprocess.workers_started` — a unit-level `should_colocate()==True` assertion
   does NOT prove the tasks were created. Documented in ADR-045.
 
+- FRONTEND HAS NO WORKING TEST RUNNER (verify claims accordingly). The mobile
+  `test` script is `jest --passWithNoTests`, but `jest` is NOT installed (absent
+  from devDeps, no jest config, zero `*.test.tsx` files) — so `pnpm test` FAILS
+  at baseline with "'jest' is not recognized". The real frontend quality gates
+  are `pnpm type-check`, `pnpm lint` (warnings-only is passing; ~36 pre-existing
+  sort-imports warnings), and `pnpm drift:check`; the only substantive test suite
+  in the repo is backend pytest. A frontend wave that lists "add a component
+  test" cannot satisfy it without first standing up jest-expo + babel + config +
+  several devDeps — treat that as its own infra task, not a freebie inside a
+  feature/polish wave. Do NOT accept a completion report claiming the frontend
+  "test suite passes" — there isn't one to pass.
+- react-native-svg IS NOT a direct mobile dependency, but it's a (currently
+  UNMET) peerDependency of lucide-react-native, which the shipped Icon component
+  uses. The exact-for-RN-0.74 version (15.15.5) already sits in the pnpm store,
+  so anything needing real SVG paths (e.g. the HornMark brand motif) should
+  declare `react-native-svg` on apps/mobile and `pnpm install --offline` (links
+  from store, downloads nothing) rather than approximating with bordered Views.
+- Mobile typography is a STRICT six-size token set (display 32 / h1 24 / h2 20 /
+  body 16 / bodySm 14 / caption 12; plus mono 13). Text rejects raw fontSize/
+  fontWeight at call sites, so a design spec asking for 11/13/16-at-500 must map
+  to the nearest existing variant — do not invent a size. Shared, cross-module
+  components live in `apps/mobile/src/components/` (ErrorBoundary, FeatureGate,
+  EmptyState, HornMark); there is no `src/_shared/components/` despite older
+  prompts referencing that path.
+
 ## What This Skill Deliberately Does NOT Contain
 
 Current phase/wave status, current commit hashes, current test counts.
