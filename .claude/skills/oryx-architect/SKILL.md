@@ -264,6 +264,36 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   EmptyState, HornMark); there is no `src/_shared/components/` despite older
   prompts referencing that path.
 
+- THE BACKEND TEST SUITE RUNS AS environment=dev (silent trap for any
+  environment-scoped logic). `tests/conftest.py` does NOT set ENVIRONMENT, and
+  Settings loads `apps/backend/.env`, which pins `ENVIRONMENT=dev`. So any code
+  gated on `settings.environment == "dev"` (e.g. oryx_dev_monoprocess, and the
+  Phase-5 dev feature-flag defaults in feature_flags/resolver.py `_DEV_DEFAULT_ON`)
+  is ACTIVE during pytest. Consequence: a test asserting a production default
+  (`ff_research is False`, `ff_content_drafts is False`) will FAIL once those
+  flags are force-defaulted-on in dev — the resolver returns True under the dev
+  test env. When adding environment-scoped behavior, grep the tests for the
+  prod-default assumption and update it (test_feature_flags.py was updated to
+  assert the dev defaults). Do not "fix" this by flipping the test env to
+  staging/prod — that would silently disable monoprocess colocation and every
+  other dev-scoped path the suite exercises.
+- SOURCE-CATALOG SEED IS ALREADY REAL (don't be misled by a stale local DB). The
+  onboarding "Trusted Sources" list comes from `/v1/sources/catalog` → the
+  `source_catalog` table, seeded in migration 0001 with seven DISTINCT real
+  vendors (Financial Times, Wall Street Journal, Bloomberg, Reuters / CoinDesk,
+  The Block, Decrypt) at varied editorial_confidence. The literal "Catalog Feed"
+  / confidence-75 string exists ONLY in a test fixture
+  (test_credibility_bootstrap.py), never in a runtime seed. If a running app
+  shows identical placeholder sources, that's a stale/hand-seeded dev DB — re-run
+  migrations to re-seed; it is NOT a code fix.
+- PRIMARY BUTTON ALREADY USES DARK-ON-BRIGHT TEXT. The design-system Button's
+  primary variant renders its label with `color="inverse"` → text.inverse
+  #0A0A0F (obsidian) on the bright teal fill — i.e. dark text on a saturated
+  fill, already the stronger-contrast choice. It is NOT white/light, so a request
+  to "darken the white CTA text" is already satisfied; switching to a teal-family
+  shade (e.g. brandSecondary #1E8F8F) would REDUCE contrast (teal-on-teal). Read
+  Button.tsx before assuming the label is white.
+
 ## What This Skill Deliberately Does NOT Contain
 
 Current phase/wave status, current commit hashes, current test counts.
