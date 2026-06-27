@@ -169,7 +169,7 @@ export const DraftEditorScreen: React.FC = () => {
       // Show the real backend message (e.g. the self-approval rejection),
       // matching the signup/login error-display pattern.
       setReviewError(
-        isApiError(e) ? e.message : 'Something went wrong. Please try again.',
+        isApiError(e) ? e.message : 'Something went wrong. Try again.',
       );
     };
     const onSuccess = () => setReviewAction(null);

@@ -10,6 +10,7 @@ import {
 } from '@oryx/design-system';
 import type { PublicationStatus } from '@oryx/shared-types';
 import { usePublications } from '../hooks/usePublishing';
+import { EmptyState } from '../../../components/EmptyState';
 
 const STATUS_COLOR: Record<PublicationStatus, 'secondary' | 'brand' | 'danger' | 'tertiary'> = {
   pending: 'tertiary',
@@ -40,11 +41,10 @@ export const PublishHistoryScreen: React.FC = () => {
         {publications.isLoading ? (
           <Skeleton height={72} />
         ) : (publications.data ?? []).length === 0 ? (
-          <Card variant="default">
-            <Text variant="body" color="secondary">
-              Nothing published yet.
-            </Text>
-          </Card>
+          <EmptyState
+            title="No publications yet"
+            description="Once you publish a draft, delivery status for each channel shows up here."
+          />
         ) : (
           (publications.data ?? []).map((p) => (
             <View key={p.id}>

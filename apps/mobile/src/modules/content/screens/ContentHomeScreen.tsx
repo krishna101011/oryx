@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Button, Screen, Skeleton, Spacer, Text } from '@oryx/design-system';
 import { useDraftList } from '../hooks/useDrafts';
 import { DraftCard } from '../components/DraftCard';
+import { EmptyState } from '../../../components/EmptyState';
 
 export const ContentHomeScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -78,9 +79,16 @@ export const ContentHomeScreen: React.FC = () => {
         {drafts.isLoading ? (
           <Skeleton height={100} />
         ) : (drafts.data ?? []).length === 0 ? (
-          <Text variant="bodySm" color="secondary">
-            No drafts yet. Generate one from a ready research packet.
-          </Text>
+          <EmptyState
+            icon="horn"
+            title="Start your first draft"
+            description="Drafts generate from verified research packets, so everything here traces back to a source."
+            ctaLabel="Generate draft"
+            onPress={() =>
+              // @ts-expect-error param-less navigate within the content stack
+              navigation.navigate('GenerateDraft')
+            }
+          />
         ) : (
           (drafts.data ?? []).map((d) => (
             <View key={d.id}>

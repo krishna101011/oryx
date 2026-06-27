@@ -1,7 +1,7 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Card, Screen, Spacer, Text, Button } from '@oryx/design-system';
+import { Button, Card, Icon, Screen, Spacer, Text } from '@oryx/design-system';
 import { useMe } from '../../../hooks/useMe';
 import { useAppDispatch } from '../../../store';
 import { signout } from '../../../store/thunks/auth';
@@ -65,6 +65,13 @@ export const SettingsHomeScreen: React.FC = () => {
           accent="indigo"
           onPress={() => navigation.navigate('ActiveSessions' as never)}
         />
+        <Spacer size={2} />
+        <View style={styles.footnote}>
+          <Icon name="ShieldCheck" size="sm" color="secondary" />
+          <Text variant="caption" color="secondary">
+            Channel credentials are encrypted with AES-256-GCM
+          </Text>
+        </View>
 
         <Spacer size={6} />
         <Text variant="caption" color="tertiary">
@@ -125,3 +132,12 @@ export const SettingsHomeScreen: React.FC = () => {
     </Screen>
   );
 };
+
+const styles = StyleSheet.create({
+  footnote: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+});

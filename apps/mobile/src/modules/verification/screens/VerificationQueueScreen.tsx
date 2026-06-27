@@ -13,6 +13,7 @@ import type { ConflictRecord, ConflictType } from '@oryx/shared-types';
 import { useReviewQueue } from '../hooks/useReviewQueue';
 import { EpistemicTypeBadge } from '../components/EpistemicTypeBadge';
 import { SeverityPill } from '../components/SeverityPill';
+import { EmptyState } from '../../../components/EmptyState';
 
 const CONFLICT_TYPE_LABEL: Record<ConflictType, string> = {
   direct_contradiction: 'Direct contradiction',
@@ -52,6 +53,13 @@ export const VerificationQueueScreen: React.FC = () => {
         <Text variant="display">Review queue</Text>
         <Spacer size={6} />
 
+        {pendingClaims.length === 0 && openConflicts.length === 0 ? (
+          <EmptyState
+            title="Nothing pending review"
+            description="New claims and conflicts will appear here as they're detected."
+          />
+        ) : (
+          <>
         <Text variant="h2">Needs review</Text>
         <Spacer size={3} />
         {pendingClaims.length === 0 ? (
@@ -115,6 +123,8 @@ export const VerificationQueueScreen: React.FC = () => {
               <Spacer size={2} />
             </React.Fragment>
           ))
+        )}
+          </>
         )}
 
         <Spacer size={8} />

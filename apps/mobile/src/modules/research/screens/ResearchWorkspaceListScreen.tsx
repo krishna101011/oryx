@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -12,6 +12,7 @@ import {
 } from '@oryx/design-system';
 import { useCreateWorkspace, useResearchWorkspaces } from '../hooks/useResearch';
 import { WorkspaceCard } from '../components/WorkspaceCard';
+import { EmptyState } from '../../../components/EmptyState';
 
 export const ResearchWorkspaceListScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -19,6 +20,7 @@ export const ResearchWorkspaceListScreen: React.FC = () => {
   const workspaces = useResearchWorkspaces();
   const create = useCreateWorkspace();
   const [name, setName] = useState('');
+  const nameInput = useRef<TextInput>(null);
 
   const onCreate = () => {
     if (!name.trim()) return;
@@ -38,6 +40,7 @@ export const ResearchWorkspaceListScreen: React.FC = () => {
           </Text>
           <Spacer size={2} />
           <TextInput
+            ref={nameInput}
             value={name}
             onChangeText={setName}
             placeholder="Workspace name"
@@ -58,9 +61,13 @@ export const ResearchWorkspaceListScreen: React.FC = () => {
         {workspaces.isLoading ? (
           <Skeleton height={100} />
         ) : (workspaces.data ?? []).length === 0 ? (
-          <Text variant="bodySm" color="secondary">
-            No workspaces yet. Create one to start curating intelligence.
-          </Text>
+          <EmptyState
+            icon="horn"
+            title="Create a workspace"
+            description="Organize verified intelligence here before assembling it into a packet."
+            ctaLabel="New workspace"
+            onPress={() => nameInput.current?.focus()}
+          />
         ) : (
           (workspaces.data ?? []).map((w) => (
             <View key={w.id}>

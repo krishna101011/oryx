@@ -12,6 +12,7 @@ import {
 import type { CalendarEntry } from '@oryx/shared-types';
 import type { PublishChannel } from '@oryx/shared-types';
 import { ChannelBadge } from '../components/ChannelBadge';
+import { EmptyState } from '../../../components/EmptyState';
 import { useCalendar, useCancelEntry } from '../hooks/useCalendar';
 import { useTargets } from '../hooks/usePublishing';
 import {
@@ -185,6 +186,16 @@ export const CalendarScreen: React.FC = () => {
           })}
         </View>
       )}
+
+      {!calendar.isLoading && (calendar.data ?? []).length === 0 ? (
+        <>
+          <Spacer size={4} />
+          <EmptyState
+            title="Nothing scheduled this month"
+            description="Approved drafts can be scheduled for a future publish time."
+          />
+        </>
+      ) : null}
 
       {selectedDay !== null && (
         <>

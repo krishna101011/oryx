@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Screen, Skeleton, Spacer, Text } from '@oryx/design-system';
 import { useReviewQueue } from '../hooks/useDrafts';
 import { DraftCard } from '../components/DraftCard';
+import { EmptyState } from '../../../components/EmptyState';
 
 /**
  * Phase 5 Wave C — drafts awaiting review. Distinct from the verification
@@ -30,9 +31,10 @@ export const ReviewQueueScreen: React.FC = () => {
         {queue.isLoading ? (
           <Skeleton height={100} />
         ) : drafts.length === 0 ? (
-          <Text variant="bodySm" color="secondary">
-            Nothing awaiting review.
-          </Text>
+          <EmptyState
+            title="Nothing pending review"
+            description="Drafts submitted for review show up here, ready to approve or send back."
+          />
         ) : (
           drafts.map((d) => (
             <View key={d.id}>
