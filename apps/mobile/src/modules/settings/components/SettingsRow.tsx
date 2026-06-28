@@ -4,10 +4,10 @@ import { Card, Icon, Pressable, Spacer, Text, useTheme, type IconName } from '@o
 
 /**
  * Accent family used to colour a row's icon by the section it belongs to.
- * These map to existing design-system accent tokens — 'teal' resolves via the
- * Icon component's 'brand' keyword; the rest are exposed directly by Icon.
+ * Drawn from the "Midnight Citrus" decorative accent set; each maps directly
+ * to a design-system accent token via the Icon component's color prop.
  */
-export type SettingsRowAccent = 'teal' | 'indigo' | 'violet' | 'blue';
+export type SettingsRowAccent = 'amber' | 'coral' | 'teal' | 'slateBlue' | 'plum';
 
 export interface SettingsRowProps {
   label: string;
@@ -15,7 +15,7 @@ export interface SettingsRowProps {
   icon: IconName;
   onPress?: () => void;
   trailing?: React.ReactNode;
-  /** Section accent for the icon glyph. Defaults to teal (the brand accent). */
+  /** Section accent for the icon glyph. Defaults to amber (the brand accent). */
   accent?: SettingsRowAccent;
 }
 
@@ -25,10 +25,10 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
   icon,
   onPress,
   trailing,
-  accent = 'teal',
+  accent = 'amber',
 }) => {
   const t = useTheme();
-  const iconColor = accent === 'teal' ? 'brand' : accent;
+  const iconColor = accent;
   const content = (
     <Card variant="default">
       <View style={styles.row}>

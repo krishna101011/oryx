@@ -46,11 +46,9 @@ export const Button: React.FC<ButtonProps> = ({
   const variantStyle: ViewStyle = (() => {
     switch (variant) {
       case 'primary':
-        return {
-          backgroundColor: isDisabled
-            ? t.colors.accent.tealMuted
-            : t.colors.accent.teal,
-        };
+        // New primary CTA fill is amber; the disabled state is conveyed by the
+        // shared opacity treatment below (no separate muted-amber token).
+        return { backgroundColor: t.colors.accent.amber };
       case 'secondary':
         return {
           backgroundColor: t.colors.bg.elevated,
@@ -65,7 +63,7 @@ export const Button: React.FC<ButtonProps> = ({
   })();
 
   const labelColor: React.ComponentProps<typeof Text>['color'] =
-    variant === 'primary' ? 'inverse' : variant === 'danger' ? 'inverse' : 'primary';
+    variant === 'primary' ? 'onAmber' : variant === 'danger' ? 'inverse' : 'primary';
 
   return (
     <Pressable
@@ -87,7 +85,7 @@ export const Button: React.FC<ButtonProps> = ({
       <View style={styles.content}>
         {loading ? (
           <ActivityIndicator
-            color={variant === 'primary' ? t.colors.text.inverse : t.colors.text.primary}
+            color={variant === 'primary' ? t.colors.text.onAmber : t.colors.text.primary}
           />
         ) : (
           <Text variant="body" color={labelColor}>

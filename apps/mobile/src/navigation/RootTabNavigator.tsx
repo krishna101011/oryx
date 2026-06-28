@@ -29,7 +29,7 @@ export const RootTabNavigator: React.FC = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: t.colors.accent.teal,
+        tabBarActiveTintColor: t.colors.accent.amber,
         tabBarInactiveTintColor: t.colors.text.tertiary,
         tabBarStyle: {
           backgroundColor: t.colors.bg.secondary,

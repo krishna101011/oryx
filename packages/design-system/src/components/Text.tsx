@@ -9,7 +9,16 @@ import type { TextVariant } from '../tokens';
 
 export interface TextProps extends Omit<RNTextProps, 'style'> {
   variant?: TextVariant;
-  color?: 'primary' | 'secondary' | 'tertiary' | 'inverse' | 'brand' | 'danger';
+  color?:
+    | 'primary'
+    | 'secondary'
+    | 'tertiary'
+    | 'inverse'
+    | 'brand'
+    | 'danger'
+    | 'onAmber'
+    | 'onCoral'
+    | 'onTeal';
   align?: 'auto' | 'left' | 'center' | 'right';
   style?: TextStyle | TextStyle[];
   children: React.ReactNode;
@@ -29,9 +38,11 @@ export const Text: React.FC<TextProps> = ({
 }) => {
   const t = useTheme();
   const variantStyle = t.typography[variant];
+  // 'brand' resolves to the new primary accent (amber). Text-on-fill keys
+  // (onAmber/onCoral/onTeal) and the base text ramp resolve from colors.text.
   const resolvedColor =
     color === 'brand'
-      ? t.colors.accent.teal
+      ? t.colors.accent.amber
       : color === 'danger'
         ? t.colors.semantic.danger
         : t.colors.text[color];

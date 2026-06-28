@@ -29,7 +29,7 @@ const Splash: React.FC = () => {
   const t = useTheme();
   return (
     <View style={[styles.splash, { backgroundColor: t.colors.bg.primary }]}>
-      <ActivityIndicator color={t.colors.accent.teal} />
+      <ActivityIndicator color={t.colors.accent.amber} />
     </View>
   );
 };

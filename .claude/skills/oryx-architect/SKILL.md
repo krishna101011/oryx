@@ -122,17 +122,27 @@ applied everywhere:
   using the existing token set (don't repeat one color across every icon
   — that reads as monotone/cheap even within the "restrained" philosophy).
 
-**Color tokens (do not introduce new ones without explicit reason):**
+**Color tokens — "Midnight Citrus" (do not introduce new ones without explicit reason):**
 ```
-Brand mark (from logo horns):  #1A7A7A (dark teal), #1E8F8F (lighter)
-UI accent family:               teal #00D4C8, indigo #6366F1,
-                                 violet #9B5DE5, soft blue #60A5FA
-Base/backgrounds:               obsidian #0A0A0F, navy #0F1117,
-                                 charcoal #1A2332, surface #1E2A3A
-Text:                           primary #FFFFFF, secondary #8B95A5,
-                                 tertiary #4E5D6C
-FORBIDDEN: any gold/amber-as-brand-color (#D4AF7A, #8C7553, #C9A84C) —
-  explicitly removed during brand migration, must never return.
+Brand mark (from logo horns):  #1A7A7A (dark teal), #1E8F8F (lighter) — logo
+                                 image files are UNCHANGED; teal stays valid.
+UI accent family:               amber #F5A623 (PRIMARY — CTAs, active states),
+                                 coral #FF6B5C, teal #14B8A6 (secondary; was
+                                 #00D4C8), slateBlue #4C6EF5, plum #7E5BEF,
+                                 cream #FDE9D9 (subtle highlight, not a fill)
+Base/backgrounds (warm dark):   obsidian #0D0B08, navy #15110A,
+                                 charcoal #1F1810, surface #2A2116
+Text (warm-tinted):             primary #FBF3EA, secondary #A99884,
+                                 tertiary #6E6253
+Text-on-fill (same-family dark): onAmber #2B1A04, onCoral #3D1108,
+                                 onTeal #04342C — never plain black/white.
+SUPERSEDED 2026-06-28: the prior gold/amber prohibition is intentionally
+  reversed per owner decision. The current brand accent family is
+  "Midnight Citrus" (amber primary, coral/teal/slateBlue/plum/cream
+  secondary). See commit MIDNIGHT_CITRUS_COMMIT for the full token change.
+  Semantic ambers (warning #FBBF24, severity/in-review #F59E0B) are NOT
+  brand colors and were intentionally left untouched — see the collision
+  note in Operational Reality.
 ```
 
 **Logo:** stylized oryx horns mark (dark teal gradient) + wide-tracked
@@ -286,13 +296,23 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   (test_credibility_bootstrap.py), never in a runtime seed. If a running app
   shows identical placeholder sources, that's a stale/hand-seeded dev DB — re-run
   migrations to re-seed; it is NOT a code fix.
-- PRIMARY BUTTON ALREADY USES DARK-ON-BRIGHT TEXT. The design-system Button's
-  primary variant renders its label with `color="inverse"` → text.inverse
-  #0A0A0F (obsidian) on the bright teal fill — i.e. dark text on a saturated
-  fill, already the stronger-contrast choice. It is NOT white/light, so a request
-  to "darken the white CTA text" is already satisfied; switching to a teal-family
-  shade (e.g. brandSecondary #1E8F8F) would REDUCE contrast (teal-on-teal). Read
-  Button.tsx before assuming the label is white.
+- PRIMARY BUTTON USES DARK-ON-BRIGHT TEXT. The design-system Button's primary
+  variant renders its label with `color="onAmber"` → text.onAmber #2B1A04 (a
+  dark amber-family shade) on the bright amber fill (#F5A623) — i.e. dark text
+  on a saturated fill, the stronger-contrast choice. It is NOT white/light, and
+  it is NOT plain black (per the same-family text-on-fill principle). Before the
+  Midnight Citrus change this was `inverse` #0A0A0F on a teal fill; the principle
+  is unchanged, only the hue. Read Button.tsx before assuming the label is white.
+- BRAND-vs-SEMANTIC AMBER COLLISION (Midnight Citrus). The new brand primary is
+  amber #F5A623. Three SEMANTIC ambers remain, intentionally untouched because
+  they encode state, not brand: `semantic.warning` #FBBF24 (token), and the
+  local `#F59E0B` consts for medium severity (severityColors.ts), in-review /
+  changes-requested draft status (draftColors.ts), and verification status
+  (statusColors.ts). These are perceptually adjacent to the brand amber. This is
+  a KNOWN, FLAGGED tradeoff, not a bug — do NOT "resolve" it by recoloring a
+  semantic amber or by shifting the brand amber on your own judgment. Any change
+  here is an owner decision. Disambiguation in the UI today comes from context
+  and shape (badges/meters/pills vs. CTAs/active states), not hue alone.
 
 ## What This Skill Deliberately Does NOT Contain
 

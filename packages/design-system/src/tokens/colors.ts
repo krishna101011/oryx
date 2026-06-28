@@ -5,29 +5,39 @@
  */
 export const colors = {
   bg: {
-    primary: '#0A0A0F', // obsidian
-    secondary: '#0F1117', // navy
-    card: '#1A2332', // charcoal
-    elevated: '#1E2A3A', // surface
+    // "Midnight Citrus" warm dark ramp (replaces the cool obsidian/navy set).
+    primary: '#0D0B08', // obsidian (warm)
+    secondary: '#15110A', // navy (warm, recede/secondary)
+    card: '#1F1810', // charcoal (warm card surface)
+    elevated: '#2A2116', // surface (most elevated)
   },
   text: {
-    primary: '#FFFFFF',
-    secondary: '#8B95A5',
-    tertiary: '#4E5D6C',
+    // Warm-tinted text ramp (replaces the cool grey ramp).
+    primary: '#FBF3EA',
+    secondary: '#A99884',
+    tertiary: '#6E6253',
     inverse: '#0A0A0F',
+    // Text-on-fill: dark shade from the SAME family as the fill it sits on,
+    // never plain black. Used by buttons/badges over the bright accents.
+    onAmber: '#2B1A04',
+    onCoral: '#3D1108',
+    onTeal: '#04342C',
   },
   accent: {
-    // ORYX brand mark + UI accent family (replaces the retired gold accents).
-    // The `teal*` keys keep the former `gold*` shape so the 'brand' text/icon
-    // keyword and the disabled/glow variants resolve without restructuring.
-    teal: '#00D4C8',
-    tealMuted: '#1A7A7A',
-    tealGlow: 'rgba(0, 212, 200, 0.15)',
-    brand: '#1A7A7A',
-    brandSecondary: '#1E8F8F',
-    indigo: '#6366F1',
-    violet: '#9B5DE5',
-    blue: '#60A5FA',
+    // "Midnight Citrus" brand family. amber is the NEW primary (main CTAs,
+    // active states); teal is retained (matches the horns logo mark) but now
+    // plays a secondary/tertiary role. See SKILL.md — supersedes the prior
+    // teal-primary set and the (now-reversed) gold/amber prohibition.
+    amber: '#F5A623', // NEW primary
+    coral: '#FF6B5C', // secondary
+    teal: '#14B8A6', // kept — secondary/tertiary (was #00D4C8)
+    tealMuted: '#1A7A7A', // muted teal (disabled/inert ticks)
+    tealGlow: 'rgba(20, 184, 166, 0.15)', // selection glow, tracks new teal
+    slateBlue: '#4C6EF5', // replaces indigo in decorative/category use
+    plum: '#7E5BEF', // replaces violet in decorative/category use
+    cream: '#FDE9D9', // subtle light highlight (not a strong fill color)
+    brand: '#1A7A7A', // teal mark base (HornMark family) — retained
+    brandSecondary: '#1E8F8F', // HornMark stroke — retained
   },
   semantic: {
     success: '#4ADE80',
@@ -51,19 +61,23 @@ export const colors = {
  * structured `colors` object; this is the canonical brand-value reference.
  */
 export const oryxPalette = {
+  // "Midnight Citrus" — amber primary, warm dark base. brandPrimary/Secondary
+  // remain the teal horns-mark values (the logo is unchanged).
   brandPrimary: '#1A7A7A',
   brandSecondary: '#1E8F8F',
-  accentTeal: '#00D4C8',
-  accentIndigo: '#6366F1',
-  accentViolet: '#9B5DE5',
-  accentBlue: '#60A5FA',
-  baseObsidian: '#0A0A0F',
-  baseNavy: '#0F1117',
-  baseCharcoal: '#1A2332',
-  baseSurface: '#1E2A3A',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8B95A5',
-  textTertiary: '#4E5D6C',
+  accentAmber: '#F5A623',
+  accentCoral: '#FF6B5C',
+  accentTeal: '#14B8A6',
+  accentSlateBlue: '#4C6EF5',
+  accentPlum: '#7E5BEF',
+  accentCream: '#FDE9D9',
+  baseObsidian: '#0D0B08',
+  baseNavy: '#15110A',
+  baseCharcoal: '#1F1810',
+  baseSurface: '#2A2116',
+  textPrimary: '#FBF3EA',
+  textSecondary: '#A99884',
+  textTertiary: '#6E6253',
 } as const;
 
 export type Colors = typeof colors;

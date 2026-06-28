@@ -16,15 +16,15 @@ export const CHANNEL_LABEL: Record<PublishChannel, string> = {
 function channelColor(channel: PublishChannel, t: ReturnType<typeof useTheme>): string {
   switch (channel) {
     case 'twitter_x':
-      return t.colors.accent.blue;
+      return t.colors.accent.coral;
     case 'linkedin':
-      return t.colors.accent.indigo;
+      return t.colors.accent.slateBlue;
     case 'notion':
-      return t.colors.accent.violet;
+      return t.colors.accent.plum;
     case 'email_newsletter':
       return t.colors.accent.teal;
     case 'webhook':
-      return t.colors.accent.brandSecondary;
+      return t.colors.accent.amber;
     default:
       return t.colors.text.tertiary; // export
   }

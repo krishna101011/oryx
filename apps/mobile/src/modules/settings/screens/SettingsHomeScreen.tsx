@@ -42,7 +42,7 @@ export const SettingsHomeScreen: React.FC = () => {
           label="Edit profile"
           description="Display name, headline"
           icon="User"
-          accent="teal"
+          accent="amber"
           onPress={() => navigation.navigate('ProfileEdit' as never)}
         />
 
@@ -54,7 +54,7 @@ export const SettingsHomeScreen: React.FC = () => {
         <SettingsRow
           label="Change password"
           icon="KeyRound"
-          accent="indigo"
+          accent="slateBlue"
           onPress={() => navigation.navigate('ChangePassword' as never)}
         />
         <Spacer size={2} />
@@ -62,7 +62,7 @@ export const SettingsHomeScreen: React.FC = () => {
           label="Active sessions"
           description="Devices currently signed in"
           icon="MonitorSmartphone"
-          accent="indigo"
+          accent="slateBlue"
           onPress={() => navigation.navigate('ActiveSessions' as never)}
         />
         <Spacer size={2} />
@@ -82,7 +82,7 @@ export const SettingsHomeScreen: React.FC = () => {
           label="Notification preferences"
           description="Frequency and channels"
           icon="Bell"
-          accent="blue"
+          accent="coral"
           onPress={() => navigation.navigate('AlertsSettings' as never)}
         />
 
@@ -95,7 +95,7 @@ export const SettingsHomeScreen: React.FC = () => {
           label="Trusted sources"
           description="Enable, disable, and override confidence"
           icon="ListChecks"
-          accent="violet"
+          accent="plum"
           onPress={() => navigation.navigate('TrustedSources' as never)}
         />
         <Spacer size={2} />
@@ -103,7 +103,7 @@ export const SettingsHomeScreen: React.FC = () => {
           label="Source intake"
           description="Connections, sync health, activity"
           icon="Inbox"
-          accent="violet"
+          accent="plum"
           onPress={() => navigation.navigate('IntakeHome' as never)}
         />
 
