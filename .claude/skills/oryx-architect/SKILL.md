@@ -139,7 +139,7 @@ Text-on-fill (same-family dark): onAmber #2B1A04, onCoral #3D1108,
 SUPERSEDED 2026-06-28: the prior gold/amber prohibition is intentionally
   reversed per owner decision. The current brand accent family is
   "Midnight Citrus" (amber primary, coral/teal/slateBlue/plum/cream
-  secondary). See commit MIDNIGHT_CITRUS_COMMIT for the full token change.
+  secondary). See commit 404e066 for the full token change.
   Semantic ambers (warning #FBBF24, severity/in-review #F59E0B) are NOT
   brand colors and were intentionally left untouched — see the collision
   note in Operational Reality.
