@@ -1,6 +1,13 @@
+import { Platform } from 'react-native';
 import type { ApiError, ApiResponse } from '@oryx/shared-types';
 import { AppApiError } from '../errors';
 import { logger } from '../logger';
+
+// Web auth rides in an httpOnly cookie the browser only attaches when the
+// request opts into credentials. Native carries a bearer header and has no
+// cookie jar, so this is a no-op there.
+const CREDENTIALS_MODE: RequestCredentials =
+  Platform.OS === 'web' ? 'include' : 'same-origin';
 
 const DEFAULT_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/v1';
@@ -87,6 +94,7 @@ export class ApiClient {
     const init: RequestInit = {
       method,
       headers: this.buildHeaders(rid, token),
+      credentials: CREDENTIALS_MODE,
     };
     if (body !== undefined) init.body = JSON.stringify(body);
     return fetch(`${this.baseUrl}${path}`, init);

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import type {
   RefreshRequest,
   SigninRequest,
@@ -28,6 +29,22 @@ async function persistTokens(t: TokenPair): Promise<void> {
 }
 
 export const bootstrapAuth = () => async (dispatch: AppDispatch): Promise<void> => {
+  // Web: the session lives in an httpOnly cookie the JS layer cannot read by
+  // design, so there is nothing to restore from storage. The cookie IS the
+  // persistence — probe /me with credentials (the client sends them on web).
+  // 200 means the browser still holds a valid session; anything else → signed
+  // out. This is what survives a hard page reload.
+  if (Platform.OS === 'web') {
+    try {
+      await apiClient().get('/auth/me');
+      dispatch(authActions.bootstrapResolved({ authenticated: true }));
+    } catch {
+      dispatch(authActions.bootstrapResolved({ authenticated: false }));
+    }
+    return;
+  }
+
+  // Native: restore tokens from device secure storage (Keychain / EncryptedSharedPreferences).
   const [access, refresh, accountId] = await Promise.all([
     secureGet(SecureKeys.accessToken),
     secureGet(SecureKeys.refreshToken),

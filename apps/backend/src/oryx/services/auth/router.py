@@ -1,9 +1,10 @@
 ﻿"""Auth router — /v1/auth/*"""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from oryx.config import get_settings
 from oryx.core.dependencies import (
     CurrentPrincipal,
     db_session,
@@ -14,6 +15,7 @@ from oryx.core.dependencies import (
 )
 from oryx.core.errors import NotImplementedFeatureError
 from oryx.core.models import Account
+from oryx.core.security.cookies import clear_session_cookie, set_session_cookie
 from oryx.services.auth.providers.email.base import EmailMessage
 from oryx.services.auth.providers.email.log_only import LogOnlyEmailProvider
 from oryx.services.auth.service import AuthService, IssuedTokens
@@ -68,7 +70,10 @@ def _account_to_schema(account: Account) -> AccountSchema:
 
 @router.post("/signup")
 async def signup(
-    body: SignupRequest, request: Request, db: AsyncSession = Depends(db_session)
+    body: SignupRequest,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(db_session),
 ) -> dict:
     svc = AuthService(db)
     tokens = await svc.signup(
@@ -83,6 +88,8 @@ async def signup(
     )
     account = await svc.repo.get_account_by_id(tokens.account_id)
     assert account is not None
+    # Additive: native reads tokens from the body; web persists via this cookie.
+    set_session_cookie(response, tokens.access_token, get_settings())
     payload = SignupResponse(
         tokens=_tokens_to_pair(tokens), account=_account_to_schema(account)
     )
@@ -91,7 +98,10 @@ async def signup(
 
 @router.post("/signin")
 async def signin(
-    body: SigninRequest, request: Request, db: AsyncSession = Depends(db_session)
+    body: SigninRequest,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(db_session),
 ) -> dict:
     svc = AuthService(db)
     tokens = await svc.signin(
@@ -105,6 +115,8 @@ async def signin(
     )
     account = await svc.repo.get_account_by_id(tokens.account_id)
     assert account is not None
+    # Additive: native reads tokens from the body; web persists via this cookie.
+    set_session_cookie(response, tokens.access_token, get_settings())
     payload = SigninResponse(
         tokens=_tokens_to_pair(tokens), account=_account_to_schema(account)
     )
@@ -131,11 +143,14 @@ async def refresh(
 @router.post("/signout")
 async def signout(
     request: Request,
+    response: Response,
     principal: CurrentPrincipal = Depends(get_principal),
     db: AsyncSession = Depends(db_session),
 ) -> dict:
     svc = AuthService(db)
     await svc.signout(session_id=principal.session_id, account_id=principal.account_id)
+    # Native already discards its stored tokens; clear the web session cookie too.
+    clear_session_cookie(response, get_settings())
     return envelope({"ok": True}, request_id=get_request_id(request))
 
 

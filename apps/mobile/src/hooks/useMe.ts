@@ -24,6 +24,12 @@ export function useMe() {
     queryFn: () => apiClient().get<MeResponse>('/auth/me'),
     enabled: status === 'authenticated',
     staleTime: 60 * 1000,
+    // Feature flags live in this payload; without this, a flag flipped
+    // server-side stays stale for the entire session a tab is left open.
+    // Scoped override (global default is false): refetch when the user
+    // returns to the app. react-query gates this on staleTime above, so
+    // rapid tab-switching within 60s won't spam /auth/me.
+    refetchOnWindowFocus: true,
     retry: (failureCount, error) => {
       // Don't retry terminal auth errors — sign-out is the correct response.
       if (isApiError(error)) {

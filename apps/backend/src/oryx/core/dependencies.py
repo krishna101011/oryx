@@ -26,6 +26,7 @@ from oryx.core.errors import (
     WorkspaceNotFoundError,
 )
 from oryx.core.models import Account, WorkspaceMember
+from oryx.core.security.cookies import SESSION_COOKIE_NAME
 from oryx.core.security.jwt import verify_access_token
 
 
@@ -67,8 +68,19 @@ def _read_bearer(request: Request) -> str | None:
     return parts[1].strip() or None
 
 
-def get_principal(request: Request) -> CurrentPrincipal:
+def _read_token(request: Request) -> str | None:
+    """Dual-auth: native sends a bearer header, web relies on the httpOnly
+    session cookie. Header wins when both are present so an explicit token
+    always overrides an ambient cookie."""
     token = _read_bearer(request)
+    if token:
+        return token
+    cookie = request.cookies.get(SESSION_COOKIE_NAME)
+    return cookie.strip() if cookie and cookie.strip() else None
+
+
+def get_principal(request: Request) -> CurrentPrincipal:
+    token = _read_token(request)
     if not token:
         raise AuthRequiredError()
     claims = verify_access_token(token)
@@ -80,7 +92,7 @@ def get_principal(request: Request) -> CurrentPrincipal:
 
 
 def get_principal_optional(request: Request) -> CurrentPrincipal | None:
-    token = _read_bearer(request)
+    token = _read_token(request)
     if not token:
         return None
     try:

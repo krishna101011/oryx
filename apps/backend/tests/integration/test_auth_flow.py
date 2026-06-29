@@ -124,3 +124,55 @@ async def test_weak_password_rejected(app) -> None:
         })
         assert res.status_code == 422
         assert res.json()["error"]["code"] == "AUTH_PASSWORD_WEAK"
+
+
+# --- Web dual-auth: httpOnly session cookie -------------------------------
+
+@pytest.mark.asyncio
+async def test_signup_sets_session_cookie(app) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
+        res = await client.post("/v1/auth/signup", json={
+            "email": _u(), "password": "StrongPass123", "displayName": "Web User",
+            "deviceId": str(uuid.uuid4()), "deviceLabel": "web", "devicePlatform": "web",
+        })
+        assert res.status_code == 200, res.text
+        # Cookie present, httpOnly, and carries the access token (additive — body still has it).
+        assert "oryx_session" in res.cookies
+        set_cookie = res.headers.get("set-cookie", "")
+        assert "httponly" in set_cookie.lower()
+        assert "samesite=lax" in set_cookie.lower()
+        # dev environment → no Secure attribute so it works over http://localhost.
+        assert "secure" not in set_cookie.lower()
+        assert res.cookies["oryx_session"] == res.json()["data"]["tokens"]["accessToken"]
+
+
+@pytest.mark.asyncio
+async def test_me_authenticates_via_cookie_without_bearer(app) -> None:
+    """The page-reload scenario: no Authorization header, cookie carries the session."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
+        signup = await client.post("/v1/auth/signup", json={
+            "email": _u(), "password": "StrongPass123", "displayName": "Web User",
+            "deviceId": str(uuid.uuid4()), "deviceLabel": "web", "devicePlatform": "web",
+        })
+        assert signup.status_code == 200
+        # The AsyncClient cookie jar now holds oryx_session — send NO bearer header.
+        me = await client.get("/v1/auth/me")
+        assert me.status_code == 200, me.text
+        assert me.json()["data"]["account"]["email"]
+
+
+@pytest.mark.asyncio
+async def test_signout_clears_cookie_and_blocks_subsequent_request(app) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
+        await client.post("/v1/auth/signup", json={
+            "email": _u(), "password": "StrongPass123", "displayName": "Web User",
+            "deviceId": str(uuid.uuid4()), "deviceLabel": "web", "devicePlatform": "web",
+        })
+        # Authenticated via cookie before signout.
+        assert (await client.get("/v1/auth/me")).status_code == 200
+        out = await client.post("/v1/auth/signout")
+        assert out.status_code == 200
+        # Cookie is expired/removed from the jar → next protected call is 401.
+        client.cookies.delete("oryx_session")
+        me = await client.get("/v1/auth/me")
+        assert me.status_code == 401
