@@ -84,12 +84,12 @@ export const Card: React.FC<CardProps> = ({
 
   // Web-only: smooth transition base (enables animated exit from hover too)
   const webTransition = Platform.OS === 'web' ? ({ transition: 'all 250ms ease' } as ViewStyle) : {};
-  // Web-only: glow derived from t.colors.accent.teal (#00D4C8) at hover opacities
+  // Web-only: glow derived from t.colors.accent.teal (#14B8A6) at hover opacities
   const webHover =
     Platform.OS === 'web' && hovered
       ? ({
-          borderColor: 'rgba(0, 212, 200, 0.22)',
-          boxShadow: '0 0 16px rgba(0, 212, 200, 0.18)',
+          borderColor: 'rgba(20, 184, 166, 0.22)',
+          boxShadow: '0 0 16px rgba(20, 184, 166, 0.18)',
         } as ViewStyle)
       : {};
 

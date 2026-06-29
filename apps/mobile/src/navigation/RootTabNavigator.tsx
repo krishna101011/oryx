@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Icon, useTheme } from '@oryx/design-system';
 import type { RootTabParamList } from './types';
@@ -31,11 +32,16 @@ export const RootTabNavigator: React.FC = () => {
         headerShown: false,
         tabBarActiveTintColor: t.colors.accent.amber,
         tabBarInactiveTintColor: t.colors.text.tertiary,
-        tabBarStyle: {
-          backgroundColor: t.colors.bg.secondary,
-          borderTopColor: t.colors.border.subtle,
-          borderTopWidth: 1,
-        },
+        // On web the ported Genspark sidebar (WebShell) is the primary nav, so
+        // the bottom tab bar is hidden there; native keeps it.
+        tabBarStyle:
+          Platform.OS === 'web'
+            ? { display: 'none' }
+            : {
+                backgroundColor: t.colors.bg.secondary,
+                borderTopColor: t.colors.border.subtle,
+                borderTopWidth: 1,
+              },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '500' },
       }}
     >

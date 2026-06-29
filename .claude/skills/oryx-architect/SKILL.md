@@ -122,27 +122,37 @@ applied everywhere:
   using the existing token set (don't repeat one color across every icon
   — that reads as monotone/cheap even within the "restrained" philosophy).
 
-**Color tokens — "Midnight Citrus" (do not introduce new ones without explicit reason):**
+**Color tokens — "Genspark cool-dark" (CURRENT; do not introduce new ones without explicit reason):**
 ```
-Brand mark (from logo horns):  #1A7A7A (dark teal), #1E8F8F (lighter) — logo
-                                 image files are UNCHANGED; teal stays valid.
-UI accent family:               amber #F5A623 (PRIMARY — CTAs, active states),
-                                 coral #FF6B5C, teal #14B8A6 (secondary; was
-                                 #00D4C8), slateBlue #4C6EF5, plum #7E5BEF,
-                                 cream #FDE9D9 (subtle highlight, not a fill)
-Base/backgrounds (warm dark):   obsidian #0D0B08, navy #15110A,
-                                 charcoal #1F1810, surface #2A2116
-Text (warm-tinted):             primary #FBF3EA, secondary #A99884,
-                                 tertiary #6E6253
-Text-on-fill (same-family dark): onAmber #2B1A04, onCoral #3D1108,
-                                 onTeal #04342C — never plain black/white.
-SUPERSEDED 2026-06-28: the prior gold/amber prohibition is intentionally
-  reversed per owner decision. The current brand accent family is
-  "Midnight Citrus" (amber primary, coral/teal/slateBlue/plum/cream
-  secondary). See commit 404e066 for the full token change.
-  Semantic ambers (warning #FBBF24, severity/in-review #F59E0B) are NOT
-  brand colors and were intentionally left untouched — see the collision
-  note in Operational Reality.
+Brand mark (logo horns, SVG):  gradient teal #14B8A6 → #0E8C82 (primitives.jsx
+                                 hornGrad). The Genspark SVG horn mark is now the
+                                 CANONICAL logo, superseding the photo-extracted
+                                 raster. Inner-curl stroke = bg #05070A.
+UI accent family:               indigo #5B5BF5 (PRIMARY — CTAs, active states; the
+                                 primary "fill" is the indigo→violet gradient
+                                 135°), violet #8B5CF6 (secondary/solo accent),
+                                 teal #14B8A6 + teal-2 #0EA5A0, softblue #60A5FA.
+Base/backgrounds (cool dark):   bg #05070A, panel #0A0E14, elev #10151D,
+                                 elev-2 #161D28; border #1A2330, border-strong
+                                 #232F42, hairline rgba(255,255,255,0.04).
+Text (cool grey ramp):          text #E6EAF2, text-2 #A8B0BF, text-3 #6B7588,
+                                 text-4 #4A5263.
+Text-on-fill:                   #fff on the accent gradient (.btn.primary). This
+                                 system uses white-on-accent, NOT same-family dark.
+Semantic:                       pos #14B8A6, neg #F87171, warn #F59E0B,
+                                 info #60A5FA.
+SUPERSEDED 2026-06-29 (owner-confirmed GLOBAL reversal): "Midnight Citrus"
+  (warm base + amber-primary, commit 404e066, 2026-06-28) is RETIRED. The
+  canonical system is now an EXACT 1:1 port of the approved Genspark source
+  (docs/design-reference/*). Tokens live in packages/design-system/src/tokens
+  (gensparkPalette = the literal :root mirror; the structured `colors` keys were
+  value-remapped onto Genspark hexes so 100+ call sites kept compiling — e.g.
+  accent.amber now HOLDS indigo #5B5BF5, text.onAmber now HOLDS #fff). When you
+  see `amber`/`coral`/`onAmber` key NAMES in code, they carry Genspark values,
+  not warm hues — read tokens/colors.ts before assuming a hue from a key name.
+  Gradients are start/end pair tokens (`gradients.*`) consumed via
+  expo-linear-gradient (RN has no CSS gradient string). The historical
+  "Midnight Citrus" and the even-earlier teal-primary sets are both dead.
 ```
 
 **Logo:** stylized oryx horns mark (dark teal gradient) + wide-tracked
@@ -266,13 +276,30 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   so anything needing real SVG paths (e.g. the HornMark brand motif) should
   declare `react-native-svg` on apps/mobile and `pnpm install --offline` (links
   from store, downloads nothing) rather than approximating with bordered Views.
-- Mobile typography is a STRICT six-size token set (display 32 / h1 24 / h2 20 /
-  body 16 / bodySm 14 / caption 12; plus mono 13). Text rejects raw fontSize/
-  fontWeight at call sites, so a design spec asking for 11/13/16-at-500 must map
-  to the nearest existing variant — do not invent a size. Shared, cross-module
+- Typography is no longer the strict six-size set (Genspark port, 2026-06-29).
+  The variant set now mirrors the Genspark type scale (pageTitle/kpiVal/wordmark/
+  cardTitle/navLabel/navGroup/body/bodySm/caption/label/mono, + retained display/
+  h1/h2). Text STILL rejects raw fontSize/fontWeight at call sites — pick a
+  variant, don't invent a size. FONTS ARE NOW REALLY LOADED: Inter (400/500/600/
+  700) + JetBrains Mono (400/500/600) via @expo-google-fonts, gated in App.tsx
+  (useAppFonts) — the prior "fonts referenced but not loaded" state is fixed; the
+  ttf files are bundled by metro (no runtime network fetch). Shared, cross-module
   components live in `apps/mobile/src/components/` (ErrorBoundary, FeatureGate,
-  EmptyState, HornMark); there is no `src/_shared/components/` despite older
-  prompts referencing that path.
+  EmptyState, HornMark[now re-exports the design-system mark], plus web/ for the
+  WebShell/WebSidebar/WebTopBar); there is no `src/_shared/components/`.
+- SVG PRIMITIVES + GENSPARK ICONS now live in the design-system package
+  (HornMark, Spark, Candles, GensparkIcon) and need react-native-svg, which is
+  now a declared peer+dev dep of @oryx/design-system (15.15.5, from the pnpm
+  store). The canonical HornMark is the Genspark gradient SVG (200×200 viewBox,
+  teal #14B8A6→#0E8C82), not the old 2-path line-art. The lucide-based `Icon`
+  is retained for native screens; GensparkIcon is additive (web sidebar/topbar).
+- WEB GETS A DESKTOP SHELL, NATIVE KEEPS BOTTOM TABS. App.tsx now wraps the
+  navigator in WebShell (replaced WebFrame). WebShell is pass-through on native
+  and renders the ported 232px sidebar + 44px topbar on web (Platform.OS==='web'),
+  driving the real tab navigator via a navigationRef. RootTabNavigator hides its
+  bottom tab bar on web (`tabBarStyle: { display: 'none' }`). The sidebar shows
+  REAL /me data (workspace, profile, build version); the ticker strip is empty
+  ("live data pending") and pending nav items are dimmed — no fake demo data.
 
 - THE BACKEND TEST SUITE RUNS AS environment=dev (silent trap for any
   environment-scoped logic). `tests/conftest.py` does NOT set ENVIRONMENT, and
@@ -296,23 +323,20 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   (test_credibility_bootstrap.py), never in a runtime seed. If a running app
   shows identical placeholder sources, that's a stale/hand-seeded dev DB — re-run
   migrations to re-seed; it is NOT a code fix.
-- PRIMARY BUTTON USES DARK-ON-BRIGHT TEXT. The design-system Button's primary
-  variant renders its label with `color="onAmber"` → text.onAmber #2B1A04 (a
-  dark amber-family shade) on the bright amber fill (#F5A623) — i.e. dark text
-  on a saturated fill, the stronger-contrast choice. It is NOT white/light, and
-  it is NOT plain black (per the same-family text-on-fill principle). Before the
-  Midnight Citrus change this was `inverse` #0A0A0F on a teal fill; the principle
-  is unchanged, only the hue. Read Button.tsx before assuming the label is white.
-- BRAND-vs-SEMANTIC AMBER COLLISION (Midnight Citrus). The new brand primary is
-  amber #F5A623. Three SEMANTIC ambers remain, intentionally untouched because
-  they encode state, not brand: `semantic.warning` #FBBF24 (token), and the
-  local `#F59E0B` consts for medium severity (severityColors.ts), in-review /
-  changes-requested draft status (draftColors.ts), and verification status
-  (statusColors.ts). These are perceptually adjacent to the brand amber. This is
-  a KNOWN, FLAGGED tradeoff, not a bug — do NOT "resolve" it by recoloring a
-  semantic amber or by shifting the brand amber on your own judgment. Any change
-  here is an owner decision. Disambiguation in the UI today comes from context
-  and shape (badges/meters/pills vs. CTAs/active states), not hue alone.
+- PRIMARY BUTTON LABEL IS NOW WHITE-ON-ACCENT (Genspark port, 2026-06-29). The
+  design-system Button primary still passes `color="onAmber"`, but that token now
+  HOLDS #fff (Genspark .btn.primary uses white text on the indigo→violet accent).
+  The fill is currently the SOLID indigo #5B5BF5 (accent.amber remapped), NOT the
+  full indigo→violet gradient — Button.tsx was not refactored to render a
+  LinearGradient. A faithful gradient primary is a documented follow-up (gx.btnPrimary
+  + gradients.accent exist for it). History: Midnight Citrus had dark-on-amber
+  #2B1A04; before that, inverse on teal. Read Button.tsx + tokens/colors.ts first.
+- BRAND-vs-SEMANTIC AMBER COLLISION — RESOLVED by the Genspark port (2026-06-29).
+  The brand primary is no longer amber (now indigo #5B5BF5), so it no longer
+  collides with the semantic ambers. semantic.warning is now #F59E0B (Genspark
+  --warn) and the local severity/draft/status `#F59E0B` consts are unchanged —
+  they're now hue-distinct from the indigo/violet brand. Still do NOT recolor a
+  semantic token on your own judgment; that remains an owner decision.
 
 ## What This Skill Deliberately Does NOT Contain
 

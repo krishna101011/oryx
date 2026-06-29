@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.24.0",
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/jetbrains-mono": "^0.4.1",
     "@expo/metro-runtime": "~3.2.3",
     "@oryx/design-system": "workspace:*",
     "@oryx/shared-types": "workspace:*",
@@ -24,6 +26,8 @@
     "@tanstack/react-query": "^5.32.0",
     "expo": "~51.0.0",
     "expo-blur": "^13.0.0",
+    "expo-font": "~12.0.10",
+    "expo-linear-gradient": "^13.0.2",
     "expo-secure-store": "~13.0.0",
     "expo-status-bar": "~1.12.0",
     "lucide-react-native": "^0.367.0",

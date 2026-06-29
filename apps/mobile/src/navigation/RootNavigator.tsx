@@ -10,6 +10,7 @@ import { AuthStack } from './AuthStack';
 import { OnboardingStack } from './OnboardingStack';
 import { RootTabNavigator } from './RootTabNavigator';
 import { linking } from './linking';
+import { navigationRef } from './navigationRef';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -55,7 +56,7 @@ export const RootNavigator: React.FC = () => {
     me.data?.onboarding?.state !== 'complete';
 
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer ref={navigationRef} linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {status !== 'authenticated' ? (
           <Stack.Screen name="Auth" component={AuthStack} />

@@ -2,83 +2,149 @@
  * Color tokens for ORYX.
  * Source of truth — no component may use a hex value directly.
  * Lint rule enforces this everywhere except inside this folder.
+ *
+ * ===========================================================================
+ * GENSPARK PORT (supersedes "Midnight Citrus", 2026-06-29).
+ * Every value below is a 1:1 copy of a `:root` CSS variable in the approved
+ * Genspark source (docs/design-reference/styles.css). No value is rounded,
+ * approximated, or "improved". The `gensparkPalette` object holds the exact
+ * named tokens for traceability; the structured `colors` object maps those
+ * same values onto the key shape the app's 100+ call sites already consume,
+ * so the visual system changes without touching every screen.
+ * Owner-confirmed global brand reversal — see oryx-architect SKILL.md.
+ * ===========================================================================
  */
+
+/**
+ * Flat Genspark `:root` palette — the canonical brand-value reference.
+ * Each entry cites the CSS variable it ports verbatim.
+ */
+export const gensparkPalette = {
+  bg: '#05070A', // --bg
+  panel: '#0A0E14', // --panel
+  elev: '#10151D', // --elev
+  elev2: '#161D28', // --elev-2
+  border: '#1A2330', // --border
+  borderStrong: '#232F42', // --border-strong
+  hairline: 'rgba(255,255,255,0.04)', // --hairline
+
+  text: '#E6EAF2', // --text
+  text2: '#A8B0BF', // --text-2
+  text3: '#6B7588', // --text-3
+  text4: '#4A5263', // --text-4
+
+  indigo: '#5B5BF5', // --indigo
+  violet: '#8B5CF6', // --violet
+  teal: '#14B8A6', // --teal
+  teal2: '#0EA5A0', // --teal-2
+  softblue: '#60A5FA', // --softblue
+  pos: '#14B8A6', // --pos
+  neg: '#F87171', // --neg
+  warn: '#F59E0B', // --warn
+  info: '#60A5FA', // --info
+
+  indigoSoft: '#818cf8', // .chip.indigo text color
+  calEventText: '#b5b7ff', // .cal .event color
+  onAccent: '#FFFFFF', // .btn.primary color:#fff (text/icon on accent fills)
+} as const;
+
+/**
+ * Accent gradients. CSS gradient strings have no RN equivalent — ported as
+ * start/end color-stop pairs (consumed via expo-linear-gradient). `angle` is
+ * the CSS `deg` for documentation; expo-linear-gradient uses start/end points.
+ */
+export const gradients = {
+  // --accent-grad: linear-gradient(135deg, #5B5BF5 0%, #8B5CF6 100%)
+  accent: { from: '#5B5BF5', to: '#8B5CF6', angle: 135 },
+  // --accent-grad-soft: linear-gradient(135deg, rgba(91,91,245,0.18), rgba(139,92,246,0.18))
+  accentSoft: { from: 'rgba(91,91,245,0.18)', to: 'rgba(139,92,246,0.18)', angle: 135 },
+  // sidebar: linear-gradient(180deg, #07090D 0%, #05070A 100%)
+  sidebar: { from: '#07090D', to: '#05070A', angle: 180 },
+  // .meter-fill.teal: linear-gradient(90deg, var(--teal-2), var(--teal))
+  meterTeal: { from: '#0EA5A0', to: '#14B8A6', angle: 90 },
+  // .meter-fill.neg: linear-gradient(90deg, #b45a5a, var(--neg))
+  meterNeg: { from: '#b45a5a', to: '#F87171', angle: 90 },
+  // .avatar: linear-gradient(135deg, #232F42, #10151D)
+  avatar: { from: '#232F42', to: '#10151D', angle: 135 },
+} as const;
+
+const g = gensparkPalette;
+
 export const colors = {
   bg: {
-    // "Midnight Citrus" warm dark ramp (replaces the cool obsidian/navy set).
-    primary: '#0D0B08', // obsidian (warm)
-    secondary: '#15110A', // navy (warm, recede/secondary)
-    card: '#1F1810', // charcoal (warm card surface)
-    elevated: '#2A2116', // surface (most elevated)
+    // Genspark dark ramp (cool obsidian). bg.secondary == --panel so the
+    // WebFrame gutter and recede surfaces read a shade off the app bg.
+    primary: g.bg, // --bg   #05070A
+    secondary: g.panel, // --panel #0A0E14
+    card: g.panel, // --panel #0A0E14 (card/.kpi surface)
+    elevated: g.elev, // --elev  #10151D (inputs, .cmd, tab-row)
   },
   text: {
-    // Warm-tinted text ramp (replaces the cool grey ramp).
-    primary: '#FBF3EA',
-    secondary: '#A99884',
-    tertiary: '#6E6253',
-    inverse: '#0A0A0F',
-    // Text-on-fill: dark shade from the SAME family as the fill it sits on,
-    // never plain black. Used by buttons/badges over the bright accents.
-    onAmber: '#2B1A04',
-    onCoral: '#3D1108',
-    onTeal: '#04342C',
+    primary: g.text, // --text   #E6EAF2
+    secondary: g.text2, // --text-2 #A8B0BF
+    tertiary: g.text3, // --text-3 #6B7588
+    inverse: '#FFFFFF', // .btn.primary color: #fff (on accent gradient)
+    // Genspark renders white on every accent fill. These keys are retained
+    // for the existing Text/Button contract; all resolve to #fff over the
+    // bright accent gradient (no same-family dark-on-fill in this system).
+    onAmber: '#FFFFFF',
+    onCoral: '#FFFFFF',
+    onTeal: '#FFFFFF',
   },
   accent: {
-    // "Midnight Citrus" brand family. amber is the NEW primary (main CTAs,
-    // active states); teal is retained (matches the horns logo mark) but now
-    // plays a secondary/tertiary role. See SKILL.md — supersedes the prior
-    // teal-primary set and the (now-reversed) gold/amber prohibition.
-    amber: '#F5A623', // NEW primary
-    coral: '#FF6B5C', // secondary
-    teal: '#14B8A6', // kept — secondary/tertiary (was #00D4C8)
-    tealMuted: '#1A7A7A', // muted teal (disabled/inert ticks)
-    tealGlow: 'rgba(20, 184, 166, 0.15)', // selection glow, tracks new teal
-    slateBlue: '#4C6EF5', // replaces indigo in decorative/category use
-    plum: '#7E5BEF', // replaces violet in decorative/category use
-    cream: '#FDE9D9', // subtle light highlight (not a strong fill color)
-    brand: '#1A7A7A', // teal mark base (HornMark family) — retained
-    brandSecondary: '#1E8F8F', // HornMark stroke — retained
+    // Genspark accent family. `amber`/`coral` keys are retained (the Button
+    // and a few call sites reference them) but now carry the Genspark accent
+    // values — indigo→violet is the primary gradient; violet is the solo.
+    amber: g.indigo, // PRIMARY solo accent — --indigo #5B5BF5
+    coral: g.violet, // secondary solo accent — --violet #8B5CF6
+    teal: g.teal, // --teal  #14B8A6
+    tealMuted: g.teal2, // --teal-2 #0EA5A0
+    tealGlow: 'rgba(20,184,166,0.15)', // selection glow (tracks --teal)
+    slateBlue: g.indigo, // --indigo #5B5BF5
+    plum: g.violet, // --violet #8B5CF6
+    cream: g.indigoSoft, // .chip.indigo #818cf8 (subtle light accent)
+    brand: g.teal, // HornMark gradient base (#14B8A6)
+    brandSecondary: '#0E8C82', // HornMark gradient end (primitives.jsx hornGrad)
   },
   semantic: {
-    success: '#4ADE80',
-    warning: '#FBBF24',
-    danger: '#F87171',
-    info: '#60A5FA',
+    success: g.pos, // --pos  #14B8A6
+    warning: g.warn, // --warn #F59E0B
+    danger: g.neg, // --neg  #F87171
+    info: g.info, // --info #60A5FA
   },
   border: {
-    subtle: 'rgba(255, 255, 255, 0.06)',
-    default: 'rgba(255, 255, 255, 0.10)',
-    strong: 'rgba(255, 255, 255, 0.18)',
+    subtle: g.hairline, // --hairline rgba(255,255,255,0.04)
+    default: g.border, // --border        #1A2330
+    strong: g.borderStrong, // --border-strong #232F42
   },
   overlay: {
-    scrim: 'rgba(0, 0, 0, 0.60)',
-    glass: 'rgba(30, 42, 58, 0.70)',
+    scrim: 'rgba(0,0,0,0.60)',
+    glass: 'rgba(10,14,20,0.70)', // --panel @ 0.70 (glass over cool base)
   },
 } as const;
 
 /**
- * Flat ORYX brand palette (brand-spec token names). Components use the
- * structured `colors` object; this is the canonical brand-value reference.
+ * Legacy flat alias kept so any `oryxPalette.*` reference still resolves.
+ * Now points at Genspark values; `gensparkPalette` is the canonical source.
  */
 export const oryxPalette = {
-  // "Midnight Citrus" — amber primary, warm dark base. brandPrimary/Secondary
-  // remain the teal horns-mark values (the logo is unchanged).
-  brandPrimary: '#1A7A7A',
-  brandSecondary: '#1E8F8F',
-  accentAmber: '#F5A623',
-  accentCoral: '#FF6B5C',
-  accentTeal: '#14B8A6',
-  accentSlateBlue: '#4C6EF5',
-  accentPlum: '#7E5BEF',
-  accentCream: '#FDE9D9',
-  baseObsidian: '#0D0B08',
-  baseNavy: '#15110A',
-  baseCharcoal: '#1F1810',
-  baseSurface: '#2A2116',
-  textPrimary: '#FBF3EA',
-  textSecondary: '#A99884',
-  textTertiary: '#6E6253',
+  brandPrimary: g.teal,
+  brandSecondary: '#0E8C82',
+  accentIndigo: g.indigo,
+  accentViolet: g.violet,
+  accentTeal: g.teal,
+  accentSoftblue: g.softblue,
+  baseBg: g.bg,
+  basePanel: g.panel,
+  baseElev: g.elev,
+  baseElev2: g.elev2,
+  textPrimary: g.text,
+  textSecondary: g.text2,
+  textTertiary: g.text3,
+  textQuaternary: g.text4,
 } as const;
 
 export type Colors = typeof colors;
 export type OryxPalette = typeof oryxPalette;
+export type GensparkPalette = typeof gensparkPalette;
+export type Gradients = typeof gradients;
