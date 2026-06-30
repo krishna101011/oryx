@@ -20,6 +20,9 @@ Claude Code (this tool): all implementation — code, migrations, tests, commits
 - `docs/PHASE_4_ARCHITECTURE.md` — Phase 4 (Verify/Analyze/Research) architecture.
   NOTE: this file is a PDF (Rev 3, predates the `anant`→`oryx` rename); known
   describe-vs-built drift is recorded in `docs/PHASE_4_ARCHITECTURE.drift.md`.
+- `docs/PHASE_6_ARCHITECTURE.md` — Phase 6 (Automation/Notifications) architecture.
+  NOTE: drafted, pending freeze review (not yet frozen); has two
+  must-verify-against-real-code items flagged at the top to resolve before Wave A.
 - `docs/adr/INDEX.md` — all architecture decision records.
 - Auto-memory: `~/.claude/projects/<project>/memory/MEMORY.md` is loaded every
   session; its linked files capture recurring operational facts.
