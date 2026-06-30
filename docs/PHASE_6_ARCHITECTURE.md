@@ -9,21 +9,61 @@
 
 ---
 
-## ⚠️ MUST-VERIFY-AGAINST-REAL-CODE — RESOLVE BEFORE ANY WAVE A WORK
+## ✅ REAL-CODE VERIFICATION (completed 2026-06-30, pre-freeze)
 
-Two items in this document are reconstructed from prior-phase
-discussion, NOT independently re-verified against the current real
-code. They are the **first** thing Wave A must resolve, before building
-anything:
+The two flagged items have now been verified against the live codebase
+(not deferred to Wave A). Results — and one finding the draft did not
+anticipate:
 
-1. **The real event catalog (Section 2).** Grep every service's
-   `events/constants.py` for the actual existing event constants and
-   treat THAT list as ground truth — correct Section 2 if it is stale,
-   incomplete, or wrong about an exact event name.
-2. **The real `notification_frequency` field (Section 4.2).** Confirm
-   the exact existing field name and its allowed values (assumed here
-   to be `off` | `daily_digest` | `weekly_digest`) against the
-   onboarding/preferences code — do not assume.
+**1. Event catalog (Section 2) — the draft was WRONG in several places.**
+Verified by reading every event-constants module
+(`*/events/constants.py` **plus** `intake/events_constants.py`, which
+does not follow the directory convention). Corrections, all reflected
+in the rewritten Section 2:
+- `intake.sync_failed` is **NOT an outbox event** — it is a
+  `logger.warning(...)` call (`intake/sync_runner.py:314`). Phase 6
+  cannot subscribe to it. The real Phase 3 outbox event is
+  `intake.item.received`.
+- Conflict events are `verification.conflict.detected` /
+  `verification.conflict.resolved`, **not** `object.conflict.*`.
+- Phase 4 emits **more** than the draft listed: the full
+  `verification.claim.*` and `verification.evidence.collected` and
+  `intelligence.object.*` families also exist.
+- Phase 5 also emits `content.draft.created` (draft omitted it).
+
+**2. `notification_frequency` (Section 4.2) — the draft's values were WRONG.**
+The real column (`core/models.py:191`, enum `notification_frequency`)
+is `off | instant | daily | weekly`, default `daily` — **not**
+`off | daily_digest | weekly_digest`. Those `*_digest` strings are
+values of a *different* enum, `activity_type`, used by the tables below.
+
+**3. ⚠️ UNANTICIPATED FINDING — pre-existing notification infrastructure
+already exists and overlaps this entire phase. ARCHITECT MUST RECONCILE
+BEFORE FREEZE.**
+Phase 2/4 already shipped, wired, and exposed via `/v1/activity/*`
+(`services/activity/router.py`):
+- `activity_inbox` — an in-app feed with `type/title/body/data/read_at`
+  + `GET /v1/activity/inbox`, `POST /v1/activity/inbox/{id}/read`,
+  and an `unreadCount`. This is **the same thing** the draft proposes
+  to build new as `notifications` + `GET /v1/notifications`.
+- `alert_preferences` — per `(account, type, channel)` rows with
+  `frequency` + `quiet_hours`. Overlaps the proposed
+  `notification_rules`.
+- `alert_devices` — push-token registration (router comment literally
+  says "delivery is Phase 6").
+- `shared-types/src/activity.ts` already tags `daily_digest` /
+  `weekly_digest` with `// Phase 6` comments.
+
+  This is exactly the describe-vs-built drift the project tracks. The
+  draft's premise ("Phase 6 owns three things, all new") is **false** —
+  the feed and preference tables substantially already exist. The
+  decision of whether Phase 6 *extends* `activity_inbox` /
+  `alert_preferences` or *replaces* them with `notifications` /
+  `notification_rules` is an architecture call for freeze review (Claude
+  Chat role), not something to silently resolve in implementation. The
+  rest of this document below is **left as originally drafted** so the
+  architect can see the original intent against this finding; do not
+  treat Sections 3 & 5 as final until this is reconciled.
 
 ---
 
@@ -57,24 +97,53 @@ established at the Phase 5→6 handoff.
 
 ## 2. The Event Catalog Phase 6 Consumes
 
-**MANDATORY FIRST STEP FOR WHOEVER IMPLEMENTS THIS:** the list below is
-reconstructed from architecture discussion across prior phases, NOT
-independently re-verified against the current real code. Before
-building anything, grep the actual codebase for every existing event
-constant across every service's `events/constants.py`, and treat
-THAT list as ground truth — correcting this document's list if it's
-stale, incomplete, or wrong about an exact event name.
+**VERIFIED against the live codebase 2026-06-30** (see the verification
+block at the top). This is the real, ground-truth list of outbox event
+names and the constant that defines each. Events are registered for
+consumption via the event bus (`bus.subscribe(...)` in
+`services/queue/drainer.py` / `build_bus()`); that — not a new
+mechanism — is how the NotificationDispatcher subscribes.
 
-Known/expected events as of this writing:
-```
-Phase 3 (Intake):     intake.sync_failed, (others — verify)
-Phase 4 (Verify):      object.conflict.detected, object.conflict.resolved,
-                       research.packet.ready, (others — verify)
-Phase 5 (Create/Publish): content.draft.updated, content.draft.approved,
-                       content.draft.rejected, content.draft.scheduled,
-                       content.calendar.cancelled, content.published,
-                       content.publish.failed
-```
+| Real event name | Constant | Phase / source | Default category | Default severity |
+|---|---|---|---|---|
+| `intake.item.received` | `INTAKE_ITEM_RECEIVED` | 3 — intake | system | info |
+| `verification.claim.extracted` | `CLAIM_EXTRACTED` | 4 — claims | verification | info |
+| `verification.claim.typed` | `CLAIM_TYPED` | 4 — claims | verification | info |
+| `verification.evidence.collected` | `EVIDENCE_COLLECTED` | 4 — evidence | verification | info |
+| `verification.claim.verified` | `CLAIM_VERIFIED` | 4 — verification | verification | info |
+| `verification.claim.failed` | `CLAIM_FAILED` | 4 — verification | verification | **error** |
+| `verification.conflict.detected` | `CONFLICT_DETECTED` | 4 — conflicts | verification | warning |
+| `verification.conflict.resolved` | `CONFLICT_RESOLVED` | 4 — conflicts | verification | info |
+| `research.packet.ready` | `PACKET_READY` | 4 — research | verification | info |
+| `intelligence.object.created` | `OBJECT_CREATED` | 4 — intelligence | verification | info |
+| `intelligence.object.updated` | `OBJECT_UPDATED` | 4 — intelligence | verification | info |
+| `intelligence.object.reviewed` | `OBJECT_REVIEWED` | 4 — intelligence | verification | info |
+| `content.draft.created` | `DRAFT_CREATED` | 5 — drafts | publishing | info |
+| `content.draft.updated` | `DRAFT_UPDATED` | 5 — drafts | publishing | info |
+| `content.draft.approved` | `DRAFT_APPROVED` | 5 — drafts | publishing | info |
+| `content.draft.rejected` | `DRAFT_REJECTED` | 5 — drafts | publishing | warning |
+| `content.draft.scheduled` | `CALENDAR_ENTRY_SCHEDULED` | 5 — calendar | publishing | info |
+| `content.calendar.cancelled` | `CALENDAR_ENTRY_CANCELLED` | 5 — calendar | publishing | warning |
+| `content.published` | `CONTENT_PUBLISHED` | 5 — publishing | publishing | info |
+| `content.publish.failed` | `CONTENT_PUBLISH_FAILED` | 5 — publishing | publishing | **error** |
+
+Note: `intake.sync_failed` from the original draft is intentionally
+absent — it is a log line, not an outbox event (see verification block).
+A failed sync that should reach the user must first be promoted to a
+real outbox event in the intake service; that is a prerequisite, not
+something Phase 6 can subscribe to today.
+
+**Category mapping rationale.** The proposed `category` enum is
+`security | verification | publishing | system`. The mapping above is
+deliberate, not mechanical: everything in the `verification.*` and
+`intelligence.*` families is the Verify/Analyze surface → `verification`;
+everything in the `content.*` family (draft lifecycle, calendar,
+publishing) is the Create/Publish surface → `publishing`;
+`intake.item.received` is plumbing the user did not explicitly act on →
+`system`. No current outbox event maps to `security` — that category is
+reserved for the auth/session events the existing `activity_inbox`
+already records as `type='security'` (another reconciliation point with
+the finding above).
 
 Each event type maps to a default in-app notification when no rule
 exists yet for that account (see Section 3.2) — sensible defaults,
@@ -90,7 +159,7 @@ account_id         uuid not null fk→accounts
 workspace_id       uuid not null fk→workspaces
 category           notification_category_enum
                      ('security'|'verification'|'publishing'|'system')
-severity           notification_severity_enum ('info'|'warning')
+severity           notification_severity_enum ('info'|'warning'|'error')
 title              text not null
 body               text not null
 source_event_type  text not null   -- the outbox event name that caused this
@@ -100,6 +169,20 @@ created_at         timestamptz not null default now()
 ```
 Index: `(account_id, read_at, created_at desc)` — the feed query and
 unread-count query both need this shape.
+
+**Severity decision (resolved pre-freeze): three levels, not two.**
+The draft proposed `info | warning`. Verification of the real event
+catalog surfaced two genuine *failure* events — `content.publish.failed`
+and `verification.claim.failed` — that are categorically different from
+a "warning". A warning is "something needs your attention" (a conflict
+was detected, a draft was rejected, a scheduled post was cancelled); a
+failure is "the system tried to do a thing on your behalf and it did not
+work." Collapsing those into the same level would make the only two
+events a user must actually act on indistinguishable from advisory
+notices. So the enum is `info | warning | error`, with `error` reserved
+for the `*.failed` events (see the per-event mapping in Section 2). If
+`intake.sync_failed` is later promoted to a real outbox event, it slots
+into `error` too.
 
 ### 3.2 — `notification_rules` (per-account configuration)
 ```
@@ -140,6 +223,15 @@ created_at          timestamptz not null default now()
 Every single notification creation gets a matching log row — this is
 the "why did I get this" answer surfaced later in the Automation Hub.
 
+### 3.4 — Retention
+
+Retention/cleanup for `notifications` and `automation_log` is
+**deferred to Wave D hardening**. Waves A–C ship no cleanup logic, no
+TTL, and no archival — rows accumulate unbounded by design during the
+build-out, and the pruning policy (age cap, per-account row cap, or
+both) is decided and implemented in Wave D once the real write volume
+is observable. This is a stated decision, not an oversight.
+
 ## 4. The Two Worker Processes
 
 Both follow the EXACT existing standalone-worker-process pattern
@@ -161,15 +253,20 @@ default enabled). If enabled: insert a `notifications` row, insert a
 matching `automation_log` row, in one transaction.
 
 ### 4.2 — DigestWorker
-Reads the notification_frequency preference already collected at
-onboarding (`off` | `daily_digest` | `weekly_digest` — confirm the
-exact existing field name and values, don't assume). On its own
-schedule (daily tick checks accounts due for a daily digest; same
-worker also checks weekly-due accounts), bundles each account's unread
-notifications since their last digest into a single digest-style
-notification entry, rather than emailing anything — **email/push
-delivery is explicitly NOT built in Phase 6**, only the in-app
-bundling logic. The `channel` field already in `notification_rules.config`
+Reads the `notification_frequency` preference already collected at
+onboarding. **VERIFIED:** the real column is
+`user_preferences.notification_frequency` (`core/models.py:191`), an
+enum `notification_frequency` with values **`off | instant | daily |
+weekly`**, default `daily` — not the `*_digest` strings the draft
+assumed (those belong to the separate `activity_type` enum). The
+DigestWorker bundles for `daily` and `weekly`; `instant` means
+"dispatch immediately, no digest" (handled by the NotificationDispatcher
+path, not here); `off` suppresses. On its own schedule (daily tick
+checks accounts whose frequency is `daily`; same worker also checks
+`weekly`-due accounts), it bundles each account's unread notifications
+since their last digest into a single digest-style notification entry,
+rather than emailing anything — **email/push delivery is explicitly NOT
+built in Phase 6**, only the in-app bundling logic. The `channel` field already in `notification_rules.config`
 anticipates real delivery channels being added later without a schema
 change.
 

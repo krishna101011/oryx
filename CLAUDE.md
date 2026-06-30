@@ -21,8 +21,11 @@ Claude Code (this tool): all implementation — code, migrations, tests, commits
   NOTE: this file is a PDF (Rev 3, predates the `anant`→`oryx` rename); known
   describe-vs-built drift is recorded in `docs/PHASE_4_ARCHITECTURE.drift.md`.
 - `docs/PHASE_6_ARCHITECTURE.md` — Phase 6 (Automation/Notifications) architecture.
-  NOTE: drafted, pending freeze review (not yet frozen); has two
-  must-verify-against-real-code items flagged at the top to resolve before Wave A.
+  NOTE: drafted, pending freeze review (not yet frozen). Real-code verification
+  is DONE (top of doc): the draft's event names + notification_frequency values
+  were corrected, and a pre-existing-infrastructure overlap (activity_inbox /
+  alert_preferences / alert_devices already shipped via /v1/activity/*) is flagged
+  for the architect to reconcile before freeze.
 - `docs/adr/INDEX.md` — all architecture decision records.
 - Auto-memory: `~/.claude/projects/<project>/memory/MEMORY.md` is loaded every
   session; its linked files capture recurring operational facts.
