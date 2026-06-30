@@ -1,324 +1,312 @@
-# ORYX — Phase 6 Architecture: Automation & Notifications
+# ORYX — Phase 6 Architecture: Automation & Notifications (Rev 2)
 **Document:** `docs/PHASE_6_ARCHITECTURE.md`
-**Version:** Rev 1 — Authoritative and Complete
-**Status:** ARCHITECTURE — DRAFTED, PENDING FREEZE REVIEW
+**Version:** Rev 2 — supersedes Rev 1 in full
+**Status:** ARCHITECTURE — FROZEN (frozen 2026-06-30). Rev 1's
+"three new tables" premise was proven false by direct code investigation
+in two passes; both items flagged at end of pass 1 were resolved with
+evidence in pass 2 — see Revision Note at the bottom.
 **Phase:** 6 — Automation · Notifications
 **Prepared by:** Principal Architect
 **Date:** 2026-06-30
+**Verification Anchor:** commit `6ffde15`
 **Phase 5 Anchor:** see `docs/PHASE_5_ARCHITECTURE.md`
 
 ---
 
-## ✅ REAL-CODE VERIFICATION (completed 2026-06-30, pre-freeze)
+## 1. Revised Vision & Scope
 
-The two flagged items have now been verified against the live codebase
-(not deferred to Wave A). Results — and one finding the draft did not
-anticipate:
+Phase 2 already built real, working infrastructure for this phase and never
+finished wiring it up: `activity_inbox` (the feed, reads/mark-read fully
+functional), `alert_preferences` (a per-category, per-channel preference
+matrix with quiet hours), and `alert_devices` (push token registration) all
+exist today. **Nothing writes into `activity_inbox`. Nothing calls the push
+provider. Phase 6's real job is to build the missing writer and the missing
+delivery, not to build a parallel system.**
 
-**1. Event catalog (Section 2) — the draft was WRONG in several places.**
-Verified by reading every event-constants module
-(`*/events/constants.py` **plus** `intake/events_constants.py`, which
-does not follow the directory convention). Corrections, all reflected
-in the rewritten Section 2:
-- `intake.sync_failed` is **NOT an outbox event** — it is a
-  `logger.warning(...)` call (`intake/sync_runner.py:314`). Phase 6
-  cannot subscribe to it. The real Phase 3 outbox event is
-  `intake.item.received`.
-- Conflict events are `verification.conflict.detected` /
-  `verification.conflict.resolved`, **not** `object.conflict.*`.
-- Phase 4 emits **more** than the draft listed: the full
-  `verification.claim.*` and `verification.evidence.collected` and
-  `intelligence.object.*` families also exist.
-- Phase 5 also emits `content.draft.created` (draft omitted it).
+This is now smaller than originally drafted in one place (no new
+feed/preference tables) and larger in another (real FCM/APNs delivery,
+confirmed in scope per the project owner's decision below).
 
-**2. `notification_frequency` (Section 4.2) — the draft's values were WRONG.**
-The real column (`core/models.py:191`, enum `notification_frequency`)
-is `off | instant | daily | weekly`, default `daily` — **not**
-`off | daily_digest | weekly_digest`. Those `*_digest` strings are
-values of a *different* enum, `activity_type`, used by the tables below.
+**Phase 6 owns, all new:**
+- The `NotificationDispatcher` worker (the missing writer)
+- The `DigestWorker` (bundles daily/weekly digest rows)
+- Real push provider implementations (FCM, APNs) replacing the Phase 2
+  `LogOnlyPushProvider` stub
+- The `automation_log` table and its read view (the one genuinely new
+  piece of storage)
+- Four new columns on the existing `activity_inbox` table
 
-**3. ⚠️ UNANTICIPATED FINDING — pre-existing notification infrastructure
-already exists and overlaps this entire phase. ARCHITECT MUST RECONCILE
-BEFORE FREEZE.**
-Phase 2/4 already shipped, wired, and exposed via `/v1/activity/*`
-(`services/activity/router.py`):
-- `activity_inbox` — an in-app feed with `type/title/body/data/read_at`
-  + `GET /v1/activity/inbox`, `POST /v1/activity/inbox/{id}/read`,
-  and an `unreadCount`. This is **the same thing** the draft proposes
-  to build new as `notifications` + `GET /v1/notifications`.
-- `alert_preferences` — per `(account, type, channel)` rows with
-  `frequency` + `quiet_hours`. Overlaps the proposed
-  `notification_rules`.
-- `alert_devices` — push-token registration (router comment literally
-  says "delivery is Phase 6").
-- `shared-types/src/activity.ts` already tags `daily_digest` /
-  `weekly_digest` with `// Phase 6` comments.
+**Explicitly still out of scope:** Team/Workspace, analytics dashboards, any
+new AI involvement — unchanged from Rev 1.
 
-  This is exactly the describe-vs-built drift the project tracks. The
-  draft's premise ("Phase 6 owns three things, all new") is **false** —
-  the feed and preference tables substantially already exist. The
-  decision of whether Phase 6 *extends* `activity_inbox` /
-  `alert_preferences` or *replaces* them with `notifications` /
-  `notification_rules` is an architecture call for freeze review (Claude
-  Chat role), not something to silently resolve in implementation. The
-  rest of this document below is **left as originally drafted** so the
-  architect can see the original intent against this finding; do not
-  treat Sections 3 & 5 as final until this is reconciled.
+## 2. Event Catalog — Verified Against Real Code
 
----
+Authoritative as of the verification pass (commit 6ffde15). Re-confirm
+against `events/constants.py` again at the start of Wave A in case anything
+shipped between now and then — do not treat this as permanently frozen
+truth, only as accurate at time of writing.
 
-## 1. Vision & Scope
+| Real event | Source | `activity_type` category | Severity |
+|---|---|---|---|
+| `intake.item.received` | Phase 3 | system | info |
+| `verification.conflict.detected` | Phase 4 | verification | warning |
+| `verification.conflict.resolved` | Phase 4 | verification | info |
+| `verification.claim.failed` | Phase 4 | verification | error |
+| `verification.evidence.collected` | Phase 4 | verification | info |
+| `intelligence.object.*` (family) | Phase 4 | verification | info |
+| `content.draft.created` | Phase 5 | publishing | info |
+| `content.draft.updated` | Phase 5 | publishing | info |
+| `content.draft.approved` | Phase 5 | publishing | info |
+| `content.draft.rejected` | Phase 5 | publishing | warning |
+| `content.draft.scheduled` | Phase 5 | publishing | info |
+| `content.calendar.cancelled` | Phase 5 | publishing | info |
+| `content.published` | Phase 5 | publishing | info |
+| `content.publish.failed` | Phase 5 | publishing | error |
 
-Every phase before this one (2 through 5) emits domain events to the
-outbox. Nothing has consumed most of them yet. Phase 6's entire job is
-to listen, and turn those events into something a person actually
-sees: an in-app notification feed, configurable rules about what gets
-surfaced, and a transparent log of what fired and why.
-
-**Phase 6 owns exactly three things, all new:** an in-app notification
-feed, per-account notification rules/preferences, and an automation
-audit log. It does not own, and must never directly read, any other
-phase's private tables (content_drafts, calendar_entries, claims,
-intelligence_objects, etc.) — it only reads the events those phases
-already emit, and where it needs more than an ID, it calls that
-phase's existing public read API, the same boundary already
-established at the Phase 5→6 handoff.
-
-**Explicitly out of scope for Phase 6:**
-- Team/Workspace member management (separate, future deepening of
-  Phase 2 — do not fold it in here just because they sit near each
-  other in navigation)
-- Real email or push delivery (architected for, not built — see
-  Section 4)
-- Any new AI involvement of any kind
-- Analytics/usage dashboards (Phase 7's job — Phase 6 may eventually
-  emit its own events that Phase 7 consumes later, following the same
-  pattern this phase itself is built on)
-
-## 2. The Event Catalog Phase 6 Consumes
-
-**VERIFIED against the live codebase 2026-06-30** (see the verification
-block at the top). This is the real, ground-truth list of outbox event
-names and the constant that defines each. Events are registered for
-consumption via the event bus (`bus.subscribe(...)` in
-`services/queue/drainer.py` / `build_bus()`); that — not a new
-mechanism — is how the NotificationDispatcher subscribes.
-
-| Real event name | Constant | Phase / source | Default category | Default severity |
-|---|---|---|---|---|
-| `intake.item.received` | `INTAKE_ITEM_RECEIVED` | 3 — intake | system | info |
-| `verification.claim.extracted` | `CLAIM_EXTRACTED` | 4 — claims | verification | info |
-| `verification.claim.typed` | `CLAIM_TYPED` | 4 — claims | verification | info |
-| `verification.evidence.collected` | `EVIDENCE_COLLECTED` | 4 — evidence | verification | info |
-| `verification.claim.verified` | `CLAIM_VERIFIED` | 4 — verification | verification | info |
-| `verification.claim.failed` | `CLAIM_FAILED` | 4 — verification | verification | **error** |
-| `verification.conflict.detected` | `CONFLICT_DETECTED` | 4 — conflicts | verification | warning |
-| `verification.conflict.resolved` | `CONFLICT_RESOLVED` | 4 — conflicts | verification | info |
-| `research.packet.ready` | `PACKET_READY` | 4 — research | verification | info |
-| `intelligence.object.created` | `OBJECT_CREATED` | 4 — intelligence | verification | info |
-| `intelligence.object.updated` | `OBJECT_UPDATED` | 4 — intelligence | verification | info |
-| `intelligence.object.reviewed` | `OBJECT_REVIEWED` | 4 — intelligence | verification | info |
-| `content.draft.created` | `DRAFT_CREATED` | 5 — drafts | publishing | info |
-| `content.draft.updated` | `DRAFT_UPDATED` | 5 — drafts | publishing | info |
-| `content.draft.approved` | `DRAFT_APPROVED` | 5 — drafts | publishing | info |
-| `content.draft.rejected` | `DRAFT_REJECTED` | 5 — drafts | publishing | warning |
-| `content.draft.scheduled` | `CALENDAR_ENTRY_SCHEDULED` | 5 — calendar | publishing | info |
-| `content.calendar.cancelled` | `CALENDAR_ENTRY_CANCELLED` | 5 — calendar | publishing | warning |
-| `content.published` | `CONTENT_PUBLISHED` | 5 — publishing | publishing | info |
-| `content.publish.failed` | `CONTENT_PUBLISH_FAILED` | 5 — publishing | publishing | **error** |
-
-Note: `intake.sync_failed` from the original draft is intentionally
-absent — it is a log line, not an outbox event (see verification block).
-A failed sync that should reach the user must first be promoted to a
-real outbox event in the intake service; that is a prerequisite, not
-something Phase 6 can subscribe to today.
-
-**Category mapping rationale.** The proposed `category` enum is
-`security | verification | publishing | system`. The mapping above is
-deliberate, not mechanical: everything in the `verification.*` and
-`intelligence.*` families is the Verify/Analyze surface → `verification`;
-everything in the `content.*` family (draft lifecycle, calendar,
-publishing) is the Create/Publish surface → `publishing`;
-`intake.item.received` is plumbing the user did not explicitly act on →
-`system`. No current outbox event maps to `security` — that category is
-reserved for the auth/session events the existing `activity_inbox`
-already records as `type='security'` (another reconciliation point with
-the finding above).
-
-Each event type maps to a default in-app notification when no rule
-exists yet for that account (see Section 3.2) — sensible defaults,
-not silence, so the feature is useful from day one without requiring
-setup.
+`security` (existing category, already used for auth events) is untouched —
+Phase 6 does not add to it; it already exists from Phase 2's auth work.
 
 ## 3. Database Schema
 
-### 3.1 — `notifications` (the feed)
-```
-id                 uuid pk
-account_id         uuid not null fk→accounts
-workspace_id       uuid not null fk→workspaces
-category           notification_category_enum
-                     ('security'|'verification'|'publishing'|'system')
-severity           notification_severity_enum ('info'|'warning'|'error')
-title              text not null
-body               text not null
-source_event_type  text not null   -- the outbox event name that caused this
-source_event_id    uuid not null   -- traceable back to outbox_events
-read_at            timestamptz nullable
-created_at         timestamptz not null default now()
-```
-Index: `(account_id, read_at, created_at desc)` — the feed query and
-unread-count query both need this shape.
+### 3.1 — `activity_inbox` (ALTER, not CREATE)
 
-**Severity decision (resolved pre-freeze): three levels, not two.**
-The draft proposed `info | warning`. Verification of the real event
-catalog surfaced two genuine *failure* events — `content.publish.failed`
-and `verification.claim.failed` — that are categorically different from
-a "warning". A warning is "something needs your attention" (a conflict
-was detected, a draft was rejected, a scheduled post was cancelled); a
-failure is "the system tried to do a thing on your behalf and it did not
-work." Collapsing those into the same level would make the only two
-events a user must actually act on indistinguishable from advisory
-notices. So the enum is `info | warning | error`, with `error` reserved
-for the `*.failed` events (see the per-event mapping in Section 2). If
-`intake.sync_failed` is later promoted to a real outbox event, it slots
-into `error` too.
-
-### 3.2 — `notification_rules` (per-account configuration)
-```
-id            uuid pk
-account_id    uuid not null fk→accounts
-rule_type     notification_rule_type_enum (fixed, curated list — see
-              below, NOT a generic trigger/action composer)
-is_enabled    boolean not null default true
-config        jsonb not null default '{}'   -- e.g. {"channel":"in_app"}
-created_at, updated_at
-UNIQUE(account_id, rule_type)
+```sql
+ALTER TABLE activity_inbox
+  ADD COLUMN severity activity_severity_enum NOT NULL DEFAULT 'info';
+  -- new enum: 'info' | 'warning' | 'error'
+ALTER TABLE activity_inbox
+  ADD COLUMN source_event_type text NULL;
+ALTER TABLE activity_inbox
+  ADD COLUMN source_event_id uuid NULL;
 ```
 
-**Deliberately NOT a generic rule engine.** Per the design arc's own
-guidance ("resist building a complex flow-chart editor"), `rule_type`
-is a fixed enum mapping 1:1 to the event catalog above (e.g.
-`draft_approved`, `conflict_detected`, `publish_failed`,
-`scheduled_publish_succeeded`) — each one a simple on/off toggle, not
-a composable condition. If a real need for genuinely conditional rules
-emerges later, that's a deliberate future expansion, not a v1 default.
-
-A missing row for a given `(account_id, rule_type)` means "default
-enabled, in-app channel" — rules only need to exist as rows when
-someone actually changes the default, keeping the table small.
-
-### 3.3 — `automation_log` (transparency/audit)
+Widen the existing `activity_type` enum additively:
+```sql
+ALTER TYPE activity_type ADD VALUE 'verification';
+ALTER TYPE activity_type ADD VALUE 'publishing';
 ```
-id                  uuid pk
-account_id          uuid not null
-workspace_id        uuid not null
-rule_id             uuid nullable fk→notification_rules
-                     (null when a default fired, no explicit rule yet)
+
+**Confirmed via direct investigation (corrected from Rev 2's guess):**
+`instant_alert`/`daily_digest`/`weekly_digest` are NOT currently used
+anywhere — never queried, never written, reserved enum slots explicitly
+tagged `// Phase 6` in the TypeScript mirror. Rev 2 incorrectly assumed
+these already represented bundled digest rows; they don't, they're
+simply unbuilt. Phase 6 gives them real meaning for the first time:
+`daily_digest`/`weekly_digest` become bundle-row markers written only by
+`DigestWorker` on `activity_inbox` (Section 4.2). `instant_alert` is not
+used by Phase 6 at all — see the usage-convention decision below.
+
+**Resolved usage convention (new decision, closes Rev 2's open question):**
+`alert_preferences.type` already has a separate `frequency` column
+(`off/instant/daily/weekly`) covering cadence — so Phase 6 only ever
+reads/writes `alert_preferences` rows using the four real content
+categories (`security`/`system`/`verification`/`publishing`).
+`instant_alert`/`daily_digest`/`weekly_digest` stay untouched on that
+table; `frequency` already does that job. On `activity_inbox`, those same
+three values get used for the row's actual *kind*: a category value for a
+single categorized item, or `daily_digest`/`weekly_digest` for a bundle
+row with no single category (it spans several). Six shared enum values,
+two tables, two distinct and non-conflicting jobs.
+
+New index, replacing the existing `(account_id, created_at)` index if it
+doesn't already serve unread-filtering well:
+```sql
+CREATE INDEX ix_activity_account_unread
+  ON activity_inbox (account_id, read_at, created_at DESC);
+```
+Confirm with `EXPLAIN` during Wave A whether the existing index is
+sufficient before assuming a new one is needed — don't add an index
+speculatively if the existing one already serves the real query well.
+
+### 3.2 — `alert_preferences` (NO SCHEMA CHANGE — reused as-is)
+
+The existing `(account_id, type, channel)` matrix with `frequency` and
+`quiet_hours` is sufficient for per-category, per-channel control. No new
+table, no new columns. Phase 6's only job here is to make sure
+`type` values of `verification`/`publishing` resolve sensibly when no row
+exists yet for a given account (same "missing row = default" pattern as
+Rev 1 proposed, just applied to the real table instead of a new one) —
+confirm the existing read path already does this gracefully, fix if not.
+
+### 3.3 — `alert_devices` (NO SCHEMA CHANGE — reused as-is)
+
+Already correct and sufficient: platform, push_token, disabled_at. No
+changes needed.
+
+### 3.4 — `automation_log` (NEW — the one genuinely new table)
+
+```
+id                       uuid pk
+account_id               uuid not null
+workspace_id             uuid not null
+activity_inbox_id        uuid nullable fk to activity_inbox
+                          (null when suppressed by preference - see below)
 triggered_by_event_type  text not null
 triggered_by_event_id    uuid not null
-action_taken        text not null  -- e.g. "notification_created"
-created_at          timestamptz not null default now()
+action_taken             text not null
+  -- 'notification_created' | 'suppressed_by_preference' |
+  -- 'push_sent' | 'push_failed'
+created_at               timestamptz not null default now()
 ```
-Every single notification creation gets a matching log row — this is
-the "why did I get this" answer surfaced later in the Automation Hub.
 
-### 3.4 — Retention
+Every dispatcher decision gets a row here — including suppressions. This
+is what makes the Automation Hub's "why didn't I get this" answer
+possible, not just "why did I."
 
-Retention/cleanup for `notifications` and `automation_log` is
-**deferred to Wave D hardening**. Waves A–C ship no cleanup logic, no
-TTL, and no archival — rows accumulate unbounded by design during the
-build-out, and the pruning policy (age cap, per-account row cap, or
-both) is decided and implemented in Wave D once the real write volume
-is observable. This is a stated decision, not an oversight.
+### 3.5 — Retention (carried forward from the verification pass, unchanged)
 
-## 4. The Two Worker Processes
+Deferred to Wave D. No cleanup logic in Waves A through C. Stated as a
+decision, not a silent gap.
 
-Both follow the EXACT existing standalone-worker-process pattern
-(intake scheduler, queue drainer, calendar scheduler) — same
-`run_forever()`/`amain()` shape, same colocation via
-`ORYX_DEV_MONOPROCESS=1` in local dev, registered in `main.py`'s
-lifespan the same way. Do not invent a different mechanism.
+## 4. Workers — Confirmed Scope: Real Push Included
+
+All workers follow the existing standalone-process pattern (intake
+scheduler, queue drainer, calendar scheduler) — same `run_forever()`/
+`amain()` shape, same `ORYX_DEV_MONOPROCESS=1` colocation in local dev.
 
 ### 4.1 — NotificationDispatcher
-Subscribes to the outbox events in Section 2 (via whatever the
-existing handler-registration mechanism actually is — Phase 4's
-`ObjectConflictProjector` is the precedent to follow, not reinvent).
-For each event: resolve the affected account(s) for that
-workspace (currently 1:1, architect this as "all accounts in the
-workspace" even though that's always one row today — this is exactly
-the kind of forward-compatibility that avoids rework when Team ships).
-Check `notification_rules` for that account/rule_type (missing row =
-default enabled). If enabled: insert a `notifications` row, insert a
-matching `automation_log` row, in one transaction.
+
+Subscribes to the event catalog in Section 2. For each event:
+1. Resolve affected account(s) for the workspace (architect as "all
+   accounts in the workspace," same forward-compatibility note as Rev 1,
+   unchanged reasoning).
+2. Look up `alert_preferences` for the account/category/channel='in_app'
+   combination. If `frequency != 'off'`: insert into `activity_inbox`
+   (with the new columns populated), insert an `automation_log` row with
+   `action_taken='notification_created'`. If `frequency == 'off'`: insert
+   ONLY an `automation_log` row with `action_taken='suppressed_by_preference'`,
+   `activity_inbox_id=null`.
+3. Separately check the same account/category/channel='push' combination.
+   If enabled and not in quiet hours: call the real push provider
+   (Section 4.3), log `push_sent`/`push_failed` accordingly.
 
 ### 4.2 — DigestWorker
-Reads the `notification_frequency` preference already collected at
-onboarding. **VERIFIED:** the real column is
-`user_preferences.notification_frequency` (`core/models.py:191`), an
-enum `notification_frequency` with values **`off | instant | daily |
-weekly`**, default `daily` — not the `*_digest` strings the draft
-assumed (those belong to the separate `activity_type` enum). The
-DigestWorker bundles for `daily` and `weekly`; `instant` means
-"dispatch immediately, no digest" (handled by the NotificationDispatcher
-path, not here); `off` suppresses. On its own schedule (daily tick
-checks accounts whose frequency is `daily`; same worker also checks
-`weekly`-due accounts), it bundles each account's unread notifications
-since their last digest into a single digest-style notification entry,
-rather than emailing anything — **email/push delivery is explicitly NOT
-built in Phase 6**, only the in-app bundling logic. The `channel` field already in `notification_rules.config`
-anticipates real delivery channels being added later without a schema
-change.
+
+Reads accounts where `alert_preferences.frequency` is `daily` or `weekly`
+for a given category/channel. On schedule, bundles unread items since the
+last digest into one NEW `activity_inbox` row with `type='daily_digest'`
+or `'weekly_digest'`. This is genuinely new behavior — confirmed via
+investigation that nothing currently writes these values; Phase 6 is the
+first thing to ever populate them, consistent with their `// Phase 6` tag
+in the TypeScript types. Real digest *delivery* (an actual email) is
+still out of scope — the digest is an in-app bundle and/or a push
+notification pointing at it, not an emailed summary. Flag this distinction
+explicitly in Wave A so it's not assumed to mean "now we send emails too."
+
+### 4.3 — Push Providers (NEW — replacing the Phase 2 stub)
+
+Implement `FCMProvider` (Android + Web push) and `APNsProvider` (iOS)
+against the existing `PushProvider` Protocol from `providers/push/base.py`
+— do not change that Protocol's shape, implement against it.
+
+**Follow the exact pattern already proven in Phase 5 Wave D** for
+Twitter/LinkedIn/Notion: write the real, complete provider implementation
+code, test it against a real or faked HTTP layer (no live Firebase/Apple
+account needed to prove the code is correct), and flag clearly that real
+credentials (a Firebase service account, an Apple Push key) must be
+provisioned before this leaves local development — the same honest,
+established pattern as `ORYX_PUBLISH_KEY` and the Anthropic API key
+earlier in this project. `LogOnlyPushProvider` remains the dev-environment
+default; real providers activate via the same kind of environment-gated
+switch already used for `AI_PROVIDER`.
 
 ## 5. API Surface
 
 ```
-GET  /v1/notifications              (paginated, filter by category/read state)
-PATCH /v1/notifications/{id}        (mark read)
-POST /v1/notifications/mark-all-read
+GET   /v1/activity                          (existing - confirm it already
+                                              supports category/severity
+                                              filters once Section 3.1's
+                                              columns land; extend if not)
+PATCH /v1/activity/{id}                      (existing - mark read)
+POST  /v1/activity/mark-all-read             (existing - confirm exact name)
 
-GET  /v1/notification-rules         (effective rules — including unset
-                                      defaults, resolved, so the UI never
-                                      has to know about the "missing row
-                                      = default" convention itself)
-PATCH /v1/notification-rules/{rule_type}   (enable/disable, set config)
+GET   /v1/activity/alerts/preferences        (CONFIRMED real path, existing
+                                              - list_alert_prefs. Returns
+                                              only rows that exist today, no
+                                              resolved-defaults layer. Phase
+                                              6 extends this same endpoint to
+                                              backfill sensible defaults for
+                                              any missing category/channel
+                                              combination server-side -
+                                              same centralize-resolution-once
+                                              pattern as Phase 5's
+                                              resolve_template, rather than
+                                              duplicating default logic into
+                                              the mobile client.)
+PUT   /v1/activity/alerts/preferences/{type}/{channel}
+                                              (CONFIRMED real path and verb,
+                                              existing - upsert_alert_pref,
+                                              ON CONFLICT DO UPDATE. Phase 6
+                                              only ever calls this with
+                                              type in {security, system,
+                                              verification, publishing} -
+                                              never with the cadence-label
+                                              values, per the Section 3.1
+                                              usage convention.)
 
-GET  /v1/automation-log             (paginated, the transparency view)
+POST  /v1/activity/devices                   (existing - push token reg)
+DELETE /v1/activity/devices/{id}             (existing)
+
+GET   /v1/automation-log                     (NEW - the transparency view)
 ```
 
 ## 6. Mobile Screens
 
-- **Notification Center** — a feed, not a settings page, grouped by
-  category, unread shown via a small accent dot (not a loud badge
-  count crowding the tab bar), tapping an entry navigates to its
-  source object via the relevant phase's existing detail screen.
-- **Notification Preferences** (Settings, deepened) — the existing
-  frequency setting plus a per-category toggle list driven by
-  `GET /v1/notification-rules`.
-- **Automation Hub** — two tabs: Rules (the toggle list, same screen
-  data as Preferences but framed for power users) and Log (the
-  automation_log feed, read-only, "here's what fired and why").
+- **Notification Center** — reads `/v1/activity`, grouped by category,
+  unread via a small accent dot. **Verify whether Phase 2 already built
+  any UI against this API** before assuming this screen is net-new —
+  the backend existing for months without a consuming screen is possible
+  but worth a quick check, not an assumption either way.
+- **Notification Preferences** (Settings) — per-category by per-channel
+  toggle grid (verification/publishing/system by in-app/push/email) plus
+  quiet-hours range picker, against the real `alert_preferences` shape.
+  Same verify-before-build caveat as above.
+- **Automation Hub** — Rules tab (same data as Preferences, reframed) +
+  Log tab (the new `automation_log` feed, including suppressed entries
+  so a user can genuinely see why something didn't fire).
 
 ## 7. Wave Breakdown
 
-- **Wave A** — Migration, NotificationDispatcher, default-enabled
-  behavior for the full real event catalog, GET/PATCH notification
-  endpoints, Notification Center screen. End-to-end: a real event
-  fires, a real notification appears in the feed.
-- **Wave B** — notification_rules CRUD, per-category toggle UI,
-  deepened Notification Preferences screen, rule resolution logic
-  (missing row = default) properly tested.
-- **Wave C** — DigestWorker, automation_log, Automation Hub screen
-  (Rules + Log tabs). End-to-end: disabling a rule actually suppresses
-  a notification, and the log explains why nothing fired.
-- **Wave D** — Hardening: full pipeline test (a real event from
-  EVERY phase's catalog correctly produces or correctly suppresses a
-  notification per rule state), ADRs, freeze.
+- **Wave A** — Confirm the `activity_type` row-shape interpretation
+  (Section 3.1) and confirm whether `/v1/alert-preferences` already
+  exists (Section 5) BEFORE writing migration code. Then: migration
+  (ALTER activity_inbox, widen enum, create automation_log),
+  NotificationDispatcher, in-app delivery path only (no push yet).
+  End-to-end: a real event fires, a real row appears via the real
+  existing `/v1/activity` API.
+- **Wave B** — DigestWorker, confirm/build Notification Preferences UI,
+  Automation Hub (both tabs).
+- **Wave C** — Real FCM + APNs providers, wired into the dispatcher,
+  tested via fakes, credential-provisioning requirement clearly
+  documented (not blocking Wave C's completion, same pattern as Wave D's
+  external-credential channels).
+- **Wave D** — Hardening: full pipeline test (a real event from every
+  category correctly produces, suppresses, or pushes per real preference
+  state), ADRs, freeze.
 
-## 8. Phase 6 → Phase 7 Boundary
+## 8. Phase 6 to Phase 7 Boundary
 
-Phase 6 should itself emit a small event catalog of its own
-(`notification.created`, `automation_rule.changed`) that Phase 7
-(Analytics) can later subscribe to for usage metrics — continuing the
-exact same event-driven boundary discipline this phase was built on,
-not a special exception for whichever phase comes last.
+Unchanged from Rev 1: Phase 6 emits its own small event catalog
+(`notification.created`, `automation_rule.changed`) for Phase 7 to
+consume later, continuing the same boundary discipline.
+
+---
+
+## Revision Note
+
+Rev 1 assumed Phase 6 was building entirely new storage. A first
+investigation pass (commit 6ffde15) found Phase 2 had already built the
+feed, the preference matrix, and the device-registration table — fully
+wired on the read side, completely unwired on the write side, with push
+delivery explicitly named as Phase 6's job in the original Phase 2 code
+comments. That pass left two open questions for Rev 2; a second
+investigation pass resolved both with direct evidence: the real
+`alert_preferences` API paths and verb (`PUT`, not the assumed `PATCH`),
+and confirmation that the digest-cadence enum values were never
+previously used at all — Rev 2's initial guess that they already
+represented bundled rows was wrong and has been corrected. Both
+corrections are folded into this document directly. Two confirmed product
+decisions carried through unchanged: reuse the existing per-category
+preference granularity rather than building finer per-event rules, and
+include real push delivery (FCM/APNs) rather than deferring it. Treat Rev
+1 as fully superseded.

@@ -21,11 +21,11 @@ Claude Code (this tool): all implementation — code, migrations, tests, commits
   NOTE: this file is a PDF (Rev 3, predates the `anant`→`oryx` rename); known
   describe-vs-built drift is recorded in `docs/PHASE_4_ARCHITECTURE.drift.md`.
 - `docs/PHASE_6_ARCHITECTURE.md` — Phase 6 (Automation/Notifications) architecture.
-  NOTE: drafted, pending freeze review (not yet frozen). Real-code verification
-  is DONE (top of doc): the draft's event names + notification_frequency values
-  were corrected, and a pre-existing-infrastructure overlap (activity_inbox /
-  alert_preferences / alert_devices already shipped via /v1/activity/*) is flagged
-  for the architect to reconcile before freeze.
+  Rev 2, FROZEN (2026-06-30). Verified against real code: Phase 6 reuses the
+  existing activity_inbox / alert_preferences / alert_devices infra (shipped but
+  unwired in Phase 2) — it builds the missing NotificationDispatcher + DigestWorker
+  writers, real FCM/APNs push, four new activity_inbox columns, and a new
+  automation_log table; it does NOT build a parallel feed/preference system.
 - `docs/adr/INDEX.md` — all architecture decision records.
 - Auto-memory: `~/.claude/projects/<project>/memory/MEMORY.md` is loaded every
   session; its linked files capture recurring operational facts.
