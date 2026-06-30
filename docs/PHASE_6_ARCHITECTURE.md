@@ -86,17 +86,18 @@ ALTER TYPE activity_type ADD VALUE 'verification';
 ALTER TYPE activity_type ADD VALUE 'publishing';
 ```
 
-**Confirmed via direct investigation (corrected from Rev 2's guess):**
+**Confirmed via direct investigation (corrected from an earlier pass's guess):**
 `instant_alert`/`daily_digest`/`weekly_digest` are NOT currently used
 anywhere — never queried, never written, reserved enum slots explicitly
-tagged `// Phase 6` in the TypeScript mirror. Rev 2 incorrectly assumed
-these already represented bundled digest rows; they don't, they're
+tagged `// Phase 6` in the TypeScript mirror. The initial interpretation
+incorrectly assumed these already represented bundled digest rows; they
+don't, they're
 simply unbuilt. Phase 6 gives them real meaning for the first time:
 `daily_digest`/`weekly_digest` become bundle-row markers written only by
 `DigestWorker` on `activity_inbox` (Section 4.2). `instant_alert` is not
 used by Phase 6 at all — see the usage-convention decision below.
 
-**Resolved usage convention (new decision, closes Rev 2's open question):**
+**Resolved usage convention (new decision, closes an earlier pass's open question):**
 `alert_preferences.type` already has a separate `frequency` column
 (`off/instant/daily/weekly`) covering cadence — so Phase 6 only ever
 reads/writes `alert_preferences` rows using the four real content
@@ -299,11 +300,11 @@ investigation pass (commit 6ffde15) found Phase 2 had already built the
 feed, the preference matrix, and the device-registration table — fully
 wired on the read side, completely unwired on the write side, with push
 delivery explicitly named as Phase 6's job in the original Phase 2 code
-comments. That pass left two open questions for Rev 2; a second
+comments. That pass left two open questions; a second
 investigation pass resolved both with direct evidence: the real
 `alert_preferences` API paths and verb (`PUT`, not the assumed `PATCH`),
 and confirmation that the digest-cadence enum values were never
-previously used at all — Rev 2's initial guess that they already
+previously used at all — the initial guess that they already
 represented bundled rows was wrong and has been corrected. Both
 corrections are folded into this document directly. Two confirmed product
 decisions carried through unchanged: reuse the existing per-category
