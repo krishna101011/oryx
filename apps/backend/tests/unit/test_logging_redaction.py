@@ -49,14 +49,27 @@ def test_non_sensitive_fields_pass_through() -> None:
 
 
 def test_configure_logging_attaches_redacting_formatter() -> None:
-    buf = StringIO()
-    configure_logging()
+    # configure_logging() re-levels the root logger and replaces its handlers;
+    # restore both so this test's global side effects don't leak into the rest
+    # of the suite (an INFO root level here previously masked/unmasked logging
+    # bugs in unrelated integration tests depending on run order).
     root = logging.getLogger()
-    handler = root.handlers[0]
-    handler.stream = buf
-    log = logging.getLogger("oryx.test")
-    log.warning("auth.event", extra={"email": "a@b.com", "account_id": "x"})
-    output = buf.getvalue()
-    assert "a@b.com" not in output
-    assert "[redacted]" in output
-    assert "x" in output
+    prior_level = root.level
+    prior_handlers = list(root.handlers)
+    try:
+        buf = StringIO()
+        configure_logging()
+        handler = root.handlers[0]
+        handler.stream = buf
+        log = logging.getLogger("oryx.test")
+        log.warning("auth.event", extra={"email": "a@b.com", "account_id": "x"})
+        output = buf.getvalue()
+        assert "a@b.com" not in output
+        assert "[redacted]" in output
+        assert "x" in output
+    finally:
+        for h in list(root.handlers):
+            root.removeHandler(h)
+        for h in prior_handlers:
+            root.addHandler(h)
+        root.setLevel(prior_level)

@@ -159,7 +159,10 @@ class NotificationDispatcher:
                 extra={
                     "event_name": event.name,
                     "event_id": event.id,
-                    "created": created,
+                    # NOT "created" — that is a reserved LogRecord attribute and
+                    # stdlib logging raises KeyError on any extra key that
+                    # shadows one.
+                    "notifications_created": created,
                     "suppressed": suppressed,
                 },
             )
