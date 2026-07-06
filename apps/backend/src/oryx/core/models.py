@@ -258,6 +258,7 @@ class AlertPreference(Base):
     type: Mapped[str] = mapped_column(
         Enum(
             "security", "system", "instant_alert", "daily_digest", "weekly_digest",
+            "verification", "publishing",
             name="activity_type",
         ),
         primary_key=True,
@@ -310,14 +311,52 @@ class ActivityInbox(Base):
     type: Mapped[str] = mapped_column(
         Enum(
             "security", "system", "instant_alert", "daily_digest", "weekly_digest",
+            "verification", "publishing",
             name="activity_type", create_type=False,
         ),
         nullable=False,
     )
+    severity: Mapped[str] = mapped_column(
+        Enum("info", "warning", "error", name="activity_severity", create_type=False),
+        nullable=False,
+        server_default="info",
+    )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     body: Mapped[str | None] = mapped_column(Text)
     data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    # Phase 6: traceability back to the outbox event that produced this row.
+    source_event_type: Mapped[str | None] = mapped_column(Text)
+    source_event_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class AutomationLog(Base):
+    """Phase 6 — one row per dispatcher decision (created OR suppressed).
+
+    The transparency record behind the Automation Hub (Wave C): it explains
+    both why a notification appeared and why one didn't. UNIQUE(account_id,
+    triggered_by_event_id) is the dispatcher's idempotency key under the
+    outbox's at-least-once redelivery contract.
+    """
+
+    __tablename__ = "automation_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
+    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    activity_inbox_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("activity_inbox.id", ondelete="SET NULL")
+    )
+    triggered_by_event_type: Mapped[str] = mapped_column(Text, nullable=False)
+    triggered_by_event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    action_taken: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

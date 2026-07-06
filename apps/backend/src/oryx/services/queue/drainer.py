@@ -213,6 +213,12 @@ def build_bus() -> EventBus:
     would be circular.
     """
     from oryx.core.db import get_sessionmaker
+    from oryx.services.activity.dispatcher import (
+        SUBSCRIBED_EVENTS as NOTIFICATION_EVENTS,
+    )
+    from oryx.services.activity.dispatcher import (
+        NotificationDispatcher,
+    )
     from oryx.services.claims.events.constants import CLAIM_TYPED
     from oryx.services.claims.service import ClaimExtractionHandler
     from oryx.services.conflicts.events.constants import (
@@ -247,6 +253,14 @@ def build_bus() -> EventBus:
     # Phase 5 Wave A: research.packet.ready hands off to the content layer. The
     # handler sets research_packets.consumed_at and NOTHING else — no auto-gen.
     bus.subscribe(PACKET_READY, PacketConsumerHandler(sm))
+
+    # Phase 6 Wave A: the NotificationDispatcher (the missing writer) subscribes
+    # to the full frozen Section 2 catalog. One instance, fanned out across every
+    # notification-producing event — coexists with the domain handlers above on
+    # the events they share (e.g. CONFLICT_DETECTED also drives the projector).
+    notification_dispatcher = NotificationDispatcher(sm)
+    for event_name in NOTIFICATION_EVENTS:
+        bus.subscribe(event_name, notification_dispatcher)
     return bus
 
 
