@@ -98,5 +98,6 @@ jobs:
           src/oryx/services/intake/workspace_cascade.py
           src/oryx/services/intake/admin_router.py
           src/oryx/core/security/secrets.py
+          src/oryx/services/activity/digest.py
       - name: Pytest
         run: uv run --no-sync pytest -q

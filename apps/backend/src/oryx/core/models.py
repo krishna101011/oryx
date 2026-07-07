@@ -23,6 +23,7 @@ from sqlalchemy import (
     Integer,
     LargeBinary,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, INET, JSONB, UUID
@@ -358,6 +359,53 @@ class AutomationLog(Base):
     triggered_by_event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     action_taken: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class DigestRun(Base):
+    """Phase 6 Wave B — one row per SENT digest window.
+
+    The DigestWorker's idempotency record, mirroring automation_log's approach:
+    UNIQUE(account_id, activity_type, frequency, window_start) makes a second
+    tick inside the same window a safe no-op. A window with zero source rows
+    writes NO row here (silence, not an empty digest), so the next digest's
+    window simply stretches back further — nothing is lost or duplicated.
+    """
+
+    __tablename__ = "digest_runs"
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id", "activity_type", "frequency", "window_start",
+            name="uq_digest_runs_window",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
+    )
+    # The single content category this digest bundled (security/system/
+    # verification/publishing) — NOT the daily_digest/weekly_digest bundle-row
+    # marker, which lives on the activity_inbox row the run produced.
+    activity_type: Mapped[str] = mapped_column(
+        Enum(
+            "security", "system", "instant_alert", "daily_digest", "weekly_digest",
+            "verification", "publishing",
+            name="activity_type", create_type=False,
+        ),
+        nullable=False,
+    )
+    frequency: Mapped[str] = mapped_column(
+        Enum(
+            "off", "instant", "daily", "weekly",
+            name="notification_frequency", create_type=False,
+        ),
+        nullable=False,
+    )
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    window_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
