@@ -1,5 +1,5 @@
 import { createNavigationContainerRef } from '@react-navigation/native';
-import type { RootStackParamList } from './types';
+import type { RootStackParamList, SettingsStackParamList } from './types';
 
 /**
  * Container-level navigation ref. Lets the web-only sidebar (which renders
@@ -12,4 +12,13 @@ export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 export function navigateTab(tab: 'Home' | 'Research' | 'Content' | 'Activity' | 'Settings'): void {
   if (!navigationRef.isReady()) return;
   navigationRef.navigate('Tabs', { screen: tab });
+}
+
+/** Navigate to a screen nested in the Settings stack (sidebar deep items). */
+export function navigateSettingsScreen(screen: keyof SettingsStackParamList): void {
+  if (!navigationRef.isReady()) return;
+  navigationRef.navigate('Tabs', {
+    screen: 'Settings',
+    params: { screen },
+  } as never);
 }

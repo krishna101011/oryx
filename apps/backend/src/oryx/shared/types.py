@@ -328,6 +328,7 @@ class FeatureFlagOverride(_Base):
 
 ActivityType = Literal[
     "security", "system", "instant_alert", "daily_digest", "weekly_digest",
+    "verification", "publishing",
 ]
 
 
@@ -382,6 +383,38 @@ class RegisterAlertDeviceRequest(_Base):
     platform: DevicePlatform
     push_token: str = Field(alias="pushToken")
     app_version: str | None = Field(default=None, alias="appVersion")
+
+
+# ============================================================================
+# Automation (Phase 6 Wave B) — mirrors shared-types/src/automation.ts
+# ============================================================================
+
+AutomationEntryKind = Literal["dispatch", "digest"]
+
+AutomationAction = Literal[
+    "notification_created",
+    "suppressed_by_preference",
+    "push_sent",
+    "push_failed",
+    "digest_sent",
+]
+
+
+class AutomationLogEntry(_Base):
+    id: str
+    kind: AutomationEntryKind
+    action: AutomationAction
+    event_type: str | None = Field(default=None, alias="eventType")
+    category: str | None = None
+    frequency: NotificationFrequency | None = None
+    window_start: datetime | None = Field(default=None, alias="windowStart")
+    window_end: datetime | None = Field(default=None, alias="windowEnd")
+    activity_inbox_id: str | None = Field(default=None, alias="activityInboxId")
+    created_at: datetime = Field(alias="createdAt")
+
+
+class AutomationLogResponse(_Base):
+    entries: list[AutomationLogEntry]
 
 
 # ============================================================================

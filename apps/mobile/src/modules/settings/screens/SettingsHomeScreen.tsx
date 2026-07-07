@@ -88,6 +88,19 @@ export const SettingsHomeScreen: React.FC = () => {
 
         <Spacer size={6} />
         <Text variant="caption" color="tertiary">
+          AUTOMATION
+        </Text>
+        <Spacer size={2} />
+        <SettingsRow
+          label="Automation Hub"
+          description="Rules in force and the delivery log"
+          icon="Zap"
+          accent="amber"
+          onPress={() => navigation.navigate('AutomationHub' as never)}
+        />
+
+        <Spacer size={6} />
+        <Text variant="caption" color="tertiary">
           SOURCES
         </Text>
         <Spacer size={2} />

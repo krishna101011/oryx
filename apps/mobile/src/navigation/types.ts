@@ -36,6 +36,8 @@ export type SettingsStackParamList = {
   // Phase 4 Wave E — claim + intelligence object detail
   ClaimDetail: { claimId: string };
   IntelligenceObjectDetail: { objectId: string };
+  // Phase 6 Wave B — Automation Hub (Rules + Log)
+  AutomationHub: undefined;
 };
 
 // Phase 4 Wave E — research tab stack

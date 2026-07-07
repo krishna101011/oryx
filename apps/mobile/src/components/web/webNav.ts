@@ -15,6 +15,8 @@ export interface WebNavItem {
   label: string;
   icon: GensparkIconName;
   tab?: WebNavTab;
+  /** A nested screen inside the tab's stack (e.g. Settings → AutomationHub). */
+  screen?: string;
   pending?: boolean;
   /** Which real /me count (if any) drives a badge. No fake numbers. */
   countKey?: 'verifyPending' | 'contentDrafts' | 'activityUnread';
@@ -59,7 +61,7 @@ export const WEB_NAV: WebNavGroup[] = [
   {
     group: 'OPERATIONS',
     items: [
-      { id: 'automation', label: 'Automation Hub', icon: 'Zap', pending: true },
+      { id: 'automation', label: 'Automation Hub', icon: 'Zap', tab: 'Settings', screen: 'AutomationHub' },
       { id: 'analytics', label: 'Analytics', icon: 'Bar', pending: true },
       { id: 'intake', label: 'Intake Engine', icon: 'Inbox', pending: true },
     ],

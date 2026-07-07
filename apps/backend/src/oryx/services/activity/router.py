@@ -29,6 +29,11 @@ from oryx.core.models import (
 from oryx.core.models import (
     AlertPreference as AlertPreferenceRow,
 )
+from oryx.services.activity.preferences import (
+    DEFAULT_ALERT_FREQUENCY,
+    NOTIFICATION_CATEGORIES,
+    RESOLVED_CHANNELS,
+)
 from oryx.shared.types import (
     ActivityInboxResponse,
     ActivityItem,
@@ -124,17 +129,30 @@ async def list_alert_prefs(
     account: Account = Depends(get_current_account),
     db: AsyncSession = Depends(db_session),
 ) -> dict:
+    """The RESOLVED preference grid (Phase 6, docs/PHASE_6_ARCHITECTURE.md §5).
+
+    Every real category x channel combination is returned; a combination with
+    no stored row is backfilled with the shared default from
+    services/activity/preferences.py — the same resolution the dispatcher
+    applies — so the client never reconstructs default logic. Response schema
+    is unchanged (a list of AlertPreference); it is now simply complete.
+    """
     result = await db.execute(
         select(AlertPreferenceRow).where(AlertPreferenceRow.account_id == account.id)
     )
-    rows = result.scalars().all()
-    payload = [
-        AlertPreferenceSchema(
-            type=r.type, channel=r.channel, frequency=r.frequency,
-            quietHours=r.quiet_hours,
-        ).model_dump(by_alias=True)
-        for r in rows
-    ]
+    existing = {(r.type, r.channel): r for r in result.scalars().all()}
+    payload = []
+    for category in NOTIFICATION_CATEGORIES:
+        for channel in RESOLVED_CHANNELS:
+            row = existing.get((category, channel))
+            payload.append(
+                AlertPreferenceSchema(
+                    type=category,
+                    channel=channel,
+                    frequency=row.frequency if row else DEFAULT_ALERT_FREQUENCY,
+                    quietHours=row.quiet_hours if row else None,
+                ).model_dump(by_alias=True)
+            )
     return envelope(payload, request_id=get_request_id(request))
 
 

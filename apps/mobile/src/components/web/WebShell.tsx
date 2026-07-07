@@ -3,7 +3,8 @@ import { Platform, View } from 'react-native';
 import { useTheme } from '@oryx/design-system';
 import { useMe } from '../../hooks/useMe';
 import { useAppSelector } from '../../store';
-import { navigateTab, navigationRef } from '../../navigation/navigationRef';
+import { navigateSettingsScreen, navigateTab, navigationRef } from '../../navigation/navigationRef';
+import type { SettingsStackParamList } from '../../navigation/types';
 import { WEB_NAV, type WebNavItem } from './webNav';
 import { WebSidebar } from './WebSidebar';
 import { WebTopBar } from './WebTopBar';
@@ -16,6 +17,22 @@ const TAB_TO_NAV: Record<string, string> = {
   Activity: 'activity',
   Settings: 'settings',
 };
+
+/**
+ * Verification surfaces are nested inside the Settings tab's stack, and the
+ * sidebar has two items pointing at that tab ('settings' and 'verify'). The
+ * tab name alone is ambiguous for them — the focused nested screen decides.
+ */
+const VERIFY_SCREENS = new Set([
+  'VerificationQueue',
+  'ConflictReview',
+  'ClaimDetail',
+  'SourceCredibility',
+  'IntelligenceObjectDetail',
+]);
+
+/** Same disambiguation for the Automation Hub, also nested under Settings. */
+const AUTOMATION_SCREENS = new Set(['AutomationHub']);
 
 function crumbsFor(activeId: string): [string, string] {
   for (const g of WEB_NAV) {
@@ -46,7 +63,9 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const me = useMe();
   const [activeId, setActiveId] = useState('home');
 
-  // Mirror navigation state (back button, deep links) into the active nav id.
+  // Navigation state is the single source of truth for the active nav id.
+  // (No optimistic set on click — a second writer raced this listener and
+  // left a stale highlight whenever the click was a same-tab no-op.)
   useEffect(() => {
     const sync = () => {
       if (!navigationRef.isReady()) return;
@@ -59,7 +78,16 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         tabState?.routes && typeof tabState.index === 'number'
           ? tabState.routes[tabState.index]?.name
           : route?.name;
-      if (tabName && TAB_TO_NAV[tabName]) setActiveId(TAB_TO_NAV[tabName]!);
+      if (!tabName || !TAB_TO_NAV[tabName]) return;
+      // getCurrentRoute() is the deepest focused screen — it disambiguates the
+      // two Settings-tab nav items (verification screens → 'verify').
+      const focusedScreen = route?.name;
+      let id = TAB_TO_NAV[tabName]!;
+      if (tabName === 'Settings' && focusedScreen) {
+        if (VERIFY_SCREENS.has(focusedScreen)) id = 'verify';
+        else if (AUTOMATION_SCREENS.has(focusedScreen)) id = 'automation';
+      }
+      setActiveId(id);
     };
     const unsub = navigationRef.addListener?.('state', sync);
     sync();
@@ -67,8 +95,11 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   }, []);
 
   const onNavigate = (item: WebNavItem) => {
-    setActiveId(item.id);
-    if (item.tab) navigateTab(item.tab);
+    if (item.tab === 'Settings' && item.screen) {
+      navigateSettingsScreen(item.screen as keyof SettingsStackParamList);
+    } else if (item.tab) {
+      navigateTab(item.tab);
+    }
   };
 
   // Only show the desktop chrome once the user is fully into the app. Auth and

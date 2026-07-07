@@ -20,6 +20,7 @@ import { VerificationQueueScreen } from '../modules/verification/screens/Verific
 import { ConflictReviewScreen } from '../modules/verification/screens/ConflictReviewScreen';
 import { ClaimDetailScreen } from '../modules/verification/screens/ClaimDetailScreen';
 import { IntelligenceObjectDetailScreen } from '../modules/verification/screens/IntelligenceObjectDetailScreen';
+import { AutomationHubScreen } from '../modules/automation/screens/AutomationHubScreen';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
@@ -51,6 +52,7 @@ export const SettingsStack: React.FC = () => {
       <Stack.Screen name="ConflictReview" component={ConflictReviewScreen} options={{ title: 'Resolve conflict' }} />
       <Stack.Screen name="ClaimDetail" component={ClaimDetailScreen} options={{ title: 'Claim' }} />
       <Stack.Screen name="IntelligenceObjectDetail" component={IntelligenceObjectDetailScreen} options={{ title: 'Object' }} />
+      <Stack.Screen name="AutomationHub" component={AutomationHubScreen} options={{ title: 'Automation Hub' }} />
       <Stack.Screen name="IntakeHealth" component={IntakeHealthScreen} options={{ title: 'Health' }} />
       <Stack.Screen name="IntakeActivity" component={IntakeActivityScreen} options={{ title: 'Activity' }} />
       {isPlatformAdmin ? (
