@@ -27,6 +27,11 @@ for automation outcomes — no new storage needed for those. Rev 2 also drops pe
 attribution (bus events are workspace-scoped, not account-scoped) and expands the metric set to
 include the real research/verification funnel that Rev 1 missed entirely.
 
+**Rev 2.2 (Wave A build-time finding):** The bus carries 22 events total — 20 are measured by
+this document's metric catalog; 2 (workspace.deletion.started/.completed) are administrative,
+published with workspace_id=None, and deliberately excluded from analytics as unattributable
+by design, not by oversight.
+
 ---
 
 ## 1. Why Phase 7 Exists
