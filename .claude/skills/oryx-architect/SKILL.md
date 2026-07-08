@@ -273,6 +273,18 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   such modules and test those. There is STILL no component/render test runner —
   jest-expo + babel + RN mocks were never stood up; that remains its own infra
   task, and a report claiming component tests pass should still be rejected.
+  ADDENDUM (Phase 7 Wave B, 2026-07-08): the `test` script is an EXPLICIT file
+  list — a new `.test.ts` file that isn't appended to it silently never runs;
+  adding the file to the list is part of adding the test.
+
+- CHARTS ARE HAND-ROLLED react-native-svg, NO CHARTING LIBRARY (confirmed
+  Phase 7 Wave B). The design system's Spark (sparkline) and Candles
+  (candlestick) are the precedent: react-native-svg primitives + theme tokens
+  (grid = border.default, axis text = text.tertiary in JetBrains Mono, data
+  marks must use tones that READ against the dark ramp — semantic.positiveText
+  or accent.slateBlue, never accent.teal). New chart types follow this shape
+  (see modules/analytics/components/BarSeries.tsx); do not add a charting
+  dependency without an explicit decision.
   New pure test files must be added to the mobile package.json test script's
   explicit file list (no glob — Windows scripts don't expand them). The other
   frontend gates are unchanged: `pnpm type-check`, `pnpm lint` (warnings-only
