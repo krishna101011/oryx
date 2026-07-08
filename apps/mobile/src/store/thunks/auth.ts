@@ -10,6 +10,8 @@ import type {
 import { apiClient } from '../../lib/api/client';
 import { getDeviceId, getDeviceLabel, getDevicePlatform } from '../../lib/device';
 import { logger } from '../../lib/logger';
+import { expoPushEffects } from '../../lib/push/expoPushEffects';
+import { unregisterPush } from '../../lib/push/registration';
 import {
   SecureKeys,
   clearAllSecrets,
@@ -104,6 +106,9 @@ export const signup =
   };
 
 export const signout = () => async (dispatch: AppDispatch): Promise<void> => {
+  // Disable this install's push registration FIRST — the DELETE needs the
+  // still-authenticated session. Never throws (best-effort by design).
+  await unregisterPush(expoPushEffects());
   try {
     await apiClient().post('/auth/signout');
   } catch (e) {

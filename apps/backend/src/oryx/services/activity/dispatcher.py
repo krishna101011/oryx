@@ -19,22 +19,53 @@ For each event in the frozen catalog (docs/PHASE_6_ARCHITECTURE.md §2):
      automation_log row. All of one event's writes commit in ONE transaction.
 
 Idempotency (the bus contract is at-least-once): UNIQUE(account_id,
-triggered_by_event_id) on automation_log is the key, and the dispatcher
-short-circuits if a decision row already exists for this (account, event).
+triggered_by_event_id, channel) on automation_log is the key, and the
+dispatcher short-circuits per channel if a decision row already exists for
+this (account, event, channel).
 
-Push delivery (channel='push') is intentionally absent — that is Wave C.
+Push delivery (Wave C) runs as its own SEPARATE step per account, strictly
+AFTER the in_app inbox+automation_log transaction has committed — a push
+failure can never roll back the notification itself:
+  5. resolve the (account, category, channel='push') preference with the same
+     shared-default logic as in_app;
+  6. if enabled, evaluate quiet_hours (services/activity/quiet_hours.py) — a
+     send inside the account's quiet window is silently skipped for this
+     event (deliberately no log row; the §3.3 push vocabulary is only
+     push_sent/push_failed);
+  7. otherwise call the real provider (providers/push/factory.py, gated by
+     PUSH_PROVIDER) for each active alert_devices token, holding NO db
+     transaction across the HTTP call, and commit ONE new automation_log row
+     (channel='push', action push_sent/push_failed) in its own transaction.
+     No registered device counts as a failure (push_failed, reason logged),
+     never a silent skip.
 """
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from oryx.core.logging import get_logger
-from oryx.core.models import ActivityInbox, AlertPreference, AutomationLog, WorkspaceMember
+from oryx.core.models import (
+    ActivityInbox,
+    AlertDevice,
+    AlertPreference,
+    AutomationLog,
+    WorkspaceMember,
+)
 from oryx.services.activity.preferences import is_enabled, resolve_frequency
+from oryx.services.activity.providers.push.base import (
+    ProviderErrorKind,
+    ProviderResult,
+    PushMessage,
+    PushProvider,
+)
+from oryx.services.activity.providers.push.factory import get_push_provider
+from oryx.services.activity.quiet_hours import is_quiet_now
 from oryx.services.calendar.events.constants import (
     CALENDAR_ENTRY_CANCELLED,
     CALENDAR_ENTRY_SCHEDULED,
@@ -65,13 +96,15 @@ from oryx.services.verification.events.constants import CLAIM_FAILED
 
 logger = get_logger(__name__)
 
-# Action-taken vocabulary written to automation_log (Wave A subset; push_sent /
-# push_failed land in Wave C).
+# Action-taken vocabulary written to automation_log (frozen §3.3).
 ACTION_NOTIFICATION_CREATED = "notification_created"
 ACTION_SUPPRESSED = "suppressed_by_preference"
+ACTION_PUSH_SENT = "push_sent"
+ACTION_PUSH_FAILED = "push_failed"
 
-# in_app is the only channel Phase 6 Wave A dispatches on.
+# The channels the dispatcher delivers on (email remains out of scope).
 CHANNEL_IN_APP = "in_app"
+CHANNEL_PUSH = "push"
 
 
 @dataclass(frozen=True)
@@ -119,9 +152,16 @@ class NotificationDispatcher:
         sessionmaker: async_sessionmaker[AsyncSession],
         *,
         catalog: dict[str, NotificationSpec] | None = None,
+        push_provider_factory: Callable[[str], PushProvider] | None = None,
     ) -> None:
         self._sm = sessionmaker
         self._catalog = catalog if catalog is not None else CATALOG
+        # Injectable for tests (fake providers); defaults to the PUSH_PROVIDER-
+        # gated factory, resolved per device platform at send time.
+        self._push_provider_factory = (
+            push_provider_factory if push_provider_factory is not None
+            else get_push_provider
+        )
 
     async def __call__(self, event: DomainEvent) -> None:
         spec = self._catalog.get(event.name)
@@ -153,6 +193,27 @@ class NotificationDispatcher:
                     suppressed += 1
             await session.commit()
 
+        # Wave C: push delivery, strictly AFTER the in_app transaction above
+        # has committed and in transactions of its own — a failure anywhere in
+        # this step can never take the notification row with it. The step is
+        # self-idempotent (its own push-slot check), so it runs for every
+        # member on every delivery.
+        for account_id in account_ids:
+            try:
+                await self._push_for_account(
+                    account_id=account_id,
+                    workspace_id=workspace_id,
+                    event=event,
+                    event_id=event_id,
+                    spec=spec,
+                )
+            except Exception:
+                # Push is best-effort; the inbox row already landed.
+                logger.exception(
+                    "push.step_crashed",
+                    extra={"account_id": str(account_id), "event_id": event.id},
+                )
+
         if created or suppressed:
             logger.info(
                 "notification.dispatched",
@@ -177,12 +238,15 @@ class NotificationDispatcher:
         event_id: uuid.UUID,
         spec: NotificationSpec,
     ) -> str | None:
-        # Idempotency: one decision per (account, event). If we already recorded
-        # one (redelivery), do nothing — the UNIQUE constraint is the backstop.
+        # Idempotency: one in_app decision per (account, event). If we already
+        # recorded one (redelivery), do nothing — the UNIQUE constraint is the
+        # backstop. Scoped to this channel: the push slot is checked separately
+        # by _push_for_account.
         already = await session.scalar(
             select(AutomationLog.id).where(
                 AutomationLog.account_id == account_id,
                 AutomationLog.triggered_by_event_id == event_id,
+                AutomationLog.channel == CHANNEL_IN_APP,
             )
         )
         if already is not None:
@@ -221,6 +285,7 @@ class NotificationDispatcher:
                     triggered_by_event_type=event.name,
                     triggered_by_event_id=event_id,
                     action_taken=ACTION_NOTIFICATION_CREATED,
+                    channel=CHANNEL_IN_APP,
                 )
             )
             return ACTION_NOTIFICATION_CREATED
@@ -234,9 +299,161 @@ class NotificationDispatcher:
                 triggered_by_event_type=event.name,
                 triggered_by_event_id=event_id,
                 action_taken=ACTION_SUPPRESSED,
+                channel=CHANNEL_IN_APP,
             )
         )
         return ACTION_SUPPRESSED
+
+    async def _push_for_account(
+        self,
+        *,
+        account_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        event: DomainEvent,
+        event_id: uuid.UUID,
+        spec: NotificationSpec,
+    ) -> None:
+        """The Wave C push step — runs after the in_app transaction committed.
+
+        Reads (one short session), then calls the provider with NO transaction
+        open, then writes its one decision row (a second short session). Quiet-
+        hours suppression is deliberately silent: the frozen §3.3 push
+        vocabulary is push_sent/push_failed only, and the in_app decision row
+        already recorded the event's dispatch outcome.
+        """
+        async with self._sm() as session:
+            pref = (
+                await session.execute(
+                    select(AlertPreference.frequency, AlertPreference.quiet_hours).where(
+                        AlertPreference.account_id == account_id,
+                        AlertPreference.type == spec.category,
+                        AlertPreference.channel == CHANNEL_PUSH,
+                    )
+                )
+            ).one_or_none()
+            frequency = resolve_frequency(pref.frequency if pref else None)
+            if not is_enabled(frequency):
+                return  # push disabled for this category: no push decision row
+
+            # Idempotency: one push decision per (account, event) — same
+            # redelivery contract as the in_app slot.
+            already = await session.scalar(
+                select(AutomationLog.id).where(
+                    AutomationLog.account_id == account_id,
+                    AutomationLog.triggered_by_event_id == event_id,
+                    AutomationLog.channel == CHANNEL_PUSH,
+                )
+            )
+            if already is not None:
+                return
+
+            if is_quiet_now(pref.quiet_hours if pref else None):
+                logger.info(
+                    "push.suppressed_quiet_hours",
+                    extra={"account_id": str(account_id), "event_id": event.id},
+                )
+                return
+
+            devices = (
+                (
+                    await session.execute(
+                        select(AlertDevice).where(
+                            AlertDevice.account_id == account_id,
+                            AlertDevice.disabled_at.is_(None),
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            # The push row links back to the feed row this event produced for
+            # this account (None when in_app was suppressed but push is on).
+            inbox_id = await session.scalar(
+                select(ActivityInbox.id).where(
+                    ActivityInbox.account_id == account_id,
+                    ActivityInbox.source_event_id == event_id,
+                )
+            )
+        # Session is CLOSED here — no transaction spans the provider HTTP call.
+
+        if not devices:
+            ok = False
+            failure_reason = "no_registered_device"
+        else:
+            results: list[ProviderResult] = []
+            for device in devices:
+                provider = self._push_provider_factory(device.platform)
+                try:
+                    result = await provider.send(
+                        PushMessage(
+                            token=device.push_token,
+                            title=spec.title,
+                            body="",
+                            data={
+                                "category": spec.category,
+                                "severity": spec.severity,
+                                "event_type": event.name,
+                                "event_id": event.id,
+                                "activity_inbox_id": str(inbox_id or ""),
+                            },
+                        )
+                    )
+                except Exception as exc:  # a provider bug must not kill dispatch
+                    result = ProviderResult(
+                        ok=False,
+                        provider=getattr(provider, "name", "unknown"),
+                        error_kind=ProviderErrorKind.UNKNOWN,
+                        error_message=str(exc),
+                    )
+                results.append(result)
+            # One decision row per event: delivered to at least one device
+            # counts as sent; zero deliveries is a failure.
+            ok = any(r.ok for r in results)
+            failure_reason = "; ".join(
+                f"{r.provider}: {r.error_message or r.error_kind}"
+                for r in results
+                if not r.ok
+            )
+
+        async with self._sm() as session:
+            session.add(
+                AutomationLog(
+                    id=uuid.uuid4(),
+                    account_id=account_id,
+                    workspace_id=workspace_id,
+                    activity_inbox_id=inbox_id,
+                    triggered_by_event_type=event.name,
+                    triggered_by_event_id=event_id,
+                    action_taken=ACTION_PUSH_SENT if ok else ACTION_PUSH_FAILED,
+                    channel=CHANNEL_PUSH,
+                )
+            )
+            try:
+                await session.commit()
+            except IntegrityError:
+                # Lost a race with a concurrent redelivery: that delivery's
+                # decision row is the real one.
+                await session.rollback()
+                return
+
+        if ok:
+            logger.info(
+                "push.sent",
+                extra={
+                    "account_id": str(account_id),
+                    "event_id": event.id,
+                    "devices": len(devices),
+                },
+            )
+        else:
+            logger.warning(
+                "push.failed",
+                extra={
+                    "account_id": str(account_id),
+                    "event_id": event.id,
+                    "reason": failure_reason,
+                },
+            )
 
 
 async def _accounts_in_workspace(

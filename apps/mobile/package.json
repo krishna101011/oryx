@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "eslint src --ext .ts,.tsx",
     "type-check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test src/modules/settings/alertCategories.test.ts src/modules/automation/feed.test.ts"
+    "test": "tsx --test src/modules/settings/alertCategories.test.ts src/modules/automation/feed.test.ts src/modules/settings/quietHours.test.ts src/lib/push/registration.test.ts"
   },
   "dependencies": {
     "@babel/runtime": "^7.24.0",
@@ -26,8 +26,10 @@
     "@tanstack/react-query": "^5.32.0",
     "expo": "~51.0.0",
     "expo-blur": "^13.0.0",
+    "expo-constants": "~16.0.2",
     "expo-font": "~12.0.10",
     "expo-linear-gradient": "^13.0.2",
+    "expo-notifications": "~0.28.19",
     "expo-secure-store": "~13.0.0",
     "expo-status-bar": "~1.12.0",
     "lucide-react-native": "^0.367.0",

@@ -16,6 +16,9 @@ export const SecureKeys = {
   refreshToken: 'auth.refresh_token',
   accountId: 'auth.account_id',
   deviceId: 'device.id',
+  // Phase 6 Wave C: JSON {token, deviceRecordId} for the registered push
+  // token (lib/push/registration.ts StoredRegistration).
+  pushRegistration: 'push.registration',
 } as const;
 
 export type SecureKey = (typeof SecureKeys)[keyof typeof SecureKeys];

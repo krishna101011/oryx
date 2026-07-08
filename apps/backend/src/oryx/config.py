@@ -112,6 +112,29 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen2.5:7b-instruct"
     ollama_base_url: str = "http://localhost:11434"
 
+    # --- Phase 6 Wave C: push delivery ---
+    # Push provider selection, same shape as AI_PROVIDER above: "log_only"
+    # (default — the Phase 2 stub logs instead of delivering) or "real"
+    # (FCMProvider for Android devices, APNsProvider for iOS). Switch by
+    # setting PUSH_PROVIDER=real in the environment or .env file.
+    #
+    # Real delivery needs credentials (documented requirement, not a default):
+    #   FCM  — a Firebase service-account key JSON (Firebase console →
+    #          Project settings → Service accounts → Generate new private
+    #          key); point FCM_SERVICE_ACCOUNT_FILE at the file. Project id,
+    #          client email and signing key are read from it.
+    #   APNs — an Apple Push auth key (developer.apple.com → Keys → enable
+    #          APNs): APNS_KEY_FILE (the .p8), APNS_KEY_ID, APNS_TEAM_ID.
+    #          APNS_TOPIC is the app bundle id; APNS_USE_SANDBOX picks the
+    #          sandbox host (development builds) vs production.
+    push_provider: str = "log_only"
+    fcm_service_account_file: str | None = None
+    apns_key_file: str | None = None
+    apns_key_id: str | None = None
+    apns_team_id: str | None = None
+    apns_topic: str = "com.oryx.app"
+    apns_use_sandbox: bool = True
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

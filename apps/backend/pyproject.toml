@@ -24,6 +24,8 @@ dependencies = [
   "cryptography>=42.0.0",
   # Windows has no system IANA tz database; dedupe date-bucketing needs one.
   "tzdata; sys_platform == 'win32'",
+  # Phase 6 Wave C — APNs requires HTTP/2; h2 is httpx's http2 backend.
+  "h2>=4.1.0",
 ]
 
 [project.optional-dependencies]

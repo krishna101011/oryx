@@ -337,13 +337,23 @@ class ActivityInbox(Base):
 class AutomationLog(Base):
     """Phase 6 — one row per dispatcher decision (created OR suppressed).
 
-    The transparency record behind the Automation Hub (Wave C): it explains
-    both why a notification appeared and why one didn't. UNIQUE(account_id,
-    triggered_by_event_id) is the dispatcher's idempotency key under the
-    outbox's at-least-once redelivery contract.
+    The transparency record behind the Automation Hub: it explains both why a
+    notification appeared and why one didn't. UNIQUE(account_id,
+    triggered_by_event_id, channel) is the dispatcher's idempotency key under
+    the outbox's at-least-once redelivery contract — one decision per
+    (account, event) per delivery channel (Wave C added the channel
+    discriminator so a push decision can join the in_app one, migration 0017).
     """
 
     __tablename__ = "automation_log"
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id",
+            "triggered_by_event_id",
+            "channel",
+            name="uq_automation_log_account_event_channel",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     account_id: Mapped[uuid.UUID] = mapped_column(
@@ -358,6 +368,12 @@ class AutomationLog(Base):
     triggered_by_event_type: Mapped[str] = mapped_column(Text, nullable=False)
     triggered_by_event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     action_taken: Mapped[str] = mapped_column(Text, nullable=False)
+    # Which delivery channel this decision is about. No default on purpose —
+    # every writer states its channel explicitly (migration 0017).
+    channel: Mapped[str] = mapped_column(
+        Enum("in_app", "push", "email", name="alert_channel", create_type=False),
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
