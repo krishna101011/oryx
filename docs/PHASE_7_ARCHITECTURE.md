@@ -16,9 +16,10 @@ anything, and its failure must never affect any other phase's correctness.
 ## Revision Note (why Rev 2 exists)
 
 Rev 1 assumed Phase 7 could be built as a single, pure event-bus subscriber, following ADR-014's
-"Phase 7 reads every event for analytics." That's true for 17 of the real 20 bus events — but
+"Phase 7 reads every event for analytics." That's true for all 20 of the real bus events — but
 three of Rev 1's eight proposed metrics (notification dispatch/suppression outcomes, digest
-sends) are produced by components that don't publish to the bus at all: `NotificationDispatcher`
+sends) were never bus events to begin with; they're produced by components that don't publish
+to the bus at all: `NotificationDispatcher`
 consumes without publishing, and `DigestWorker` is a standalone scheduler (ADR-025 shape), not a
 subscriber. Rev 2 corrects this to a two-source design: a real bus subscriber for genuine bus
 events, and direct aggregation over `automation_log`/`digest_runs` (already idempotent tables)
@@ -51,7 +52,7 @@ computed from the moment collection starts.
 **Source A — Bus-derived facts (Wave A, new).** A real subscriber, `AnalyticsAggregator`,
 registered exactly like `NotificationDispatcher` (`build_bus()` in `drainer.py`, per-event
 `subscribe()` calls, same locally-scoped-handler-import pattern to avoid the
-`PermanentDeliveryError` circular import). Its ONLY job: for each of the 17 real bus events,
+`PermanentDeliveryError` circular import). Its ONLY job: for each of the 20 real bus events,
 write one row to `analytics_events_raw`, workspace-scoped, with a unique constraint making
 redelivery a safe no-op — confirm at build time what stable identifier a delivered bus event
 actually carries (the outbox row's own id is the likely candidate; verify, don't assume the
@@ -91,6 +92,8 @@ table only — never the raw sources directly.
 **Verification/research funnel** (this is what "research usage" actually measures — Rev 1 had
 almost none of this):
 claims_extracted, claims_typed, claims_verified, claims_failed, evidence_collected,
+conflicts_detected (verification.conflict.detected),
+conflicts_resolved (verification.conflict.resolved),
 intelligence_objects_created/updated/reviewed, research_packets_ready
 (research.packet.ready — the only direct research-usage signal that exists; do not build a
 Wave B "research usage" view without this one)
@@ -122,7 +125,7 @@ Team/Workspace multi-user genuinely exists.
 
 ## 4. What Phase 7 Does / Does Not Do
 
-**Does:** subscribe to the 17 real bus events and record idempotent workspace-level facts;
+**Does:** subscribe to all 20 real bus events and record idempotent workspace-level facts;
 directly aggregate automation_log/digest_runs for automation metrics; refresh daily rollups on
 a periodic tick; serve a dashboard reading only from rollups.
 
