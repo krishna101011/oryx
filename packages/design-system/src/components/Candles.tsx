@@ -14,9 +14,10 @@ export interface Candle {
  * Candlestick chart — GENSPARK PORT (primitives.jsx <Candles/>).
  *
  * Same padding model, same y-scale, same bar/wick/volume math, same
- * current-price marker as the source. Colors port 1:1: up #14B8A6 / down
- * #F87171 (accent.teal / semantic.danger), grid #1A2330 (border.default),
- * axis labels #6B7588 / #4A5263, price line #8B5CF6 (accent.coral).
+ * current-price marker as the source. Up candles are gain DATA MARKS — they
+ * must read against the dark ramp, so they take semantic.positiveText
+ * (2026-07-05 teal retirement); down stays semantic.danger, grid
+ * border.default, price line accent.coral.
  * <text fontFamily> uses the loaded JetBrains Mono family.
  */
 export const Candles: React.FC<{
@@ -29,7 +30,7 @@ export const Candles: React.FC<{
   const t = useTheme();
   if (!data || data.length === 0) return null;
 
-  const up = t.colors.accent.teal;
+  const up = t.colors.semantic.positiveText;
   const down = t.colors.semantic.danger;
   const gridStroke = t.colors.border.default; // #1A2330
   const axisHi = t.colors.text.tertiary; // #6B7588

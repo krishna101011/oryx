@@ -70,7 +70,7 @@ export const GenerateDraftScreen: React.FC = () => {
                     styles.option,
                     {
                       borderColor: selected
-                        ? theme.colors.accent.teal
+                        ? theme.colors.semantic.positiveText
                         : theme.colors.border.subtle,
                     },
                   ]}
@@ -106,7 +106,7 @@ export const GenerateDraftScreen: React.FC = () => {
                     styles.chip,
                     {
                       borderColor: selected
-                        ? theme.colors.accent.teal
+                        ? theme.colors.semantic.positiveText
                         : theme.colors.border.subtle,
                       backgroundColor: selected
                         ? theme.colors.accent.tealGlow

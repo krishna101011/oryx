@@ -10,7 +10,7 @@ import type { SourceHealth } from '@oryx/shared-types';
 export const SourceHealthPill: React.FC<{ health: SourceHealth }> = ({ health }) => {
   const t = useTheme();
   const palette: Record<SourceHealth, { dot: string; label: string }> = {
-    healthy: { dot: t.colors.semantic.success, label: 'Healthy' },
+    healthy: { dot: t.colors.semantic.positiveText, label: 'Healthy' },
     degraded: { dot: t.colors.semantic.warning, label: 'Degraded' },
     auth_required: { dot: t.colors.semantic.danger, label: 'Auth lapsed' },
     disabled: { dot: t.colors.text.tertiary, label: 'Disabled' },

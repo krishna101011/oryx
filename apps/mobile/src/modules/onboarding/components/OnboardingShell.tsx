@@ -39,7 +39,7 @@ export const OnboardingShell: React.FC<OnboardingShellProps> = ({
                 styles.pip,
                 {
                   backgroundColor: active
-                    ? t.colors.accent.teal
+                    ? t.colors.semantic.positiveText
                     : t.colors.border.default,
                   flex: 1,
                   marginRight: i === TOTAL_STEPS - 1 ? 0 : 6,

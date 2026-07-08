@@ -8,10 +8,9 @@ import { useTheme } from '../theme/ThemeProvider';
  *
  * Ported 1:1 from docs/design-reference/primitives.jsx <HornMark/>: the same
  * 200×200 viewBox, the same four bezier paths (two gradient-filled horns + two
- * inner-curl strokes), and the same teal gradient (#14B8A6 → #0E8C82). Path
- * strings and coordinates are unchanged. The gradient stops and the inner-curl
- * stroke are read from tokens (accent.brand / accent.brandSecondary / bg.primary)
- * to satisfy the no-raw-hex rule, but those tokens hold the exact source hexes.
+ * inner-curl strokes). Gradient stops and the inner-curl stroke are read from
+ * tokens (accent.brand / accent.brandSecondary / bg.primary). 2026-07-05 teal
+ * retirement: those tokens now hold #08314A → #03121D (was #14B8A6 → #0E8C82).
  *
  * `glow` reproduces the source drop-shadow (RN has no SVG `filter`, so it is
  * approximated with a colored container shadow).
@@ -21,8 +20,8 @@ export const HornMark: React.FC<{ size?: number; glow?: boolean }> = ({
   glow = false,
 }) => {
   const t = useTheme();
-  const from = t.colors.accent.brand; // #14B8A6
-  const to = t.colors.accent.brandSecondary; // #0E8C82
+  const from = t.colors.accent.brand; // #08314A
+  const to = t.colors.accent.brandSecondary; // #03121D
   const curl = t.colors.bg.primary; // #05070A
 
   const svg = (
@@ -65,7 +64,7 @@ export const HornMark: React.FC<{ size?: number; glow?: boolean }> = ({
   return (
     <View
       style={{
-        // drop-shadow(0 0 18px rgba(20,184,166,0.5)) approximation
+        // source drop-shadow(0 0 18px <brand @ 0.5>) approximation
         shadowColor: from,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.5,

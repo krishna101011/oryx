@@ -162,7 +162,7 @@ export const CalendarScreen: React.FC = () => {
                     styles.dayCell,
                     sel && {
                       backgroundColor: t.colors.accent.tealGlow,
-                      borderColor: t.colors.accent.teal,
+                      borderColor: t.colors.semantic.positiveText,
                     },
                   ]}
                 >

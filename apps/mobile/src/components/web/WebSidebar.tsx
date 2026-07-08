@@ -59,7 +59,7 @@ export const WebSidebar: React.FC<{
           <Text variant="wordmark" color="primary">ORYX</Text>
           {version ? (
             <View style={gx.brandBadge}>
-              <Text variant="navGroup" style={{ color: t.colors.accent.teal }}>{version}</Text>
+              <Text variant="navGroup" style={{ color: t.colors.semantic.positiveText }}>{version}</Text>
             </View>
           ) : null}
         </View>

@@ -106,7 +106,7 @@ const ActivityCard: React.FC<{ item: ActivityItem }> = ({ item }) => {
           <View
             style={[
               styles.dot,
-              { backgroundColor: t.colors.accent.teal },
+              { backgroundColor: t.colors.semantic.positiveText },
             ]}
           />
         )}

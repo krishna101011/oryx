@@ -1,5 +1,5 @@
 import { StyleSheet, type TextStyle, type ViewStyle } from 'react-native';
-import { gensparkPalette as g } from '../tokens/colors';
+import { colors, gensparkPalette as g, tealAlpha } from '../tokens/colors';
 
 /**
  * GENSPARK COMPONENT STYLES — exact 1:1 port of the real class rules in
@@ -59,9 +59,11 @@ export const gx = StyleSheet.create({
     backgroundColor: g.elev,
   } as ViewStyle,
   chipText: { color: g.text2 } as TextStyle,
-  // .chip.teal { color:--teal; border:rgba(20,184,166,0.3); bg:rgba(20,184,166,0.06) }
-  chipTeal: { borderColor: 'rgba(20,184,166,0.3)', backgroundColor: 'rgba(20,184,166,0.06)' } as ViewStyle,
-  chipTealText: { color: g.teal } as TextStyle,
+  // .chip.teal { color:--teal; border:rgba(--teal,0.3); bg:rgba(--teal,0.06) }
+  // (2026-07-05 teal retirement: washes track tealAlpha; chip TEXT must stay
+  // legible on the dark ramp, so it reads semantic.positiveText, not --teal.)
+  chipTeal: { borderColor: tealAlpha(0.3), backgroundColor: tealAlpha(0.06) } as ViewStyle,
+  chipTealText: { color: colors.semantic.positiveText } as TextStyle,
   // .chip.violet
   chipViolet: { borderColor: 'rgba(139,92,246,0.3)', backgroundColor: 'rgba(139,92,246,0.06)' } as ViewStyle,
   chipVioletText: { color: g.violet } as TextStyle,
@@ -110,11 +112,11 @@ export const gx = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: g.border,
   } as ViewStyle,
-  // .sidebar-brand .badge { font-size:9; color:--teal; border:1px rgba(20,184,166,0.3); pad:1px 5px; r:2 }
+  // .sidebar-brand .badge { font-size:9; color:--teal; border:1px rgba(--teal,0.3); pad:1px 5px; r:2 }
   brandBadge: {
     marginLeft: 'auto',
     borderWidth: 1,
-    borderColor: 'rgba(20,184,166,0.3)',
+    borderColor: tealAlpha(0.3),
     paddingVertical: 1,
     paddingHorizontal: 5,
     borderRadius: 2,
@@ -141,9 +143,9 @@ export const gx = StyleSheet.create({
     borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(20,184,166,0.12)',
+    backgroundColor: tealAlpha(0.12),
     borderWidth: 1,
-    borderColor: 'rgba(20,184,166,0.3)',
+    borderColor: tealAlpha(0.3),
   } as ViewStyle,
   // .nav { padding:6px 8px 12px }
   nav: { paddingTop: 6, paddingHorizontal: 8, paddingBottom: 12 } as ViewStyle,

@@ -226,7 +226,7 @@ export const PublishTargetScreen: React.FC = () => {
                           styles.chip,
                           {
                             borderColor: sel
-                              ? theme.colors.accent.teal
+                              ? theme.colors.semantic.positiveText
                               : theme.colors.border.subtle,
                             backgroundColor: sel
                               ? theme.colors.accent.tealGlow

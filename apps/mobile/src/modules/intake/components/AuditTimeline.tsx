@@ -49,7 +49,7 @@ export const AuditTimeline: React.FC<{
     <View>
       {entries.map((entry) => (
         <View key={entry.id} style={styles.entryRow}>
-          <View style={[styles.tick, { backgroundColor: t.colors.accent.tealMuted }]} />
+          <View style={[styles.tick, { backgroundColor: t.colors.semantic.positiveText }]} />
           <View style={styles.entryBody}>
             <Text variant="bodySm">{EVENT_LABELS[entry.event] ?? entry.event}</Text>
             <Spacer size={1} />

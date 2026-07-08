@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, View, type ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { tealAlpha } from '../tokens/colors';
 import { useTheme } from '../theme/ThemeProvider';
 
 export type CardVariant = 'default' | 'elevated' | 'glass';
@@ -84,12 +85,12 @@ export const Card: React.FC<CardProps> = ({
 
   // Web-only: smooth transition base (enables animated exit from hover too)
   const webTransition = Platform.OS === 'web' ? ({ transition: 'all 250ms ease' } as ViewStyle) : {};
-  // Web-only: glow derived from t.colors.accent.teal (#14B8A6) at hover opacities
+  // Web-only: glow derived from the teal base (#08314A) at hover opacities
   const webHover =
     Platform.OS === 'web' && hovered
       ? ({
-          borderColor: 'rgba(20, 184, 166, 0.22)',
-          boxShadow: '0 0 16px rgba(20, 184, 166, 0.18)',
+          borderColor: tealAlpha(0.22),
+          boxShadow: `0 0 16px ${tealAlpha(0.18)}`,
         } as ViewStyle)
       : {};
 

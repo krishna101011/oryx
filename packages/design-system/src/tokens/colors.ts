@@ -12,6 +12,13 @@
  * same values onto the key shape the app's 100+ call sites already consume,
  * so the visual system changes without touching every screen.
  * Owner-confirmed global brand reversal — see oryx-architect SKILL.md.
+ *
+ * AMENDMENT (2026-07-05): the teal family (--teal #14B8A6 / --teal-2 #0EA5A0
+ * and the --pos gain color) is RETIRED and replaced by the #08314A family.
+ * Teal-named KEYS are kept (same convention as amber→indigo) but now hold the
+ * new values. #08314A is 1.49:1 against --bg — surface-only. Anything that
+ * must READ against the dark ramp (text, numerals, strokes, dots, selected
+ * borders) uses `semantic.positiveText`, never `accent.teal`.
  * ===========================================================================
  */
 
@@ -35,10 +42,10 @@ export const gensparkPalette = {
 
   indigo: '#5B5BF5', // --indigo
   violet: '#8B5CF6', // --violet
-  teal: '#14B8A6', // --teal
-  teal2: '#0EA5A0', // --teal-2
+  teal: '#08314A', // --teal (2026-07-05: was #14B8A6 — teal retired)
+  teal2: '#041F35', // --teal-2 (derived: the old teal→teal-2 HSL step ΔL −4.9 applied to #08314A)
   softblue: '#60A5FA', // --softblue
-  pos: '#14B8A6', // --pos
+  pos: '#08314A', // --pos (2026-07-05: split into semantic.positiveSurface / positiveText)
   neg: '#F87171', // --neg
   warn: '#F59E0B', // --warn
   info: '#60A5FA', // --info
@@ -61,7 +68,7 @@ export const gradients = {
   // sidebar: linear-gradient(180deg, #07090D 0%, #05070A 100%)
   sidebar: { from: '#07090D', to: '#05070A', angle: 180 },
   // .meter-fill.teal: linear-gradient(90deg, var(--teal-2), var(--teal))
-  meterTeal: { from: '#0EA5A0', to: '#14B8A6', angle: 90 },
+  meterTeal: { from: '#041F35', to: '#08314A', angle: 90 },
   // .meter-fill.neg: linear-gradient(90deg, #b45a5a, var(--neg))
   meterNeg: { from: '#b45a5a', to: '#F87171', angle: 90 },
   // .avatar: linear-gradient(135deg, #232F42, #10151D)
@@ -69,6 +76,13 @@ export const gradients = {
 } as const;
 
 const g = gensparkPalette;
+
+/**
+ * Alpha washes of the teal/positive base #08314A (rgb 8,49,74). The single
+ * sanctioned way to produce rgba() variants of it outside this file — keeps
+ * chip/badge/hover washes tracking the token instead of hardcoding channels.
+ */
+export const tealAlpha = (alpha: number): string => `rgba(8,49,74,${alpha})`;
 
 export const colors = {
   bg: {
@@ -97,17 +111,29 @@ export const colors = {
     // values — indigo→violet is the primary gradient; violet is the solo.
     amber: g.indigo, // PRIMARY solo accent — --indigo #5B5BF5
     coral: g.violet, // secondary solo accent — --violet #8B5CF6
-    teal: g.teal, // --teal  #14B8A6
-    tealMuted: g.teal2, // --teal-2 #0EA5A0
-    tealGlow: 'rgba(20,184,166,0.15)', // selection glow (tracks --teal)
+    teal: g.teal, // --teal  #08314A — SURFACE-ONLY (1.49:1 vs bg); marks/text use semantic.positiveText
+    tealMuted: g.teal2, // --teal-2 #041F35
+    tealGlow: 'rgba(8,49,74,0.15)', // selection glow (tracks --teal)
+    // Hover for teal surfaces. No lighten()/darken() utility exists in the DS
+    // (the only prior hover convention is Card's alpha-glow overlays), so the
+    // documented formula is: HSL lightness +8 points, hue/sat preserved
+    // (202.7°, 80.5%, 16.1% → 24.1%).
+    tealHover: '#0C496F',
     slateBlue: g.indigo, // --indigo #5B5BF5
     plum: g.violet, // --violet #8B5CF6
     cream: g.indigoSoft, // .chip.indigo #818cf8 (subtle light accent)
-    brand: g.teal, // HornMark gradient base (#14B8A6)
-    brandSecondary: '#0E8C82', // HornMark gradient end (primitives.jsx hornGrad)
+    brand: g.teal, // HornMark gradient base (#08314A)
+    brandSecondary: '#03121D', // HornMark gradient end (the old #14B8A6→#0E8C82 HSL step ΔL −9.8 applied to #08314A)
   },
   semantic: {
-    success: g.pos, // --pos  #14B8A6
+    // 2026-07-05: the single success/--pos token is split. Large fills
+    // (buttons, badges, panel washes) take positiveSurface; any text, numeral,
+    // stroke, dot or selected border that must read against the dark ramp
+    // takes positiveText.
+    positiveSurface: g.pos, // #08314A — 1.49:1 vs bg, fill-only
+    // Same hue family as #08314A (H 202.7°, S 80.5%) at L 55%. Computed WCAG
+    // contrast: 7.24:1 vs #05070A (bg), 6.95:1 vs #0A0E14 (panel) — AA ≥4.5:1.
+    positiveText: '#30A3E9',
     warning: g.warn, // --warn #F59E0B
     danger: g.neg, // --neg  #F87171
     info: g.info, // --info #60A5FA
@@ -129,7 +155,7 @@ export const colors = {
  */
 export const oryxPalette = {
   brandPrimary: g.teal,
-  brandSecondary: '#0E8C82',
+  brandSecondary: '#03121D',
   accentIndigo: g.indigo,
   accentViolet: g.violet,
   accentTeal: g.teal,

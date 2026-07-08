@@ -23,7 +23,7 @@ export const AuthFormField: React.FC<AuthFormFieldProps> = ({
       <Spacer size={1} />
       <TextInput
         placeholderTextColor={t.colors.text.tertiary}
-        selectionColor={t.colors.accent.teal}
+        selectionColor={t.colors.semantic.positiveText}
         autoCapitalize="none"
         autoCorrect={false}
         {...rest}

@@ -36,10 +36,10 @@ export const ChoiceTile: React.FC<ChoiceTileProps> = ({
               styles.dot,
               {
                 borderColor: selected
-                  ? t.colors.accent.teal
+                  ? t.colors.semantic.positiveText
                   : t.colors.border.strong,
                 backgroundColor: selected
-                  ? t.colors.accent.teal
+                  ? t.colors.semantic.positiveText
                   : 'transparent',
               },
             ]}
@@ -60,7 +60,7 @@ const styles = StyleSheet.create<any>({
     marginLeft: 12,
   },
   selectedCard: (t: any) => ({
-    borderColor: t.colors.accent.teal,
+    borderColor: t.colors.semantic.positiveText,
     borderWidth: 1,
   }),
 });

@@ -44,7 +44,7 @@ export const TemplatePicker: React.FC<Props> = ({ format, selectedId, onSelect }
                 styles.chip,
                 {
                   borderColor: isSelected
-                    ? theme.colors.accent.teal
+                    ? theme.colors.semantic.positiveText
                     : theme.colors.border.default,
                   backgroundColor: isSelected
                     ? theme.colors.accent.tealGlow
