@@ -36,6 +36,7 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
               AlertsSettings: 'settings/alerts',
               TrustedSources: 'settings/sources',
               AutomationHub: 'settings/automation',
+              Analytics: 'settings/analytics',
             },
           },
         },

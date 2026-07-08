@@ -98,6 +98,14 @@ export const SettingsHomeScreen: React.FC = () => {
           accent="amber"
           onPress={() => navigation.navigate('AutomationHub' as never)}
         />
+        <Spacer size={2} />
+        <SettingsRow
+          label="Analytics"
+          description="Pipeline metrics, research funnel, publishing"
+          icon="BarChart3"
+          accent="amber"
+          onPress={() => navigation.navigate('Analytics' as never)}
+        />
 
         <Spacer size={6} />
         <Text variant="caption" color="tertiary">

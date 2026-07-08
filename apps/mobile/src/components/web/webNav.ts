@@ -62,7 +62,7 @@ export const WEB_NAV: WebNavGroup[] = [
     group: 'OPERATIONS',
     items: [
       { id: 'automation', label: 'Automation Hub', icon: 'Zap', tab: 'Settings', screen: 'AutomationHub' },
-      { id: 'analytics', label: 'Analytics', icon: 'Bar', pending: true },
+      { id: 'analytics', label: 'Analytics', icon: 'Bar', tab: 'Settings', screen: 'Analytics' },
       { id: 'intake', label: 'Intake Engine', icon: 'Inbox', pending: true },
     ],
   },

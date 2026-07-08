@@ -38,6 +38,8 @@ export type SettingsStackParamList = {
   IntelligenceObjectDetail: { objectId: string };
   // Phase 6 Wave B — Automation Hub (Rules + Log)
   AutomationHub: undefined;
+  // Phase 7 Wave B — Analytics dashboard (Overview + Research + Publishing)
+  Analytics: undefined;
 };
 
 // Phase 4 Wave E — research tab stack

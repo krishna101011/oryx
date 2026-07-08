@@ -34,6 +34,9 @@ const VERIFY_SCREENS = new Set([
 /** Same disambiguation for the Automation Hub, also nested under Settings. */
 const AUTOMATION_SCREENS = new Set(['AutomationHub']);
 
+/** And for the Analytics dashboard (Phase 7 Wave B), nested under Settings. */
+const ANALYTICS_SCREENS = new Set(['Analytics']);
+
 function crumbsFor(activeId: string): [string, string] {
   for (const g of WEB_NAV) {
     const it = g.items.find((i) => i.id === activeId);
@@ -86,6 +89,7 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       if (tabName === 'Settings' && focusedScreen) {
         if (VERIFY_SCREENS.has(focusedScreen)) id = 'verify';
         else if (AUTOMATION_SCREENS.has(focusedScreen)) id = 'automation';
+        else if (ANALYTICS_SCREENS.has(focusedScreen)) id = 'analytics';
       }
       setActiveId(id);
     };
