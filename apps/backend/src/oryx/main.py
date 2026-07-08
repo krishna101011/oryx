@@ -3,11 +3,12 @@
 Run locally:
     uv run uvicorn oryx.main:app --reload --port 8000
 
-Process topology (CR-7 / ADR-025): production runs the API plus four
+Process topology (CR-7 / ADR-025): production runs the API plus five
 worker processes — `python -m oryx.services.intake.scheduler`,
 `python -m oryx.services.queue.drainer`, (Phase 5 Wave E)
-`python -m oryx.services.calendar.scheduler`, and (Phase 6 Wave B)
-`python -m oryx.services.activity.digest`. Local dev may colocate
+`python -m oryx.services.calendar.scheduler`, (Phase 6 Wave B)
+`python -m oryx.services.activity.digest`, and (Phase 7 Wave A)
+`python -m oryx.services.analytics.rollup`. Local dev may colocate
 them all by setting oryx_dev_monoprocess=1 (dev environment only).
 """
 from __future__ import annotations
@@ -87,6 +88,7 @@ async def _lifespan(app: FastAPI):
         # accidentally depends on) worker wiring in the normal topology.
         from oryx.core.db import get_sessionmaker
         from oryx.services.activity.digest import DigestWorker
+        from oryx.services.analytics.rollup import RollupWorker
         from oryx.services.calendar.scheduler import CalendarScheduler
         from oryx.services.intake.scheduler import IntakeScheduler
         from oryx.services.queue.drainer import OutboxDrainer, build_bus
@@ -102,6 +104,8 @@ async def _lifespan(app: FastAPI):
         calendar_scheduler = CalendarScheduler(sm)
         # Phase 6 Wave B: daily/weekly digest bundling at local send times.
         digest_worker = DigestWorker(sm)
+        # Phase 7 Wave A: periodic analytics rollup refresh (ADR-047).
+        rollup_worker = RollupWorker(sm)
         tasks = [
             asyncio.create_task(scheduler.run_forever(), name="intake.scheduler"),
             asyncio.create_task(drainer.run_forever(), name="queue.drainer"),
@@ -109,6 +113,7 @@ async def _lifespan(app: FastAPI):
                 calendar_scheduler.run_forever(), name="calendar.scheduler"
             ),
             asyncio.create_task(digest_worker.run_forever(), name="activity.digest"),
+            asyncio.create_task(rollup_worker.run_forever(), name="analytics.rollup"),
         ]
         # Observable proof that colocation actually engaged. The standalone
         # *.started lines only fire in each worker's amain(); colocated mode

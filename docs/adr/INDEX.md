@@ -41,3 +41,4 @@ needed (the architecture doc's proposed 038–046 were all free).
 - ADR-044: Publishing Idempotency — ADR-044-publishing-idempotency.md
 - ADR-045: Content Calendar Scheduler — ADR-045-content-calendar-scheduler.md
 - ADR-046: Phase 5 → Phase 6 Boundary — ADR-046-phase5-phase6-boundary.md
+- ADR-047: Analytics Two-Source Model — ADR-047-analytics-two-source-model.md

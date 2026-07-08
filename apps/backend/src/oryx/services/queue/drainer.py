@@ -219,6 +219,10 @@ def build_bus() -> EventBus:
     from oryx.services.activity.dispatcher import (
         NotificationDispatcher,
     )
+    from oryx.services.analytics.aggregator import (
+        ANALYTICS_EVENTS,
+        AnalyticsAggregator,
+    )
     from oryx.services.claims.events.constants import CLAIM_TYPED
     from oryx.services.claims.service import ClaimExtractionHandler
     from oryx.services.conflicts.events.constants import (
@@ -261,6 +265,14 @@ def build_bus() -> EventBus:
     notification_dispatcher = NotificationDispatcher(sm)
     for event_name in NOTIFICATION_EVENTS:
         bus.subscribe(event_name, notification_dispatcher)
+
+    # Phase 7 Wave A: the AnalyticsAggregator records one fact row per catalog
+    # event (ADR-047 Source A). One instance across all 20 metric-bearing
+    # events, coexisting with every handler above — purely observational, so
+    # its idempotent insert is safe alongside any of them.
+    analytics_aggregator = AnalyticsAggregator(sm)
+    for event_name in ANALYTICS_EVENTS:
+        bus.subscribe(event_name, analytics_aggregator)
     return bus
 
 

@@ -426,6 +426,60 @@ class DigestRun(Base):
     )
 
 
+class AnalyticsEventRaw(Base):
+    """Phase 7 Wave A — one lightweight fact per delivered bus event (Source A).
+
+    NOT a re-store of the envelope (ADR-047): just "event X happened for
+    workspace Y at time Z". `source_event_id` is the envelope's own id — which
+    is the outbox row's id (queue/outbox.py) — so at-least-once redelivery
+    hits the unique constraint and is a safe no-op.
+    """
+
+    __tablename__ = "analytics_events_raw"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    source_event_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, unique=True
+    )
+    event_name: Mapped[str] = mapped_column(Text, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class AnalyticsRollupDaily(Base):
+    """Phase 7 Wave A — the single read model behind every Wave B chart.
+
+    One row per (workspace, metric, UTC day). The unique constraint is what
+    makes a rollup refresh an UPSERT of a freshly recomputed value, never an
+    accumulate — re-running a refresh always converges (ADR-047). Sparse:
+    zero-activity days write no row.
+    """
+
+    __tablename__ = "analytics_rollups_daily"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "metric_key", "date",
+            name="uq_analytics_rollups_ws_metric_date",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    metric_key: Mapped[str] = mapped_column(Text, nullable=False)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    value: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class FeatureFlag(Base):
     __tablename__ = "feature_flags"
 

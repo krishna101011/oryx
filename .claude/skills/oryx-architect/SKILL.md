@@ -395,6 +395,20 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   that count log rows must scope to a channel — every dispatch now also writes
   a push-slot row (push_failed when no device is registered, per the frozen
   "no silent skip" rule), so unscoped `len(logs) == 1` asserts are wrong.
+- THE EVENT CATALOG IS BIGGER THAN THE CONSTANTS FILES (Phase 7 Wave A found
+  this after the Phase 7 doc froze on "20 events"). Two lifecycle events are
+  published as STRING LITERALS, not constants: workspace.deletion.started /
+  workspace.deletion.completed (intake/workspace_cascade.py), BOTH with
+  workspace_id=None (the workspace row is mid-deletion; its id rides in the
+  payload). Any "list every event" sweep must grep enqueue_event( call sites
+  for name=, not just services/*/events/constants.py — and note intake's
+  constant lives at the nonstandard services/intake/events_constants.py. The
+  AnalyticsAggregator deliberately does NOT subscribe to the two deletion
+  events (no workspace to attribute, no metric) and skips-with-warning any
+  event that arrives without a workspace_id. Related shape facts:
+  DomainEvent.id IS the outbox row id (queue/outbox.py mints one uuid for
+  both) — that's the analytics dedup key; digest_runs is ACCOUNT-scoped, so
+  workspace-keyed aggregation joins through workspace_members.
 
 ## What This Skill Deliberately Does NOT Contain
 
