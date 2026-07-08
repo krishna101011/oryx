@@ -311,3 +311,10 @@ decisions carried through unchanged: reuse the existing per-category
 preference granularity rather than building finer per-event rules, and
 include real push delivery (FCM/APNs) rather than deferring it. Treat Rev
 1 as fully superseded.
+
+**Post-freeze correction (2026-07-08):** the §3.3 push action vocabulary is
+extended with `push_suppressed_quiet_hours` — a quiet-hour skip now writes its
+own automation_log decision row (channel='push') instead of being silent, so
+the Automation Hub's Log tab can explain why no push arrived. Reason:
+transparency for quiet-hour skips, flagged at Wave C sign-off and consumed by
+Phase 7's analytics metric of the same name.
