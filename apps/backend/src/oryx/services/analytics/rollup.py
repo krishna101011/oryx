@@ -134,11 +134,10 @@ class RollupWorker:
                 "day",
             )
         )
-        # ACTION_METRICS includes push_suppressed_quiet_hours, which no
-        # dispatcher code writes yet — it simply never comes back from this
-        # GROUP BY, so the metric reads as absent (zero) until the Phase 6
-        # logging addendum lands. Unknown FUTURE action values are skipped
-        # rather than crashing the worker.
+        # Unknown FUTURE action values are skipped rather than crashing the
+        # worker; a mapped value with no rows (e.g. push_suppressed_quiet_hours
+        # on days before its 2026-07-08 §3.3 extension landed) simply never
+        # comes back from this GROUP BY — sparse zero, not an error.
         return [
             {
                 "workspace_id": row.workspace_id,

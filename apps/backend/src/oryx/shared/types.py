@@ -396,6 +396,7 @@ AutomationAction = Literal[
     "suppressed_by_preference",
     "push_sent",
     "push_failed",
+    "push_suppressed_quiet_hours",
     "digest_sent",
 ]
 

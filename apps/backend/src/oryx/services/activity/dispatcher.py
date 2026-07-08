@@ -29,9 +29,10 @@ failure can never roll back the notification itself:
   5. resolve the (account, category, channel='push') preference with the same
      shared-default logic as in_app;
   6. if enabled, evaluate quiet_hours (services/activity/quiet_hours.py) — a
-     send inside the account's quiet window is silently skipped for this
-     event (deliberately no log row; the §3.3 push vocabulary is only
-     push_sent/push_failed);
+     send inside the account's quiet window is skipped for this event and
+     recorded as its own automation_log decision row
+     (push_suppressed_quiet_hours — the post-freeze §3.3 extension, so the
+     Automation Hub explains the skip instead of hiding it);
   7. otherwise call the real provider (providers/push/factory.py, gated by
      PUSH_PROVIDER) for each active alert_devices token, holding NO db
      transaction across the HTTP call, and commit ONE new automation_log row
@@ -101,6 +102,9 @@ ACTION_NOTIFICATION_CREATED = "notification_created"
 ACTION_SUPPRESSED = "suppressed_by_preference"
 ACTION_PUSH_SENT = "push_sent"
 ACTION_PUSH_FAILED = "push_failed"
+# Post-freeze §3.3 extension (2026-07-08, Phase 6 doc Revision Note): a
+# quiet-hour skip is a visible Automation Hub decision, not a silent one.
+ACTION_PUSH_SUPPRESSED_QUIET_HOURS = "push_suppressed_quiet_hours"
 
 # The channels the dispatcher delivers on (email remains out of scope).
 CHANNEL_IN_APP = "in_app"
@@ -316,10 +320,11 @@ class NotificationDispatcher:
         """The Wave C push step — runs after the in_app transaction committed.
 
         Reads (one short session), then calls the provider with NO transaction
-        open, then writes its one decision row (a second short session). Quiet-
-        hours suppression is deliberately silent: the frozen §3.3 push
-        vocabulary is push_sent/push_failed only, and the in_app decision row
-        already recorded the event's dispatch outcome.
+        open, then writes its one decision row (a second short session).
+        Quiet-hours suppression writes a decision row too since the post-freeze
+        §3.3 extension (push_suppressed_quiet_hours) — same second-session
+        pattern as push_sent/push_failed, so the Automation Hub can explain a
+        quiet-hour skip; the operational log line is kept alongside it.
         """
         async with self._sm() as session:
             pref = (
@@ -347,15 +352,17 @@ class NotificationDispatcher:
             if already is not None:
                 return
 
-            if is_quiet_now(pref.quiet_hours if pref else None):
-                logger.info(
-                    "push.suppressed_quiet_hours",
-                    extra={"account_id": str(account_id), "event_id": event.id},
-                )
-                return
+            # Evaluated here, acted on after the session closes — the decision
+            # row write must not share this read transaction (same boundary
+            # rule as the sent/failed row).
+            suppressed_by_quiet_hours = is_quiet_now(
+                pref.quiet_hours if pref else None
+            )
 
             devices = (
-                (
+                []
+                if suppressed_by_quiet_hours
+                else (
                     await session.execute(
                         select(AlertDevice).where(
                             AlertDevice.account_id == account_id,
@@ -375,6 +382,21 @@ class NotificationDispatcher:
                 )
             )
         # Session is CLOSED here — no transaction spans the provider HTTP call.
+
+        if suppressed_by_quiet_hours:
+            logger.info(
+                "push.suppressed_quiet_hours",
+                extra={"account_id": str(account_id), "event_id": event.id},
+            )
+            await self._record_push_decision(
+                account_id=account_id,
+                workspace_id=workspace_id,
+                event=event,
+                event_id=event_id,
+                inbox_id=inbox_id,
+                action=ACTION_PUSH_SUPPRESSED_QUIET_HOURS,
+            )
+            return
 
         if not devices:
             ok = False
@@ -415,26 +437,16 @@ class NotificationDispatcher:
                 if not r.ok
             )
 
-        async with self._sm() as session:
-            session.add(
-                AutomationLog(
-                    id=uuid.uuid4(),
-                    account_id=account_id,
-                    workspace_id=workspace_id,
-                    activity_inbox_id=inbox_id,
-                    triggered_by_event_type=event.name,
-                    triggered_by_event_id=event_id,
-                    action_taken=ACTION_PUSH_SENT if ok else ACTION_PUSH_FAILED,
-                    channel=CHANNEL_PUSH,
-                )
-            )
-            try:
-                await session.commit()
-            except IntegrityError:
-                # Lost a race with a concurrent redelivery: that delivery's
-                # decision row is the real one.
-                await session.rollback()
-                return
+        recorded = await self._record_push_decision(
+            account_id=account_id,
+            workspace_id=workspace_id,
+            event=event,
+            event_id=event_id,
+            inbox_id=inbox_id,
+            action=ACTION_PUSH_SENT if ok else ACTION_PUSH_FAILED,
+        )
+        if not recorded:
+            return
 
         if ok:
             logger.info(
@@ -454,6 +466,43 @@ class NotificationDispatcher:
                     "reason": failure_reason,
                 },
             )
+
+    async def _record_push_decision(
+        self,
+        *,
+        account_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        event: DomainEvent,
+        event_id: uuid.UUID,
+        inbox_id: uuid.UUID | None,
+        action: str,
+    ) -> bool:
+        """Commit the one push-slot decision row in its own short session.
+
+        Shared by every push outcome (sent / failed / suppressed by quiet
+        hours) so all three follow the identical transaction boundary. Returns
+        False when a concurrent redelivery won the unique-constraint race —
+        that delivery's decision row is the real one.
+        """
+        async with self._sm() as session:
+            session.add(
+                AutomationLog(
+                    id=uuid.uuid4(),
+                    account_id=account_id,
+                    workspace_id=workspace_id,
+                    activity_inbox_id=inbox_id,
+                    triggered_by_event_type=event.name,
+                    triggered_by_event_id=event_id,
+                    action_taken=action,
+                    channel=CHANNEL_PUSH,
+                )
+            )
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                return False
+        return True
 
 
 async def _accounts_in_workspace(

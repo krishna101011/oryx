@@ -26,6 +26,7 @@ const ACTION_COPY: Record<Automation.AutomationAction, { title: string; tone: Fe
   suppressed_by_preference: { title: 'Suppressed by your preferences', tone: 'warn', icon: 'BellOff' },
   push_sent: { title: 'Push sent', tone: 'positive', icon: 'BellRing' },
   push_failed: { title: 'Push failed', tone: 'danger', icon: 'AlertTriangle' },
+  push_suppressed_quiet_hours: { title: 'Push held by quiet hours', tone: 'warn', icon: 'BellOff' },
   digest_sent: { title: 'Digest sent', tone: 'positive', icon: 'Layers' },
 };
 

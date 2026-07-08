@@ -5,11 +5,10 @@ metric key. Source B: ACTION_METRICS maps automation_log's REAL action_taken
 values (services/activity/dispatcher.py ACTION_* constants — confirmed, not
 invented) to theirs; digests_sent counts digest_runs rows.
 
-push_suppressed_quiet_hours is mapped although no dispatcher code writes that
-action_taken value yet (quiet-hours suppression is currently silent by frozen
-Phase 6 §3.3 — the logging addendum is a flagged follow-up). Until it lands,
-the aggregate simply matches zero rows and the metric never appears in the
-sparse rollup table; nothing crashes.
+push_suppressed_quiet_hours landed with the post-freeze Phase 6 §3.3
+extension (2026-07-08): the dispatcher now records a decision row for each
+quiet-hour skip, and this metric aggregates them. Rows from before that date
+don't exist, so historical days simply have no value (sparse zero).
 """
 from __future__ import annotations
 

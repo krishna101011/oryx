@@ -14,13 +14,16 @@ export type AutomationEntryKind = 'dispatch' | 'digest';
 /**
  * automation_log.action_taken vocabulary (§3.4) plus the synthetic
  * 'digest_sent' used for digest_runs entries. push_sent/push_failed are
- * Wave C vocabulary — typed now, first written when push lands.
+ * Wave C vocabulary; push_suppressed_quiet_hours is the post-freeze
+ * §3.3 extension (2026-07-08) — a quiet-hour skip is now a visible
+ * Automation Hub decision, not a silent one.
  */
 export type AutomationAction =
   | 'notification_created'
   | 'suppressed_by_preference'
   | 'push_sent'
   | 'push_failed'
+  | 'push_suppressed_quiet_hours'
   | 'digest_sent';
 
 export interface AutomationLogEntry {
