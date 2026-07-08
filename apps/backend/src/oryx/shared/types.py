@@ -419,6 +419,48 @@ class AutomationLogResponse(_Base):
 
 
 # ============================================================================
+# Analytics (Phase 7 Wave B) — mirrors shared-types/src/analytics.ts
+# ============================================================================
+
+
+class RollupPoint(_Base):
+    """One day's value for one metric. `date` is the UTC day, YYYY-MM-DD."""
+
+    date: str
+    value: int
+
+
+class AnalyticsRollupsResponse(_Base):
+    """metric_key -> ascending daily points; sparse on both axes."""
+
+    series: dict[str, list[RollupPoint]]
+    from_: str = Field(alias="from")
+    to: str
+
+
+class PublishingSuccess(_Base):
+    published: int
+    failed: int
+    success_rate: float | None = Field(default=None, alias="successRate")
+
+
+class TimeToPublish(_Base):
+    """Draft-creation -> publication gap; computed on request, not persisted."""
+
+    average_seconds: float | None = Field(default=None, alias="averageSeconds")
+    median_seconds: float | None = Field(default=None, alias="medianSeconds")
+    sample_size: int = Field(alias="sampleSize")
+
+
+class AnalyticsPublishingResponse(_Base):
+    """§3.4: success rate + time-to-publish ONLY — no engagement field exists
+    because no real engagement signal exists anywhere in the platform."""
+
+    success: PublishingSuccess
+    time_to_publish: TimeToPublish = Field(alias="timeToPublish")
+
+
+# ============================================================================
 # Onboarding
 # ============================================================================
 
