@@ -117,6 +117,7 @@ async def _seed_dispatch_row(sm, *, account_id, workspace_id, created_at) -> uui
                 triggered_by_event_type="content.published",
                 triggered_by_event_id=uuid.uuid4(),
                 action_taken="suppressed_by_preference",
+                channel="in_app",
                 created_at=created_at,
             )
         )
@@ -241,11 +242,15 @@ async def test_activity_inbox_serializes_phase6_categories(app, sm) -> None:
 @pytest.mark.asyncio
 async def test_ff_automation_enabled_by_default(app) -> None:
     """Migration 0016 flips ff_automation's global default ON — the Automation
-    Hub depends only on shipped Wave A/B reads, not Wave C push."""
+    Hub depends only on shipped Wave A/B reads, not Wave C push. Migration 0018
+    (Wave C) then flips ff_push_delivery ON too: the flag now pins TRUE — this
+    assertion was deliberately updated from False when Wave C shipped the push
+    path (client registration stays guarded on dev builds; server delivery
+    stays log-only until PUSH_PROVIDER=real is configured)."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
         ids = await _signup(client)
         flags = (
             await client.get("/v1/feature-flags", headers=ids["headers"])
         ).json()["data"]
         assert flags["ff_automation"] is True
-        assert flags["ff_push_delivery"] is False  # Wave C stays gated
+        assert flags["ff_push_delivery"] is True  # Wave C shipped; pinned ON

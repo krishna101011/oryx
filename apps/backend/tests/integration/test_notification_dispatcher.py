@@ -10,6 +10,12 @@ docs/PHASE_6_ARCHITECTURE.md §2 (Rev 2, frozen) — 14 table rows, where the
 event names. It is deliberately duplicated here rather than imported from
 the dispatcher, so the test checks the code against the frozen document
 instead of against itself.
+
+Wave C note: every dispatch now ALSO runs the push step, which writes its own
+channel='push' decision row (push_failed in these seeds — no device is ever
+registered here). The assertions below therefore scope to the in_app slot via
+_log_rows' channel filter; the push path has its own dedicated coverage in
+test_push_delivery.py.
 """
 from __future__ import annotations
 
@@ -133,19 +139,21 @@ async def _inbox_rows(sm, account_id):
         )
 
 
-async def _log_rows(sm, account_id):
+async def _log_rows(sm, account_id, channel: str | None = "in_app"):
+    """Decision rows for one account, scoped to a channel.
+
+    Defaults to the in_app slot: these Wave A tests assert the in_app dispatch
+    decision, and since Wave C every dispatch ALSO writes a push-channel
+    decision row (push_failed when no device is registered, as in these seeds).
+    Pass channel='push' for the push slot, or None for every row.
+    """
     from oryx.core.models import AutomationLog
 
     async with sm() as session:
-        return (
-            (
-                await session.execute(
-                    select(AutomationLog).where(AutomationLog.account_id == account_id)
-                )
-            )
-            .scalars()
-            .all()
-        )
+        stmt = select(AutomationLog).where(AutomationLog.account_id == account_id)
+        if channel is not None:
+            stmt = stmt.where(AutomationLog.channel == channel)
+        return (await session.execute(stmt)).scalars().all()
 
 
 # --- Scenario 1: enabled preference -> inbox row AND notification_created log ---
@@ -249,6 +257,10 @@ async def test_redelivered_event_is_noop(sm) -> None:
     logs = await _log_rows(sm, account)
     assert len(logs) == 1
     assert logs[0].triggered_by_event_id == event_id
+    # Wave C: the push decision slot is idempotent under redelivery too —
+    # exactly one push row (push_failed here: no device registered).
+    push_logs = await _log_rows(sm, account, channel="push")
+    assert len(push_logs) == 1
 
 
 # --- Scenario 5: multi-account fan-out with independent preferences ---
@@ -312,10 +324,12 @@ async def test_frozen_catalog_event_maps_to_category_and_severity(
 
 @pytest.mark.asyncio
 async def test_push_channel_boundary_not_crossed(sm) -> None:
-    """Wave A dispatches on in_app only. A push-channel 'off' preference must
-    NOT suppress the in_app notification (proving the dispatcher never reads
-    channel='push'), the dispatcher must not write preference rows, and no
-    push action (push_sent/push_failed are Wave C vocabulary) may be logged."""
+    """Channel independence (updated for Wave C, which made this two-sided):
+    a push-channel 'off' preference must NOT suppress the in_app notification,
+    the dispatcher must not write preference rows, and — now that the push
+    step exists — an explicit push-off means NO push attempt and NO push
+    decision row at all (the in_app suppression vocabulary never bleeds into
+    the push slot)."""
     from oryx.core.models import AlertPreference
 
     ids = await _seed_workspace(sm)
@@ -326,11 +340,12 @@ async def test_push_channel_boundary_not_crossed(sm) -> None:
 
     await _dispatcher(sm)(_event(INTAKE_EVENT, workspace_id=ids["workspace"]))
 
-    # in_app dispatch went ahead: the push-channel row was never consulted.
+    # in_app dispatch went ahead: the push-channel row didn't suppress it.
     assert len(await _inbox_rows(sm, account)) == 1
     logs = await _log_rows(sm, account)
     assert [log.action_taken for log in logs] == ["notification_created"]
-    assert all(not log.action_taken.startswith("push") for log in logs)
+    # Push disabled → the push slot stays empty (no push_sent/push_failed).
+    assert await _log_rows(sm, account, channel="push") == []
 
     # The dispatcher reads preferences; it never writes them.
     async with sm() as session:
