@@ -1,7 +1,7 @@
 # ORYX — Phase 7 Architecture (Analytics)
 
 **Phase:** 7 — Analytics
-**Status:** DRAFT — Rev 2, verified against real code (supersedes Rev 1 in full)
+**Status:** FROZEN (2026-07-08) — Rev 2, verified against real code (supersedes Rev 1 in full)
 **Verification anchor:** commit 1cf197d's own recon findings (Phase 7 Wave A prep)
 **Depends on:** Phase 2 (ADR-014 event architecture), Phase 3–6 (all event sources + automation
 tables)
