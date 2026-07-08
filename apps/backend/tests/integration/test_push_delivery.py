@@ -135,12 +135,14 @@ async def _set_push_preference(
         await session.commit()
 
 
-def _event(name: str = INTAKE_EVENT, *, workspace_id):
+def _event(
+    name: str = INTAKE_EVENT, *, workspace_id, event_id: uuid.UUID | None = None
+):
     from oryx.services.queue.bus import DomainEvent
 
     now = datetime.now(UTC)
     return DomainEvent(
-        id=str(uuid.uuid4()),
+        id=str(event_id or uuid.uuid4()),
         name=name,
         version=1,
         occurred_at=now,
@@ -257,9 +259,11 @@ async def test_device_registration_api_stores_token(app, sm) -> None:
 @pytest.mark.asyncio
 async def test_quiet_hours_inside_window_suppresses_push(sm) -> None:
     """Push enabled, device registered, but now is inside the account's quiet
-    window: the provider is never called and — deliberately — NO push decision
-    row is written (the §3.3 push vocabulary is push_sent/push_failed only).
-    The in_app notification is untouched."""
+    window: the provider is never called, and — since the post-freeze §3.3
+    extension (2026-07-08) — the skip is RECORDED as a
+    push_suppressed_quiet_hours decision row rather than left silent (this
+    test originally asserted zero rows; that behavior was superseded, see the
+    Phase 6 doc's Revision Note). The in_app notification is untouched."""
     ids = await _seed_workspace(sm)
     await _seed_device(sm, account_id=ids["account"])
     await _set_push_preference(
@@ -271,8 +275,39 @@ async def test_quiet_hours_inside_window_suppresses_push(sm) -> None:
     await _dispatcher(sm, lambda _p: provider)(_event(workspace_id=ids["workspace"]))
 
     assert provider.sent == []
-    assert await _logs(sm, ids["account"], "push") == []
+    logs = await _logs(sm, ids["account"], "push")
+    assert [log.action_taken for log in logs] == ["push_suppressed_quiet_hours"]
     assert len(await _inbox_rows(sm, ids["account"])) == 1  # in_app unaffected
+
+
+@pytest.mark.asyncio
+async def test_quiet_hours_suppression_writes_exactly_one_push_decision_row(
+    sm,
+) -> None:
+    """The suppression row follows the full push-slot contract: channel='push',
+    action_taken='push_suppressed_quiet_hours', linked to the in_app feed row —
+    and the slot stays idempotent under redelivery (a second delivery of the
+    same event adds nothing)."""
+    ids = await _seed_workspace(sm)
+    await _seed_device(sm, account_id=ids["account"])
+    await _set_push_preference(
+        sm, account_id=ids["account"],
+        quiet_hours=_window_around_now(start_offset_h=-1, end_offset_h=1),
+    )
+    provider = FakePushProvider(ok=True)
+    event_id = uuid.uuid4()
+    dispatcher = _dispatcher(sm, lambda _p: provider)
+
+    await dispatcher(_event(workspace_id=ids["workspace"], event_id=event_id))
+    await dispatcher(_event(workspace_id=ids["workspace"], event_id=event_id))
+
+    logs = await _logs(sm, ids["account"], "push")
+    assert len(logs) == 1  # exactly one, redelivery included
+    assert logs[0].action_taken == "push_suppressed_quiet_hours"
+    assert logs[0].channel == "push"
+    inbox = await _inbox_rows(sm, ids["account"])
+    assert logs[0].activity_inbox_id == inbox[0].id
+    assert provider.sent == []
 
 
 @pytest.mark.asyncio

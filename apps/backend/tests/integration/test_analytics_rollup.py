@@ -256,10 +256,12 @@ async def test_two_workspaces_rollups_never_leak(sm) -> None:
 
 @pytest.mark.asyncio
 async def test_push_suppressed_quiet_hours_reads_as_absent_not_a_crash(sm) -> None:
-    """No dispatcher code writes action_taken='push_suppressed_quiet_hours'
-    yet (Phase 6 quiet-hours suppression is deliberately silent; the logging
-    addendum is a flagged follow-up). The metric map already carries it — the
-    refresh must complete normally and simply produce no row (sparse zero)."""
+    """The sparse-zero case: a workspace with push activity but no quiet-hour
+    skips gets NO push_suppressed_quiet_hours row, and the refresh completes
+    normally. (Originally written pre-addendum, when the dispatcher never
+    wrote this value at all; the 2026-07-08 §3.3 extension landed it, and the
+    with-data case is test_rollup_picks_up_push_suppressed_quiet_hours_rows —
+    this test remains as the zero-data half.)"""
     ids = await _seed_workspace(sm)
     when = datetime(2026, 7, 8, 13, 0, tzinfo=UTC)
     await _seed_automation_log(
@@ -276,6 +278,33 @@ async def test_push_suppressed_quiet_hours_reads_as_absent_not_a_crash(sm) -> No
     rollups = await _rollups(sm, ids["workspace"])
     assert rollups[("push_sent", date(2026, 7, 8))] == 1
     assert not any(m == "push_suppressed_quiet_hours" for m, _ in rollups)
+
+
+# --- Quiet-hours addendum (2026-07-08): real rows now feed the metric ---
+
+
+@pytest.mark.asyncio
+async def test_rollup_picks_up_push_suppressed_quiet_hours_rows(sm) -> None:
+    """Phase 7 Wave A could only prove this metric read as zero (the
+    dispatcher didn't write the value yet). With the §3.3 extension landed,
+    a real push_suppressed_quiet_hours decision row must aggregate into the
+    metric like any other Source B action."""
+    ids = await _seed_workspace(sm)
+    when = datetime(2026, 7, 8, 14, 0, tzinfo=UTC)
+    for _ in range(2):
+        await _seed_automation_log(
+            sm,
+            account_id=ids["account"],
+            workspace_id=ids["workspace"],
+            action_taken="push_suppressed_quiet_hours",
+            channel="push",
+            created_at=when,
+        )
+
+    await _worker(sm).tick()
+
+    rollups = await _rollups(sm, ids["workspace"])
+    assert rollups[("push_suppressed_quiet_hours", date(2026, 7, 8))] == 2
 
 
 # --- Mandatory scenario 8: Source B backfills history; Source A cannot ---
