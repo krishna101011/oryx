@@ -21,7 +21,9 @@ from oryx.core.dependencies import (
     get_request_id,
     require_capability,
 )
+from oryx.core.errors import NotFoundError
 from oryx.core.models import Publication
+from oryx.services.publishing.citations import _confidence_tier
 from oryx.services.publishing.engine import PublishingEngine, TargetResult
 from oryx.services.publishing.repository import PublicationsRepository
 from oryx.services.targets.schemas import PublishRequest
@@ -77,6 +79,48 @@ async def publish_draft(
     return envelope(
         [_result_dict(r) for r in results], request_id=get_request_id(request)
     )
+
+
+@router.get(
+    "/publications/{publication_id}/provenance",
+    dependencies=[Depends(require_capability("content.read"))],
+)
+async def publication_provenance(
+    publication_id: uuid.UUID,
+    request: Request,
+    ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+) -> dict[str, Any]:
+    """The publication's "show your work" payload — SNAPSHOT rows only.
+
+    Serves publication_citations exactly as written at publication-row
+    creation: no join to intelligence_objects (live values), and nothing at
+    claim/evidence depth exists in the source table. confidence_tier is
+    computed from the SNAPSHOTTED score with the canonical band thresholds.
+    """
+    async with get_sessionmaker()() as session:
+        pubs = PublicationsRepository(session)
+        pub = await pubs.get_for_workspace(
+            workspace_id=ws.workspace_id, publication_id=publication_id
+        )
+        if pub is None:
+            raise NotFoundError("Publication not found")
+        rows = await pubs.list_citation_snapshots(publication_id=publication_id)
+    payload = {
+        "publicationId": str(publication_id),
+        "entries": [
+            {
+                "intelligenceObjectId": str(r.intelligence_object_id),
+                "headline": r.headline,
+                "epistemicType": r.epistemic_type,
+                "confidenceTier": _confidence_tier(r.confidence_score),
+                "confidenceScore": r.confidence_score,
+                "scoringVersion": r.scoring_version,
+                "snapshottedAt": r.snapshotted_at.isoformat(),
+            }
+            for r in rows
+        ],
+    }
+    return envelope(payload, request_id=get_request_id(request))
 
 
 @router.get(

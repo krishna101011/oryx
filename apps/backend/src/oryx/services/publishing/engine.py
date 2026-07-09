@@ -35,6 +35,7 @@ from oryx.services.publishing.citations import (
     CitationSummary,
     format_citation_footer,
     load_draft_citations,
+    snapshot_citations,
 )
 from oryx.services.publishing.events.constants import (
     CONTENT_PUBLISH_FAILED,
@@ -200,15 +201,15 @@ class PublishingEngine:
                 target_id=target_id,
                 workspace_id=workspace_id,
             )
-            await session.commit()
-
             pub = await pubs.get(
                 draft_id=draft_id,
                 version_number=version_number,
                 target_id=target_id,
             )
             assert pub is not None
-            # Race: another caller delivered between our check and insert.
+            # Race: another caller delivered between our check and insert —
+            # ensure_pending no-op'd against their row, so there is nothing of
+            # ours to commit (their transaction already wrote the snapshot).
             if pub.status == "delivered":
                 return TargetResult(
                     target_id=target_id,
@@ -217,6 +218,15 @@ class PublishingEngine:
                     external_id=pub.external_id,
                     external_url=pub.external_url,
                 )
+            # Transparency snapshot: written in the SAME transaction as the
+            # pending publication insert (committed together below), so a
+            # publication row can never exist without its provenance snapshot
+            # and the values are frozen BEFORE any downstream re-score. On
+            # engine retries the ON CONFLICT no-op preserves the original.
+            await snapshot_citations(
+                session, publication_id=pub.id, draft_id=draft_id
+            )
+            await session.commit()
             publication_id = pub.id
             prior_attempts = pub.attempt_count
             channel = target.channel

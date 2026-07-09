@@ -19,9 +19,11 @@ import uuid
 from dataclasses import dataclass
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.expression import literal
 
-from oryx.core.models import DraftCitation, IntelligenceObject
+from oryx.core.models import DraftCitation, IntelligenceObject, PublicationCitation
 from oryx.services.publishing.channels.formatting import thread_segments
 from oryx.shared.types import CONFIDENCE_BAND_THRESHOLDS, PublishChannel
 
@@ -80,6 +82,51 @@ async def load_draft_citations(
         )
         for row in result.all()
     ]
+
+
+async def snapshot_citations(
+    session: AsyncSession, *, publication_id: uuid.UUID, draft_id: uuid.UUID
+) -> None:
+    """Snapshot the draft's cited intelligence objects into
+    publication_citations — headline, epistemic_type, confidence_score and
+    scoring_version AS OF THIS TRANSACTION.
+
+    Called by the engine inside the SAME transaction that inserts the pending
+    publication row (never committed separately), so a publication cannot
+    exist without its provenance snapshot. A single INSERT ... FROM SELECT
+    reads the live values and writes the snapshot atomically; ON CONFLICT DO
+    NOTHING on the composite PK makes engine retries (which re-enter the
+    ensure_pending transaction) no-ops that preserve the ORIGINAL snapshot.
+    """
+    sel = (
+        select(
+            literal(publication_id),
+            DraftCitation.intelligence_object_id,
+            IntelligenceObject.headline,
+            IntelligenceObject.epistemic_type,
+            IntelligenceObject.confidence_score,
+            IntelligenceObject.scoring_version,
+        )
+        .join(
+            IntelligenceObject,
+            IntelligenceObject.id == DraftCitation.intelligence_object_id,
+        )
+        .where(DraftCitation.draft_id == draft_id)
+    )
+    stmt = pg_insert(PublicationCitation).from_select(
+        [
+            "publication_id",
+            "intelligence_object_id",
+            "headline",
+            "epistemic_type",
+            "confidence_score",
+            "scoring_version",
+        ],
+        sel,
+    ).on_conflict_do_nothing(
+        index_elements=["publication_id", "intelligence_object_id"]
+    )
+    await session.execute(stmt)
 
 
 def format_citation_footer(

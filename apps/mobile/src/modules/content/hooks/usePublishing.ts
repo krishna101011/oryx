@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   Publication,
+  PublicationProvenance,
   PublishTarget,
   PublishTargetResult,
 } from '@oryx/shared-types';
@@ -60,5 +61,23 @@ export function usePublications(params?: { status?: string; draftId?: string }) 
   return useQuery<Publication[]>({
     queryKey: ['publishing', 'publications', params ?? {}],
     queryFn: async () => (await publishingApi.publications(params)).data,
+  });
+}
+
+/**
+ * Snapshotted provenance for one publication — fetched lazily (enabled only
+ * once the "show your work" section is expanded). The payload is immutable
+ * server-side, so a long staleTime is correct, not a caching shortcut.
+ */
+export function usePublicationProvenance(
+  publicationId: string,
+  enabled: boolean,
+) {
+  return useQuery<PublicationProvenance>({
+    queryKey: ['publishing', 'provenance', publicationId],
+    queryFn: async () =>
+      (await publishingApi.provenance(publicationId)).data,
+    enabled,
+    staleTime: Infinity,
   });
 }

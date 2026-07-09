@@ -5,6 +5,7 @@
 import type {
   ApiResponse,
   Publication,
+  PublicationProvenance,
   PublishChannel,
   PublishTarget,
   PublishTargetResult,
@@ -57,4 +58,12 @@ export const publishingApi = {
       `/publications${qs ? `?${qs}` : ''}`,
     );
   },
+
+  /** Snapshotted provenance ("show your work") for one publication. */
+  provenance: (
+    publicationId: string,
+  ): Promise<ApiResponse<PublicationProvenance>> =>
+    apiClient().getEnvelope<PublicationProvenance>(
+      `/publications/${publicationId}/provenance`,
+    ),
 };

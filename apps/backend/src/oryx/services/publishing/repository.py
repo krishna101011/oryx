@@ -14,7 +14,7 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from oryx.core.models import Publication
+from oryx.core.models import Publication, PublicationCitation
 
 
 class PublicationsRepository:
@@ -128,6 +128,38 @@ class PublicationsRepository:
             select(Publication).where(
                 Publication.status == "pending",
                 Publication.attempt_count.between(1, 4),
+            )
+        )
+        return list(result.scalars().all())
+
+    async def get_for_workspace(
+        self, *, workspace_id: uuid.UUID, publication_id: uuid.UUID
+    ) -> Publication | None:
+        """Workspace-scoped single-row read — the provenance endpoint's
+        isolation guard (a foreign workspace's publication reads as absent)."""
+        result = await self.db.execute(
+            select(Publication).where(
+                Publication.id == publication_id,
+                Publication.workspace_id == workspace_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def list_citation_snapshots(
+        self, *, publication_id: uuid.UUID
+    ) -> list[PublicationCitation]:
+        """The publication's provenance SNAPSHOT rows, strongest first.
+
+        Reads publication_citations only — deliberately NO join back to
+        intelligence_objects (that would reintroduce live values and defeat
+        the snapshot), and nothing claim/evidence shaped exists in this table.
+        """
+        result = await self.db.execute(
+            select(PublicationCitation)
+            .where(PublicationCitation.publication_id == publication_id)
+            .order_by(
+                PublicationCitation.confidence_score.desc().nulls_last(),
+                PublicationCitation.intelligence_object_id,
             )
         )
         return list(result.scalars().all())

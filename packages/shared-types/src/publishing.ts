@@ -4,6 +4,8 @@
  * PublishTarget deliberately has NO credentials field: channel credentials are
  * write-only (encrypted at rest, never returned by any endpoint — §13.2).
  */
+import type { EpistemicType } from './claims';
+import type { ConfidenceBand } from './scoring';
 
 export type PublishChannel =
   | 'twitter_x'
@@ -49,6 +51,29 @@ export interface Publication {
 
 export interface PublishRequest {
   targetIds: string[];
+}
+
+/**
+ * One cited intelligence object as SNAPSHOTTED when the publication row was
+ * created — never a live read, so a later re-score cannot rewrite what a
+ * published piece claimed at the time. Intelligence-object level ONLY by
+ * design: no claim or evidence fields exist here at any depth.
+ */
+export interface PublicationCitationSnapshot {
+  intelligenceObjectId: string;
+  headline: string;
+  epistemicType: EpistemicType;
+  /** Band computed from the SNAPSHOTTED score (scoring.ts thresholds). */
+  confidenceTier: ConfidenceBand;
+  confidenceScore: number | null;
+  scoringVersion: number;
+  snapshottedAt: string;
+}
+
+/** GET /v1/publications/{id}/provenance — the "show your work" payload. */
+export interface PublicationProvenance {
+  publicationId: string;
+  entries: PublicationCitationSnapshot[];
 }
 
 /** Per-target outcome returned by POST /v1/drafts/{id}/publish. */

@@ -1432,6 +1432,40 @@ class Publication(Base):
     # uq_publications_draft_version_target + idx_publications_* live in migration 0012.
 
 
+class PublicationCitation(Base):
+    """Transparency snapshot: the cited intelligence objects' values AS OF the
+    moment the publication row was created. Written in the SAME transaction as
+    the pending publication insert (engine._publish_one) so a publication can
+    never exist without its provenance record. Read-only afterwards — the
+    provenance endpoint serves THESE rows, never a live join back to
+    intelligence_objects, so a later re-score cannot rewrite the history of
+    what was published. Intelligence-object level only by design (same public
+    boundary as publishing/citations.py): no claim or evidence data here."""
+
+    __tablename__ = "publication_citations"
+
+    publication_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("publications.id", ondelete="CASCADE"), primary_key=True
+    )
+    intelligence_object_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("intelligence_objects.id"), primary_key=True
+    )
+    headline: Mapped[str] = mapped_column(Text, nullable=False)
+    epistemic_type: Mapped[str] = mapped_column(
+        Enum(
+            "fact", "claim", "rumor", "speculation", "opinion", "unclassified",
+            name="epistemic_type",
+            create_type=False,
+        ),
+        nullable=False,
+    )
+    confidence_score: Mapped[float | None] = mapped_column(Float)
+    scoring_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    snapshotted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class CalendarEntry(Base):
     """One explicit schedule of (draft, target) for a future time (Phase 5
     Wave E). UNIQUE (draft_id, target_id) — a draft can schedule each target at

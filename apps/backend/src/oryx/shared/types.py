@@ -1148,6 +1148,23 @@ class PublishTargetResult(_Base):
     error_message: str | None = Field(default=None, alias="errorMessage")
 
 
+class PublicationCitationSnapshot(_Base):
+    # Snapshotted at publication-row creation, never live-read afterwards.
+    # Intelligence-object level ONLY — no claim/evidence fields at any depth.
+    intelligence_object_id: str = Field(alias="intelligenceObjectId")
+    headline: str
+    epistemic_type: EpistemicType = Field(alias="epistemicType")
+    confidence_tier: ConfidenceBand = Field(alias="confidenceTier")
+    confidence_score: float | None = Field(default=None, alias="confidenceScore")
+    scoring_version: int = Field(alias="scoringVersion")
+    snapshotted_at: str = Field(alias="snapshottedAt")
+
+
+class PublicationProvenance(_Base):
+    publication_id: str = Field(alias="publicationId")
+    entries: list[PublicationCitationSnapshot]
+
+
 # ============================================================================
 # Phase 5 Wave E — content calendar + scheduling
 # ============================================================================

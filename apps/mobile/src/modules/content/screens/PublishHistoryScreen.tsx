@@ -10,6 +10,7 @@ import {
 } from '@oryx/design-system';
 import type { PublicationStatus } from '@oryx/shared-types';
 import { usePublications } from '../hooks/usePublishing';
+import { ProvenanceSection } from '../components/ProvenanceSection';
 import { EmptyState } from '../../../components/EmptyState';
 
 const STATUS_COLOR: Record<PublicationStatus, 'secondary' | 'brand' | 'danger' | 'tertiary'> = {
@@ -77,6 +78,8 @@ export const PublishHistoryScreen: React.FC = () => {
                     </Pressable>
                   </>
                 ) : null}
+                <Spacer size={1} />
+                <ProvenanceSection publicationId={p.id} />
               </Card>
               <Spacer size={2} />
             </View>
