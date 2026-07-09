@@ -135,6 +135,28 @@ class Settings(BaseSettings):
     apns_topic: str = "com.oryx.app"
     apns_use_sandbox: bool = True
 
+    # --- Alert email delivery (Phase 6 carry-over) ---
+    # Email provider selection, same shape as AI_PROVIDER/PUSH_PROVIDER above:
+    # "log_only" (default — the Phase 2 stub logs instead of delivering),
+    # "sendgrid", or "smtp". Switch by setting EMAIL_PROVIDER in the
+    # environment or .env file.
+    #
+    # Credentials are PLATFORM-level (alert email is ORYX mailing its own
+    # user), deliberately separate from the per-workspace encrypted
+    # publish-target credentials the newsletter channel uses:
+    #   sendgrid — SENDGRID_API_KEY.
+    #   smtp     — SMTP_HOST (+ optional SMTP_PORT/SMTP_USERNAME/SMTP_PASSWORD).
+    # ALERT_EMAIL_FROM/_NAME give alerts their own sender identity so alert
+    # mail is visually distinct from published-newsletter mail.
+    email_provider: str = "log_only"
+    sendgrid_api_key: str | None = None
+    alert_email_from: str = "alerts@oryx.local"
+    alert_email_from_name: str = "ORYX Alerts"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

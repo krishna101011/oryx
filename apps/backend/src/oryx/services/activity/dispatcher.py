@@ -39,6 +39,18 @@ failure can never roll back the notification itself:
      (channel='push', action push_sent/push_failed) in its own transaction.
      No registered device counts as a failure (push_failed, reason logged),
      never a silent skip.
+
+Email delivery (instant alerts only — emailed digests remain out of scope per
+the frozen doc's §4.2 carve-out) is a third per-account step with the exact
+same discipline as push: it runs strictly AFTER the in_app transaction
+committed, resolves the (account, category, channel='email') preference with
+the shared-default logic, evaluates the same channel-agnostic quiet_hours
+evaluator, holds no db transaction across the provider call (providers/email/
+factory.py, gated by EMAIL_PROVIDER), and commits ONE decision row
+(channel='email', action email_sent/email_failed/email_suppressed_quiet_hours)
+in its own transaction. The recipient is always the account's own signup
+address (accounts.email, NOT NULL) — unlike push there is no
+missing-device-token failure mode.
 """
 from __future__ import annotations
 
@@ -52,6 +64,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from oryx.core.logging import get_logger
 from oryx.core.models import (
+    Account,
     ActivityInbox,
     AlertDevice,
     AlertPreference,
@@ -59,6 +72,11 @@ from oryx.core.models import (
     WorkspaceMember,
 )
 from oryx.services.activity.preferences import is_enabled, resolve_frequency
+from oryx.services.activity.providers.email.base import (
+    EmailMessage,
+    EmailProvider,
+)
+from oryx.services.activity.providers.email.factory import get_email_provider
 from oryx.services.activity.providers.push.base import (
     ProviderErrorKind,
     ProviderResult,
@@ -105,10 +123,14 @@ ACTION_PUSH_FAILED = "push_failed"
 # Post-freeze §3.3 extension (2026-07-08, Phase 6 doc Revision Note): a
 # quiet-hour skip is a visible Automation Hub decision, not a silent one.
 ACTION_PUSH_SUPPRESSED_QUIET_HOURS = "push_suppressed_quiet_hours"
+ACTION_EMAIL_SENT = "email_sent"
+ACTION_EMAIL_FAILED = "email_failed"
+ACTION_EMAIL_SUPPRESSED_QUIET_HOURS = "email_suppressed_quiet_hours"
 
-# The channels the dispatcher delivers on (email remains out of scope).
+# The channels the dispatcher delivers on.
 CHANNEL_IN_APP = "in_app"
 CHANNEL_PUSH = "push"
+CHANNEL_EMAIL = "email"
 
 
 @dataclass(frozen=True)
@@ -157,6 +179,7 @@ class NotificationDispatcher:
         *,
         catalog: dict[str, NotificationSpec] | None = None,
         push_provider_factory: Callable[[str], PushProvider] | None = None,
+        email_provider_factory: Callable[[], EmailProvider] | None = None,
     ) -> None:
         self._sm = sessionmaker
         self._catalog = catalog if catalog is not None else CATALOG
@@ -165,6 +188,12 @@ class NotificationDispatcher:
         self._push_provider_factory = (
             push_provider_factory if push_provider_factory is not None
             else get_push_provider
+        )
+        # Same seam for email; the EMAIL_PROVIDER-gated factory by default
+        # (email has no platform axis, so the factory takes no argument).
+        self._email_provider_factory = (
+            email_provider_factory if email_provider_factory is not None
+            else get_email_provider
         )
 
     async def __call__(self, event: DomainEvent) -> None:
@@ -215,6 +244,21 @@ class NotificationDispatcher:
                 # Push is best-effort; the inbox row already landed.
                 logger.exception(
                     "push.step_crashed",
+                    extra={"account_id": str(account_id), "event_id": event.id},
+                )
+            try:
+                await self._email_for_account(
+                    account_id=account_id,
+                    workspace_id=workspace_id,
+                    event=event,
+                    event_id=event_id,
+                    spec=spec,
+                )
+            except Exception:
+                # Email is best-effort too — and isolated from push: a crash
+                # in either channel's step never touches the other.
+                logger.exception(
+                    "email.step_crashed",
                     extra={"account_id": str(account_id), "event_id": event.id},
                 )
 
@@ -388,13 +432,14 @@ class NotificationDispatcher:
                 "push.suppressed_quiet_hours",
                 extra={"account_id": str(account_id), "event_id": event.id},
             )
-            await self._record_push_decision(
+            await self._record_decision(
                 account_id=account_id,
                 workspace_id=workspace_id,
                 event=event,
                 event_id=event_id,
                 inbox_id=inbox_id,
                 action=ACTION_PUSH_SUPPRESSED_QUIET_HOURS,
+                channel=CHANNEL_PUSH,
             )
             return
 
@@ -437,13 +482,14 @@ class NotificationDispatcher:
                 if not r.ok
             )
 
-        recorded = await self._record_push_decision(
+        recorded = await self._record_decision(
             account_id=account_id,
             workspace_id=workspace_id,
             event=event,
             event_id=event_id,
             inbox_id=inbox_id,
             action=ACTION_PUSH_SENT if ok else ACTION_PUSH_FAILED,
+            channel=CHANNEL_PUSH,
         )
         if not recorded:
             return
@@ -467,7 +513,143 @@ class NotificationDispatcher:
                 },
             )
 
-    async def _record_push_decision(
+    async def _email_for_account(
+        self,
+        *,
+        account_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        event: DomainEvent,
+        event_id: uuid.UUID,
+        spec: NotificationSpec,
+    ) -> None:
+        """The email step — structurally parallel to _push_for_account.
+
+        Runs after the in_app transaction committed. Reads (one short
+        session), then calls the provider with NO transaction open, then
+        writes its one decision row via the shared _record_decision helper.
+        Instant alerts only: emailed digests stay out of scope (frozen §4.2).
+        """
+        async with self._sm() as session:
+            pref = (
+                await session.execute(
+                    select(AlertPreference.frequency, AlertPreference.quiet_hours).where(
+                        AlertPreference.account_id == account_id,
+                        AlertPreference.type == spec.category,
+                        AlertPreference.channel == CHANNEL_EMAIL,
+                    )
+                )
+            ).one_or_none()
+            frequency = resolve_frequency(pref.frequency if pref else None)
+            if not is_enabled(frequency):
+                return  # email disabled for this category: no email decision row
+
+            # Idempotency: one email decision per (account, event) — same
+            # redelivery contract as the in_app and push slots.
+            already = await session.scalar(
+                select(AutomationLog.id).where(
+                    AutomationLog.account_id == account_id,
+                    AutomationLog.triggered_by_event_id == event_id,
+                    AutomationLog.channel == CHANNEL_EMAIL,
+                )
+            )
+            if already is not None:
+                return
+
+            # The email-channel row's own quiet window, evaluated by the same
+            # channel-agnostic evaluator the push step uses.
+            suppressed_by_quiet_hours = is_quiet_now(
+                pref.quiet_hours if pref else None
+            )
+
+            # Recipient: the account's own signup address (accounts.email is
+            # NOT NULL — no missing-recipient analogue to a device token).
+            recipient = await session.scalar(
+                select(Account.email).where(Account.id == account_id)
+            )
+            inbox_id = await session.scalar(
+                select(ActivityInbox.id).where(
+                    ActivityInbox.account_id == account_id,
+                    ActivityInbox.source_event_id == event_id,
+                )
+            )
+        # Session is CLOSED here — no transaction spans the provider call.
+
+        if suppressed_by_quiet_hours:
+            logger.info(
+                "email.suppressed_quiet_hours",
+                extra={"account_id": str(account_id), "event_id": event.id},
+            )
+            await self._record_decision(
+                account_id=account_id,
+                workspace_id=workspace_id,
+                event=event,
+                event_id=event_id,
+                inbox_id=inbox_id,
+                action=ACTION_EMAIL_SUPPRESSED_QUIET_HOURS,
+                channel=CHANNEL_EMAIL,
+            )
+            return
+
+        if recipient is None:
+            # Defensive only: the account row vanished between the workspace
+            # fan-out and this read. Recorded, never silent.
+            ok = False
+            failure_reason = "account_row_missing"
+        else:
+            provider = self._email_provider_factory()
+            try:
+                result = await provider.send(
+                    EmailMessage(
+                        to=recipient,
+                        template="alert",
+                        variables={
+                            "title": spec.title,
+                            "category": spec.category,
+                            "severity": spec.severity,
+                            "event_type": event.name,
+                        },
+                    )
+                )
+            except Exception as exc:  # a provider bug must not kill dispatch
+                result = ProviderResult(
+                    ok=False,
+                    provider=getattr(provider, "name", "unknown"),
+                    error_kind=ProviderErrorKind.UNKNOWN,
+                    error_message=str(exc),
+                )
+            ok = result.ok
+            failure_reason = (
+                "" if ok else f"{result.provider}: {result.error_message or result.error_kind}"
+            )
+
+        recorded = await self._record_decision(
+            account_id=account_id,
+            workspace_id=workspace_id,
+            event=event,
+            event_id=event_id,
+            inbox_id=inbox_id,
+            action=ACTION_EMAIL_SENT if ok else ACTION_EMAIL_FAILED,
+            channel=CHANNEL_EMAIL,
+        )
+        if not recorded:
+            return
+
+        if ok:
+            logger.info(
+                "email.sent",
+                extra={"account_id": str(account_id), "event_id": event.id},
+            )
+        else:
+            logger.warning(
+                "email.failed",
+                extra={
+                    "account_id": str(account_id),
+                    "event_id": event.id,
+                    "reason": failure_reason,
+                },
+            )
+
+    async def _record_decision(
         self,
         *,
         account_id: uuid.UUID,
@@ -476,13 +658,15 @@ class NotificationDispatcher:
         event_id: uuid.UUID,
         inbox_id: uuid.UUID | None,
         action: str,
+        channel: str,
     ) -> bool:
-        """Commit the one push-slot decision row in its own short session.
+        """Commit one channel-slot decision row in its own short session.
 
-        Shared by every push outcome (sent / failed / suppressed by quiet
-        hours) so all three follow the identical transaction boundary. Returns
-        False when a concurrent redelivery won the unique-constraint race —
-        that delivery's decision row is the real one.
+        Channel-agnostic (was _record_push_decision until the email step
+        arrived with a byte-identical body): shared by every push AND email
+        outcome so all of them follow the identical transaction boundary.
+        Returns False when a concurrent redelivery won the unique-constraint
+        race — that delivery's decision row is the real one.
         """
         async with self._sm() as session:
             session.add(
@@ -494,7 +678,7 @@ class NotificationDispatcher:
                     triggered_by_event_type=event.name,
                     triggered_by_event_id=event_id,
                     action_taken=action,
-                    channel=CHANNEL_PUSH,
+                    channel=channel,
                 )
             )
             try:

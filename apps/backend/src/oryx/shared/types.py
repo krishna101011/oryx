@@ -397,6 +397,9 @@ AutomationAction = Literal[
     "push_sent",
     "push_failed",
     "push_suppressed_quiet_hours",
+    "email_sent",
+    "email_failed",
+    "email_suppressed_quiet_hours",
     "digest_sent",
 ]
 

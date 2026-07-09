@@ -299,6 +299,11 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   When a migration touches an enum, grep BOTH packages/shared-types/src and
   oryx/shared/types.py for that enum's Literal and widen them in the same
   commit; regression test: test_activity_inbox_serializes_phase6_categories.
+  ADDENDUM (email-delivery wave, 2026-07-10): AutomationAction has a THIRD
+  mirror — apps/mobile/src/modules/automation/feed.ts's ACTION_COPY is an
+  exhaustive Record<AutomationAction, ...>, so widening the union without
+  adding copy entries there fails `pnpm type-check` (a feature: the compiler
+  enforces what drift:check can't). Widen all three in the same commit.
 - react-native-svg IS NOT a direct mobile dependency, but it's a (currently
   UNMET) peerDependency of lucide-react-native, which the shipped Icon component
   uses. The exact-for-RN-0.74 version (15.15.5) already sits in the pnpm store,

@@ -16,7 +16,9 @@ export type AutomationEntryKind = 'dispatch' | 'digest';
  * 'digest_sent' used for digest_runs entries. push_sent/push_failed are
  * Wave C vocabulary; push_suppressed_quiet_hours is the post-freeze
  * §3.3 extension (2026-07-08) — a quiet-hour skip is now a visible
- * Automation Hub decision, not a silent one.
+ * Automation Hub decision, not a silent one. email_sent/email_failed/
+ * email_suppressed_quiet_hours are the email-delivery wave's vocabulary,
+ * same shape as push (instant alerts only; emailed digests out of scope).
  */
 export type AutomationAction =
   | 'notification_created'
@@ -24,6 +26,9 @@ export type AutomationAction =
   | 'push_sent'
   | 'push_failed'
   | 'push_suppressed_quiet_hours'
+  | 'email_sent'
+  | 'email_failed'
+  | 'email_suppressed_quiet_hours'
   | 'digest_sent';
 
 export interface AutomationLogEntry {

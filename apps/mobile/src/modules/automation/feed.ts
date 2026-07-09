@@ -27,6 +27,9 @@ const ACTION_COPY: Record<Automation.AutomationAction, { title: string; tone: Fe
   push_sent: { title: 'Push sent', tone: 'positive', icon: 'BellRing' },
   push_failed: { title: 'Push failed', tone: 'danger', icon: 'AlertTriangle' },
   push_suppressed_quiet_hours: { title: 'Push held by quiet hours', tone: 'warn', icon: 'BellOff' },
+  email_sent: { title: 'Email sent', tone: 'positive', icon: 'BellRing' },
+  email_failed: { title: 'Email failed', tone: 'danger', icon: 'AlertTriangle' },
+  email_suppressed_quiet_hours: { title: 'Email held by quiet hours', tone: 'warn', icon: 'BellOff' },
   digest_sent: { title: 'Digest sent', tone: 'positive', icon: 'Layers' },
 };
 
