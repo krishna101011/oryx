@@ -18,10 +18,12 @@ import { BarSeries } from '../components/BarSeries';
 import {
   CHART_WINDOW_DAYS,
   type Series,
+  type Trend,
   buildFunnel,
   buildKpis,
   formatDuration,
   formatSuccessRate,
+  formatTrend,
   funnelIsEmpty,
   hasAnyData,
   padDailySeries,
@@ -168,6 +170,7 @@ const OverviewTab: React.FC = () => {
             <Text variant="caption" color="tertiary">
               last 7 days
             </Text>
+            <TrendLine trend={kpi.trend} />
             <Spacer size={2} />
             <Spark data={kpi.spark} width={96} height={18} />
           </Card>
@@ -193,6 +196,31 @@ const OverviewTab: React.FC = () => {
           Daily charts appear as pipeline activity accrues.
         </Text>
       ) : null}
+    </>
+  );
+};
+
+/**
+ * Wave C trend row on a KPI card. Renders nothing when the metric is absent
+ * (the card's em-dash value already says "not yet measured" — a trend line
+ * would dress absence up as a fact). Tones follow the automation feed's
+ * FeedTone → semantic color convention.
+ */
+const TrendLine: React.FC<{ trend: Trend | null }> = ({ trend }) => {
+  const t = useTheme();
+  const display = formatTrend(trend);
+  if (display === null) return null;
+  const color = {
+    positive: t.colors.semantic.positiveText,
+    danger: t.colors.semantic.danger,
+    neutral: t.colors.text.tertiary,
+  }[display.tone];
+  return (
+    <>
+      <Spacer size={1} />
+      <Text variant="caption" style={{ color }}>
+        {display.text}
+      </Text>
     </>
   );
 };

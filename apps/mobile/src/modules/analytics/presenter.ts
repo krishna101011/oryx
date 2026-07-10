@@ -73,6 +73,8 @@ export interface Kpi {
   value: number | null;
   /** 14-day zero-padded daily values for the card sparkline. */
   spark: number[];
+  /** Wave C: current 7-day window vs the prior 7; null = metric absent. */
+  trend: Trend | null;
 }
 
 /**
@@ -99,7 +101,85 @@ export function buildKpis(series: Series, today: string): Kpi[] {
     label,
     value: sumWindow(series, key, today, KPI_WINDOW_DAYS),
     spark: padDailySeries(series, key, today, SPARK_WINDOW_DAYS),
+    trend: computeTrend(series, key, today, KPI_WINDOW_DAYS),
   }));
+}
+
+// -------------------- Trend (Wave C) --------------------
+
+export type TrendDirection = 'up' | 'down' | 'flat';
+
+/**
+ * Trend for one KPI: the current trailing window vs the window immediately
+ * before it, computed on read from the SAME rollups response the cards
+ * already hold (the default /analytics/rollups range is 30 days; both 7-day
+ * windows sit inside it). Nothing is persisted.
+ *
+ * 'insufficient': the metric has points, but none dated before the current
+ * window — its entire observed life fits inside the window, so there is no
+ * prior period to compare against yet. Distinct from a REAL zero prior sum
+ * (points exist before the window but the prior week was quiet), same
+ * absent ≠ zero discipline as sumWindow.
+ */
+export type Trend =
+  | { kind: 'insufficient' }
+  | {
+      kind: 'trend';
+      direction: TrendDirection;
+      current: number;
+      prior: number;
+      /** Percent change vs prior; null when prior === 0 and current > 0
+       * (grew from nothing — no denominator, rendered as "new"). */
+      pctChange: number | null;
+    };
+
+/** null = metric entirely absent from the response (no trend row at all —
+ * the card already renders an em dash for the value). */
+export function computeTrend(
+  series: Series,
+  key: string,
+  today: string,
+  days: number,
+): Trend | null {
+  const points = series[key];
+  if (!points || points.length === 0) return null;
+  const currentFrom = dayBefore(today, days - 1);
+  if (!points.some((p) => p.date < currentFrom)) return { kind: 'insufficient' };
+  const sum = (from: string, to: string): number =>
+    points
+      .filter((p) => p.date >= from && p.date <= to)
+      .reduce((acc, p) => acc + p.value, 0);
+  const current = sum(currentFrom, today);
+  const prior = sum(dayBefore(today, 2 * days - 1), dayBefore(today, days));
+  const direction: TrendDirection =
+    current > prior ? 'up' : current < prior ? 'down' : 'flat';
+  const pctChange =
+    prior > 0 ? ((current - prior) / prior) * 100 : current === 0 ? 0 : null;
+  return { kind: 'trend', direction, current, prior, pctChange };
+}
+
+export interface TrendDisplay {
+  text: string;
+  /** Matches the automation feed's tone convention (FeedTone colors). */
+  tone: 'positive' | 'danger' | 'neutral';
+}
+
+/** Renderable copy for a KPI card's trend row. null = metric absent, render
+ * no row (absent stays visually distinct from "no change"). */
+export function formatTrend(trend: Trend | null): TrendDisplay | null {
+  if (trend === null) return null;
+  if (trend.kind === 'insufficient') {
+    return { text: 'not enough history yet', tone: 'neutral' };
+  }
+  const vs = `vs prior ${KPI_WINDOW_DAYS} days`;
+  if (trend.direction === 'flat') return { text: `no change ${vs}`, tone: 'neutral' };
+  const arrow = trend.direction === 'up' ? '▲' : '▼';
+  const tone = trend.direction === 'up' ? 'positive' : 'danger';
+  if (trend.pctChange === null) return { text: `${arrow} new ${vs}`, tone };
+  const rounded = Math.round(Math.abs(trend.pctChange));
+  // A real-but-tiny change must never read as the flat state's "no change".
+  const amount = rounded === 0 ? '<1%' : `${rounded}%`;
+  return { text: `${arrow} ${amount} ${vs}`, tone };
 }
 
 // -------------------- Research funnel --------------------
