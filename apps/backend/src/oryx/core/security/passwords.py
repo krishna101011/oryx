@@ -75,6 +75,12 @@ def needs_rehash(stored_hash: str) -> bool:
         return True
 
 
+def password_fingerprint(stored_hash: str) -> str:
+    """Short stable digest of a password HASH (never the plaintext). Embedded
+    in password-reset tokens so a password change invalidates them."""
+    return hashlib.sha256(stored_hash.encode("utf-8")).hexdigest()[:16]
+
+
 def generate_refresh_token() -> str:
     """High-entropy opaque token. Stored as SHA-256 hash in the DB."""
     return secrets.token_urlsafe(48)

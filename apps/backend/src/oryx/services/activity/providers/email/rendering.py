@@ -30,10 +30,28 @@ def _alert(variables: dict[str, str]) -> tuple[str, str]:
     return f"ORYX alert: {title}", "\n".join(lines)
 
 
+def _password_reset(variables: dict[str, str]) -> tuple[str, str]:
+    token = variables.get("reset_token", "")
+    lines = [
+        "Reset your ORYX password",
+        "",
+        "Use this code in the app to set a new password:",
+        "",
+        token,
+        "",
+        f"This code expires in {variables.get('expires_minutes', '30')} minutes.",
+        "If you didn't request a reset, ignore this email — your password is",
+        "unchanged and the code dies on its own.",
+    ]
+    return "ORYX password reset", "\n".join(lines)
+
+
 def render(message: EmailMessage) -> tuple[str, str]:
     """(subject, plain-text body) for a message. Never raises."""
     if message.template == "alert":
         return _alert(message.variables)
+    if message.template == "password_reset":
+        return _password_reset(message.variables)
     # Unknown template — deliver something honest rather than fail.
     body = "\n".join(f"{k}: {v}" for k, v in sorted(message.variables.items()))
     return f"ORYX: {message.template}", body or message.template

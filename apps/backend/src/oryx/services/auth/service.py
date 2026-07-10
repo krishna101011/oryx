@@ -34,11 +34,12 @@ from oryx.core.models import (
     Workspace,
     WorkspaceMember,
 )
-from oryx.core.security.jwt import issue_access_token
+from oryx.core.security.jwt import issue_access_token, verify_password_reset_token
 from oryx.core.security.passwords import (
     generate_refresh_token,
     hash_password,
     hash_refresh_token,
+    password_fingerprint,
     validate_password,
     verify_password,
 )
@@ -330,6 +331,30 @@ class AuthService:
         await self.repo.update_password(account_id, hash_password(new_password))
         await record_auth_event(
             self.db, event="password_change", account_id=account_id
+        )
+
+    # ------------------------------------------------------------------
+    # Password reset (token from the forgot-password email)
+    # ------------------------------------------------------------------
+    async def reset_password_with_token(
+        self, *, token: str, new_password: str
+    ) -> None:
+        """Verify a reset token and set the new password.
+
+        The token's pwd fingerprint must match the account's CURRENT hash —
+        so a token is dead the moment the password changes (single-use
+        without server-side token storage). All sessions are revoked: a
+        reset usually means the old credential can't be trusted.
+        """
+        account_id_str, fingerprint = verify_password_reset_token(token)
+        account = await self.repo.get_account_by_id(uuid.UUID(account_id_str))
+        if account is None or password_fingerprint(account.password_hash) != fingerprint:
+            raise AuthInvalidCredentialsError()
+        validate_password(new_password)
+        await self.repo.update_password(account.id, hash_password(new_password))
+        await self.repo.revoke_all_for_account(account.id, reason="password_reset")
+        await record_auth_event(
+            self.db, event="password_reset", account_id=account.id
         )
 
     # ------------------------------------------------------------------

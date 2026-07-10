@@ -16,8 +16,13 @@ from oryx.core.dependencies import (
 from oryx.core.errors import NotImplementedFeatureError
 from oryx.core.models import Account
 from oryx.core.security.cookies import clear_session_cookie, set_session_cookie
+from oryx.core.security.jwt import (
+    PASSWORD_RESET_TTL_MINUTES,
+    issue_password_reset_token,
+)
+from oryx.core.security.passwords import password_fingerprint
+from oryx.services.activity.providers.email.factory import get_email_provider
 from oryx.services.auth.providers.email.base import EmailMessage
-from oryx.services.auth.providers.email.log_only import LogOnlyEmailProvider
 from oryx.services.auth.service import AuthService, IssuedTokens
 from oryx.shared.types import (
     Account as AccountSchema,
@@ -36,8 +41,6 @@ from oryx.shared.types import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-_email_provider = LogOnlyEmailProvider()
 
 
 def _client_ip(request: Request) -> str | None:
@@ -193,12 +196,20 @@ async def forgot_password(
     svc = AuthService(db)
     account = await svc.repo.get_account_by_email(body.email)
     if account is not None:
-        # Phase 2: log-only provider. Phase 6 sends a real email with a signed token.
-        await _email_provider.send(
+        token, _ = issue_password_reset_token(
+            str(account.id), password_fingerprint(account.password_hash)
+        )
+        # The EMAIL_PROVIDER-gated factory — the same switch alert delivery
+        # uses (log_only default; sendgrid/smtp for real sends). Resolved per
+        # request, same as the dispatcher's per-send resolution.
+        await get_email_provider().send(
             EmailMessage(
                 to=body.email,
                 template="password_reset",
-                variables={"account_id": str(account.id)},
+                variables={
+                    "reset_token": token,
+                    "expires_minutes": str(PASSWORD_RESET_TTL_MINUTES),
+                },
             )
         )
     return envelope({"ok": True}, request_id=get_request_id(request))
@@ -208,8 +219,11 @@ async def forgot_password(
 async def reset_password(
     body: ResetPasswordRequest, request: Request, db: AsyncSession = Depends(db_session)
 ) -> dict:
-    # Token-based reset is Phase 6 (requires email delivery). Phase 2 stubs 501.
-    raise NotImplementedFeatureError("Password reset requires email delivery (Phase 6)")
+    svc = AuthService(db)
+    await svc.reset_password_with_token(
+        token=body.token, new_password=body.new_password
+    )
+    return envelope({"ok": True}, request_id=get_request_id(request))
 
 
 # ---------------- MFA stubs (Phase 2: interface only) ----------------

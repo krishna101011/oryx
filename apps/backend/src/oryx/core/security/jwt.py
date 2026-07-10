@@ -52,6 +52,57 @@ def issue_access_token(
     return token, exp
 
 
+# Password-reset tokens: same HS256 secret, but a distinct typ claim so the
+# two token kinds can never stand in for each other, and a pwd fingerprint of
+# the CURRENT password hash so a successful reset (or any password change)
+# invalidates every outstanding reset token without server-side storage.
+PASSWORD_RESET_TTL_MINUTES = 30
+_PASSWORD_RESET_TYP = "pwreset"
+
+
+def issue_password_reset_token(
+    account_id: str, password_fingerprint: str
+) -> tuple[str, datetime]:
+    """Return (jwt, expires_at) for a single-purpose password-reset token."""
+    settings = get_settings()
+    now = datetime.now(UTC)
+    exp = now + timedelta(minutes=PASSWORD_RESET_TTL_MINUTES)
+    payload: dict[str, Any] = {
+        "sub": account_id,
+        "typ": _PASSWORD_RESET_TYP,
+        "pwd": password_fingerprint,
+        "iat": int(now.timestamp()),
+        "exp": int(exp.timestamp()),
+        "jti": str(uuid.uuid4()),
+    }
+    token = pyjwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return token, exp
+
+
+def verify_password_reset_token(token: str) -> tuple[str, str]:
+    """Verify a reset token; return (account_id, password_fingerprint).
+
+    Raises AuthTokenExpiredError on expiry, AuthRefreshInvalidError on any
+    other failure — including an access token presented as a reset token
+    (wrong/missing typ).
+    """
+    settings = get_settings()
+    try:
+        payload = pyjwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_algorithm],
+            leeway=CLOCK_SKEW_SECONDS,
+        )
+    except pyjwt.ExpiredSignatureError as e:
+        raise AuthTokenExpiredError() from e
+    except pyjwt.InvalidTokenError as e:
+        raise AuthRefreshInvalidError("Invalid reset token") from e
+    if payload.get("typ") != _PASSWORD_RESET_TYP or "pwd" not in payload:
+        raise AuthRefreshInvalidError("Invalid reset token")
+    return payload["sub"], payload["pwd"]
+
+
 def verify_access_token(token: str) -> AccessClaims:
     """Verify signature and expiry. Raise AuthTokenExpiredError on expiry,
     AuthRefreshInvalidError on any other failure (signature, malformed)."""

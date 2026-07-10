@@ -46,6 +46,19 @@ def test_alert_template_renders_subject_and_plain_body() -> None:
     assert "verification.conflict.detected" in body
 
 
+def test_password_reset_template_renders_token_and_expiry() -> None:
+    subject, body = render(
+        EmailMessage(
+            to="u@x",
+            template="password_reset",
+            variables={"reset_token": "tok-abc123", "expires_minutes": "30"},
+        )
+    )
+    assert subject == "ORYX password reset"
+    assert "tok-abc123" in body
+    assert "30 minutes" in body
+
+
 def test_unknown_template_falls_back_instead_of_raising() -> None:
     subject, body = render(
         EmailMessage(to="u@x", template="never_registered", variables={"k": "v"})
