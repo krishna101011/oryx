@@ -1,7 +1,7 @@
 # ORYX — Team/Workspace Architecture
 
 **Scope:** Phase 2 Deepening — NOT one of the 10 numbered phases
-**Status:** DRAFT — Rev 2, corrected before ever being committed (Rev 1
+**Status:** FROZEN (2026-07-10) — Rev 2, corrected before ever being committed (Rev 1
 was never actually saved; two of its sections were built on assumptions
 this session's own recon corrected before it could be frozen wrong)
 **Depends on:** Phase 2 (WorkspaceMember, capability system, JWT/session
