@@ -427,6 +427,26 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   both) — that's the analytics dedup key; digest_runs is ACCOUNT-scoped, so
   workspace-keyed aggregation joins through workspace_members.
 
+- ff_intake_* FLAGS GATE CLIENT SURFACES ONLY (confirmed 2026-07-11, the
+  ff_intake_rss flip). No backend intake endpoint checks any ff_intake_* flag —
+  the string appears in backend src ONLY in the FlagKey Literal. POST/GET
+  /intake/sources, the Gmail OAuth router, webhooks, and admin manual ingest
+  are all live and capability-gated (intake.write / require_platform_admin)
+  regardless of flag state; the scheduler polls any enabled source row. So
+  flipping an ff_intake_* flag is a UI reveal, not a backend enable — and
+  conversely, "flag off" is NOT a server-side safety barrier for intake.
+  Client checks are narrower than the flag set: SourceManagementScreen reads
+  only ff_intake_rss + ff_intake_gmail; ff_intake_manual gates ManualIngest
+  (AND'd with account.isPlatformAdmin); ff_intake_webhook and
+  ff_intake_api_pull gate NO client surface at all today.
+- RSS FETCHER HAS NO SSRF GUARD (open hardening gap, noted in migration 0023).
+  api_pull deliberately built providers/api_pull/safety.py (resolved-IP deny
+  list + allowlist) because pull URLs are user-controlled; the RSS provider
+  fetches its equally user-controlled feed_url with plain httpx — a workspace
+  member with intake.write can point a feed at internal/metadata IPs. Exposure
+  exists independent of the ff_intake_rss flag (the endpoint was never
+  flag-gated). Follow-up: port the safety guard into rss/client.fetch_feed.
+
 ## What This Skill Deliberately Does NOT Contain
 
 Current phase/wave status, current commit hashes, current test counts.
