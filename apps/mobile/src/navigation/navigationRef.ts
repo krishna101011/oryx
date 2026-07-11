@@ -14,11 +14,18 @@ export function navigateTab(tab: 'Home' | 'Research' | 'Content' | 'Activity' | 
   navigationRef.navigate('Tabs', { screen: tab });
 }
 
-/** Navigate to a screen nested in the Settings stack (sidebar deep items). */
-export function navigateSettingsScreen(screen: keyof SettingsStackParamList): void {
+/**
+ * Navigate to a screen nested in the Settings stack (sidebar deep items,
+ * search results). `params` carries the screen's route params for
+ * param-taking destinations (e.g. IntakeItemDetail { itemId }).
+ */
+export function navigateSettingsScreen<S extends keyof SettingsStackParamList>(
+  screen: S,
+  params?: SettingsStackParamList[S],
+): void {
   if (!navigationRef.isReady()) return;
   navigationRef.navigate('Tabs', {
     screen: 'Settings',
-    params: { screen },
+    params: params === undefined ? { screen } : { screen, params },
   } as never);
 }

@@ -46,6 +46,8 @@ def _dispatch_entry(row: AutomationLog) -> AutomationLogEntry:
         windowStart=None,
         windowEnd=None,
         activityInboxId=str(row.activity_inbox_id) if row.activity_inbox_id else None,
+        channel=row.channel,
+        detail=row.detail,
         createdAt=row.created_at,
     )
 
@@ -61,6 +63,9 @@ def _digest_entry(row: DigestRun) -> AutomationLogEntry:
         windowStart=row.window_start,
         windowEnd=row.window_end,
         activityInboxId=None,
+        # digest_runs has no channel/detail — a digest is an in-app bundle row.
+        channel=None,
+        detail=None,
         createdAt=row.sent_at,
     )
 

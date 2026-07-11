@@ -103,7 +103,11 @@ async def test_alert_preferences_rejects_unauthenticated(app) -> None:
 # -------------------- automation-log --------------------
 
 
-async def _seed_dispatch_row(sm, *, account_id, workspace_id, created_at) -> uuid.UUID:
+async def _seed_dispatch_row(
+    sm, *, account_id, workspace_id, created_at,
+    action: str = "suppressed_by_preference", channel: str = "in_app",
+    detail: str | None = None,
+) -> uuid.UUID:
     from oryx.core.models import AutomationLog
 
     row_id = uuid.uuid4()
@@ -116,8 +120,9 @@ async def _seed_dispatch_row(sm, *, account_id, workspace_id, created_at) -> uui
                 activity_inbox_id=None,
                 triggered_by_event_type="content.published",
                 triggered_by_event_id=uuid.uuid4(),
-                action_taken="suppressed_by_preference",
-                channel="in_app",
+                action_taken=action,
+                channel=channel,
+                detail=detail,
                 created_at=created_at,
             )
         )
@@ -176,6 +181,57 @@ async def test_automation_log_merges_dispatch_and_digest_entries(app, sm) -> Non
         assert dispatch["eventType"] == "content.published"
         assert dispatch["category"] is None
         assert dispatch["activityInboxId"] is None
+
+
+@pytest.mark.asyncio
+async def test_automation_log_exposes_channel_and_failure_detail(app, sm) -> None:
+    """The Automation Hub detail view's data (migration 0024): a push_failed
+    row surfaces its channel AND the persisted failure reason; digest entries
+    carry null for both (digest_runs has neither)."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
+        ids = await _signup(client)
+        t0 = datetime(2026, 7, 11, 9, 0, tzinfo=UTC)
+        failed_id = await _seed_dispatch_row(
+            sm, account_id=ids["account_id"], workspace_id=ids["workspace_id"],
+            created_at=t0, action="push_failed", channel="push",
+            detail="no_registered_device",
+        )
+        digest_id = await _seed_digest_row(
+            sm, account_id=ids["account_id"], sent_at=t0 + timedelta(hours=1)
+        )
+
+        entries = (
+            await client.get("/v1/automation-log", headers=ids["headers"])
+        ).json()["data"]["entries"]
+        by_id = {e["id"]: e for e in entries}
+
+        failed = by_id[str(failed_id)]
+        assert failed["action"] == "push_failed"
+        assert failed["channel"] == "push"
+        assert failed["detail"] == "no_registered_device"
+
+        digest = by_id[str(digest_id)]
+        assert digest["channel"] is None
+        assert digest["detail"] is None
+
+
+@pytest.mark.asyncio
+async def test_automation_log_pre_capture_failed_row_has_null_detail(app, sm) -> None:
+    """Rows recorded before reason capture keep detail=null (no backfill, no
+    invented reason) — the client copy states that honestly."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
+        ids = await _signup(client)
+        legacy_id = await _seed_dispatch_row(
+            sm, account_id=ids["account_id"], workspace_id=ids["workspace_id"],
+            created_at=datetime(2026, 7, 1, 8, 0, tzinfo=UTC),
+            action="push_failed", channel="push", detail=None,
+        )
+        entries = (
+            await client.get("/v1/automation-log", headers=ids["headers"])
+        ).json()["data"]["entries"]
+        legacy = {e["id"]: e for e in entries}[str(legacy_id)]
+        assert legacy["action"] == "push_failed"
+        assert legacy["detail"] is None
 
 
 @pytest.mark.asyncio

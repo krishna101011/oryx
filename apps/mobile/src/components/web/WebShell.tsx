@@ -6,6 +6,7 @@ import { useAppSelector } from '../../store';
 import { navigateSettingsScreen, navigateTab, navigationRef } from '../../navigation/navigationRef';
 import type { SettingsStackParamList } from '../../navigation/types';
 import { WEB_NAV, type WebNavItem, performNav } from './webNav';
+import { WebSearchOverlay } from './WebSearchOverlay';
 import { WebSidebar } from './WebSidebar';
 import { WebTopBar } from './WebTopBar';
 
@@ -65,6 +66,20 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const status = useAppSelector((s) => s.auth.status);
   const me = useMe();
   const [activeId, setActiveId] = useState('home');
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // The topbar's ⌘K badge is a real shortcut: Cmd+K (mac) / Ctrl+K opens the
+  // search overlay from anywhere in the app chrome.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   // Navigation state is the single source of truth for the active nav id.
   // (No optimistic set on click — a second writer raced this listener and
@@ -119,9 +134,30 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: t.colors.bg.primary }}>
       <WebSidebar me={me.data} activeId={activeId} onNavigate={onNavigate} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <WebTopBar crumbs={crumbsFor(activeId)} me={me.data} onNavigate={onNavigate} />
+        <WebTopBar
+          crumbs={crumbsFor(activeId)}
+          me={me.data}
+          onNavigate={onNavigate}
+          onOpenSearch={() => setSearchOpen(true)}
+        />
         <View style={{ flex: 1, minHeight: 0 }}>{children}</View>
       </View>
+      {searchOpen ? (
+        <WebSearchOverlay
+          onClose={() => setSearchOpen(false)}
+          // Both destinations name an explicit nested Settings screen — the
+          // convention the two 2026-07-11 nav bugs established (a bare tab
+          // navigate never resets a populated stack).
+          onOpenSource={(sourceId) => {
+            setSearchOpen(false);
+            navigateSettingsScreen('IntakeSourceDetail', { sourceId });
+          }}
+          onOpenItem={(itemId) => {
+            setSearchOpen(false);
+            navigateSettingsScreen('IntakeItemDetail', { itemId });
+          }}
+        />
+      ) : null}
     </View>
   );
 };

@@ -404,9 +404,9 @@ async def test_provider_exception_logs_push_failed_without_crashing(sm) -> None:
 @pytest.mark.asyncio
 async def test_no_registered_device_logs_push_failed_with_reason(sm, caplog) -> None:
     """No alert_devices row at all: NOT a silent skip — a push_failed decision
-    row lands, and the structured log carries the reason (automation_log's
-    frozen §3.3 schema has no detail column, so the reason lives in the log
-    line)."""
+    row lands, and the structured log carries the reason. (Since migration
+    0024 the reason is ALSO persisted on the row itself — covered by the
+    detail-persistence tests below; this test pins the operational log line.)"""
     ids = await _seed_workspace(sm)
     provider = FakePushProvider(ok=True)
 
@@ -418,6 +418,54 @@ async def test_no_registered_device_logs_push_failed_with_reason(sm, caplog) -> 
     assert [log.action_taken for log in logs] == ["push_failed"]
     reasons = [getattr(r, "reason", None) for r in caplog.records]
     assert "no_registered_device" in reasons
+
+
+# --- Detail persistence (migration 0024): the failure reason lives ON the row ---
+
+
+@pytest.mark.asyncio
+async def test_push_failed_no_device_persists_reason_in_detail(sm) -> None:
+    """The Automation Hub's "why did this fail?" data: a no-device failure
+    writes detail='no_registered_device' on the push_failed row itself, not
+    just into the operational log."""
+    ids = await _seed_workspace(sm)
+    provider = FakePushProvider(ok=True)
+
+    await _dispatcher(sm, lambda _p: provider)(_event(workspace_id=ids["workspace"]))
+
+    logs = await _logs(sm, ids["account"], "push")
+    assert [(log.action_taken, log.detail) for log in logs] == [
+        ("push_failed", "no_registered_device")
+    ]
+
+
+@pytest.mark.asyncio
+async def test_push_failed_provider_error_persists_reason_in_detail(sm) -> None:
+    """A provider-level failure persists the provider's own error string
+    (provider name + message) as the row's detail."""
+    ids = await _seed_workspace(sm)
+    await _seed_device(sm, account_id=ids["account"])
+    provider = FakePushProvider(ok=False)  # returns "fake transport down"
+
+    await _dispatcher(sm, lambda _p: provider)(_event(workspace_id=ids["workspace"]))
+
+    logs = await _logs(sm, ids["account"], "push")
+    assert [log.action_taken for log in logs] == ["push_failed"]
+    assert logs[0].detail == "fake: fake transport down"
+
+
+@pytest.mark.asyncio
+async def test_push_sent_row_has_null_detail(sm) -> None:
+    """Successful sends carry NO detail — null means 'nothing went wrong',
+    so the UI never has to disambiguate an empty reason from a real one."""
+    ids = await _seed_workspace(sm)
+    await _seed_device(sm, account_id=ids["account"])
+    provider = FakePushProvider(ok=True)
+
+    await _dispatcher(sm, lambda _p: provider)(_event(workspace_id=ids["workspace"]))
+
+    logs = await _logs(sm, ids["account"], "push")
+    assert [(log.action_taken, log.detail) for log in logs] == [("push_sent", None)]
 
 
 # --- Mandatory scenario 8: inbox+log genuinely decoupled from the push step ---

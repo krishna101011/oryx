@@ -251,6 +251,26 @@ async def test_provider_exception_logs_email_failed_without_crashing(sm) -> None
     assert len(await _inbox_rows(sm, ids["account"])) == 1
 
 
+# --- Detail persistence (migration 0024): the failure reason lives ON the row ---
+
+
+@pytest.mark.asyncio
+async def test_email_failed_provider_error_persists_reason_in_detail(sm) -> None:
+    """Same contract as push: an email failure persists the provider's error
+    string as the row's detail, so the Automation Hub can show WHY; a success
+    stays null."""
+    ids = await _seed_workspace(sm)
+    await _set_email_preference(sm, account_id=ids["account"])
+    provider = FakeEmailProvider(ok=False)  # returns "fake smtp down"
+
+    await _dispatcher(sm, lambda: provider)(_event(workspace_id=ids["workspace"]))
+
+    logs = await _logs(sm, ids["account"], "email")
+    assert [(log.action_taken, log.detail) for log in logs] == [
+        ("email_failed", "fake: fake smtp down")
+    ]
+
+
 # --- Mandatory scenario 3: quiet hours suppress email (is_quiet_now reused) ---
 
 

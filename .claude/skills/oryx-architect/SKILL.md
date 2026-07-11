@@ -412,6 +412,21 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   that count log rows must scope to a channel — every dispatch now also writes
   a push-slot row (push_failed when no device is registered, per the frozen
   "no silent skip" rule), so unscoped `len(logs) == 1` asserts are wrong.
+  ADDENDUM (2026-07-12, migration 0024): automation_log also has a nullable
+  `detail` column persisting the REAL failure reason on *_failed rows
+  ("no_registered_device", "<provider>: <error>") — the same string the
+  operational log line gets. NULL means success/suppression OR a pre-0024 row;
+  no backfill on purpose, and the client (feed.ts REASON_NOT_RECORDED) states
+  "not recorded" honestly rather than inventing one. The /automation-log API
+  exposes channel + detail; digest entries carry null for both.
+- REACT-QUERY KEYS ARE A SHARED NAMESPACE, SHAPES INCLUDED (2026-07-12, caught
+  in review before it shipped). Two callers using the SAME queryKey must cache
+  the SAME data shape — the web search overlay initially cached the raw
+  ApiResponse envelope under ['intake','sources'] while useIntakeSources caches
+  the unwrapped array there, which would silently corrupt whichever screen read
+  second. Rule: never re-declare an existing module's query inline — import and
+  reuse its hook (modules/intake/hooks/useIntakeSources.ts is the intake list
+  registry).
 - THE EVENT CATALOG IS BIGGER THAN THE CONSTANTS FILES (Phase 7 Wave A found
   this after the Phase 7 doc froze on "20 events"). Two lifecycle events are
   published as STRING LITERALS, not constants: workspace.deletion.started /

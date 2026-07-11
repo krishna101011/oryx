@@ -490,6 +490,9 @@ class NotificationDispatcher:
             inbox_id=inbox_id,
             action=ACTION_PUSH_SENT if ok else ACTION_PUSH_FAILED,
             channel=CHANNEL_PUSH,
+            # Persist the SAME reason the operational log gets — this is what
+            # lets the Automation Hub answer "why did this push fail?".
+            detail=None if ok else (failure_reason or None),
         )
         if not recorded:
             return
@@ -630,6 +633,7 @@ class NotificationDispatcher:
             inbox_id=inbox_id,
             action=ACTION_EMAIL_SENT if ok else ACTION_EMAIL_FAILED,
             channel=CHANNEL_EMAIL,
+            detail=None if ok else (failure_reason or None),
         )
         if not recorded:
             return
@@ -659,12 +663,14 @@ class NotificationDispatcher:
         inbox_id: uuid.UUID | None,
         action: str,
         channel: str,
+        detail: str | None = None,
     ) -> bool:
         """Commit one channel-slot decision row in its own short session.
 
         Channel-agnostic (was _record_push_decision until the email step
         arrived with a byte-identical body): shared by every push AND email
         outcome so all of them follow the identical transaction boundary.
+        `detail` carries the failure reason on failed actions (None elsewhere).
         Returns False when a concurrent redelivery won the unique-constraint
         race — that delivery's decision row is the real one.
         """
@@ -679,6 +685,7 @@ class NotificationDispatcher:
                     triggered_by_event_id=event_id,
                     action_taken=action,
                     channel=channel,
+                    detail=detail,
                 )
             )
             try:

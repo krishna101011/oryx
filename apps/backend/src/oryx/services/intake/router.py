@@ -408,6 +408,57 @@ async def recent_items(
 
 
 @router.get(
+    "/items/{item_id}",
+    dependencies=[Depends(require_capability("intake.read"))],
+)
+async def get_item(
+    item_id: uuid.UUID,
+    request: Request,
+    ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+    db: AsyncSession = Depends(db_session),
+) -> dict:
+    """One ingested item with its real content — what an Activity "New item
+    ingested" row (whose payload carries intakeItemId) and a search result
+    open onto: headline, source, sender, body text, and extracted links.
+
+    Same outer-join contract as /items/recent: an item the normalizer hasn't
+    reached yet still resolves (subject/body/links empty), it never 404s just
+    for being un-normalized. Declared AFTER /items/recent so the literal
+    route keeps winning.
+    """
+    stmt = (
+        select(IntakeItem, IntakeItemNormalized, IntakeSource.name)
+        .join(IntakeSource, IntakeSource.id == IntakeItem.intake_source_id)
+        .outerjoin(
+            IntakeItemNormalized,
+            IntakeItemNormalized.intake_item_id == IntakeItem.id,
+        )
+        .where(
+            IntakeItem.id == item_id,
+            IntakeItem.workspace_id == ws.workspace_id,
+            IntakeItem.deleted_at.is_(None),
+        )
+    )
+    row = (await db.execute(stmt)).one_or_none()
+    if row is None:
+        raise NotFoundError("Item not found")
+    item, normalized, source_name = row
+    payload = {
+        "id": str(item.id),
+        "subject": normalized.subject if normalized else None,
+        "bodyText": normalized.body_text if normalized else None,
+        "senderLabel": normalized.sender_label if normalized else None,
+        "senderDomain": normalized.sender_domain if normalized else None,
+        # normalized.links is JSONB [{url, anchor}] written by the normalizer.
+        "links": normalized.links if normalized else [],
+        "sourceName": source_name,
+        "providerName": item.provider_name,
+        "receivedAt": item.received_at.isoformat(),
+    }
+    return envelope(payload, request_id=get_request_id(request))
+
+
+@router.get(
     "/status",
     dependencies=[Depends(require_capability("intake.read"))],
 )

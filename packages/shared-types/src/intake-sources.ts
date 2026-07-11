@@ -62,3 +62,27 @@ export interface RecentIntakeItem {
   providerName: string;
   receivedAt: Timestamp;
 }
+
+/** One extracted link on a normalized item (intake_items_normalized.links). */
+export interface IntakeItemLink {
+  url: string;
+  anchor: string;
+}
+
+/**
+ * GET /v1/intake/items/{id} — one ingested item with its real content: what
+ * an Activity "New item ingested" row (payload intakeItemId) and a search
+ * result open onto. Normalized fields are null/empty when the normalizer
+ * hasn't reached the item yet (same outer-join contract as /items/recent).
+ */
+export interface IntakeItemDetail {
+  id: Id;
+  subject: string | null;
+  bodyText: string | null;
+  senderLabel: string | null;
+  senderDomain: string | null;
+  links: IntakeItemLink[];
+  sourceName: string;
+  providerName: string;
+  receivedAt: Timestamp;
+}

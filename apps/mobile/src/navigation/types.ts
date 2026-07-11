@@ -27,6 +27,9 @@ export type SettingsStackParamList = {
   IntakeSourceDetail: { sourceId: string };
   IntakeHealth: undefined;
   IntakeActivity: { sourceId?: string } | undefined;
+  // One ingested item's real content (2026-07-12) — opened from an Activity
+  // "New item ingested" row and from web search results.
+  IntakeItemDetail: { itemId: string };
   ManualIngest: undefined;
   // Phase 4 Wave C — per-source credibility (ADR-031), keyed by intake source id
   SourceCredibility: { sourceId: string };

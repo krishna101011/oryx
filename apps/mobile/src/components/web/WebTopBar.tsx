@@ -16,12 +16,17 @@ import { type WebNavItem, findNavItem, navCounts } from './webNav';
  * 'settings') — they route through the same onNavigate the sidebar uses, so
  * they cannot drift to a different destination. The bell's unread dot reads
  * the same navCounts.activityUnread as the sidebar's Activity badge.
+ *
+ * The command bar is a real button (2026-07-12): pressing it — or ⌘K/Ctrl+K,
+ * which WebShell listens for — opens the search overlay. Its placeholder is
+ * scoped to what search actually covers today (sources + recent items).
  */
 export const WebTopBar: React.FC<{
   crumbs: [string, string];
   me?: MeResponse;
   onNavigate: (item: WebNavItem) => void;
-}> = ({ crumbs, me, onNavigate }) => {
+  onOpenSearch: () => void;
+}> = ({ crumbs, me, onNavigate, onOpenSearch }) => {
   const t = useTheme();
   const activityUnread = navCounts(me).activityUnread;
   return (
@@ -33,16 +38,21 @@ export const WebTopBar: React.FC<{
         <Text variant="bodySm" color="primary">{crumbs[1]}</Text>
       </View>
 
-      {/* command bar */}
-      <View style={gx.cmd}>
+      {/* command bar — a real button opening the search overlay */}
+      <Pressable
+        style={gx.cmd}
+        onPress={onOpenSearch}
+        accessibilityRole="button"
+        accessibilityLabel="Search"
+      >
         <GensparkIcon name="Search" size={12} color={t.colors.text.tertiary} />
         <Text variant="bodySm" color="tertiary" numberOfLines={1} style={{ flex: 1 }}>
-          Search markets, claims, sources, drafts…
+          Search sources and recent items…
         </Text>
         <View style={gx.cmdKbd}>
           <Text variant="caption" color="tertiary">⌘K</Text>
         </View>
-      </View>
+      </Pressable>
 
       {/* ticker strip — pending real market data (Phase 9), no fake numbers */}
       <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', overflow: 'hidden' }}>

@@ -374,6 +374,11 @@ class AutomationLog(Base):
         Enum("in_app", "push", "email", name="alert_channel", create_type=False),
         nullable=False,
     )
+    # WHY the decision went the way it did — a real failure reason for
+    # push_failed/email_failed ("no_registered_device", a provider error
+    # string). NULL for successes/suppressions and for rows written before
+    # migration 0024 introduced reason capture — the UI states that honestly.
+    detail: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

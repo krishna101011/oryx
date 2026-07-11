@@ -33,6 +33,7 @@ export type GensparkIconName =
   | 'Search'
   | 'Bell'
   | 'ChevDown'
+  | 'ChevUp'
   | 'ChevRight'
   | 'Plus'
   | 'Dot'
@@ -185,6 +186,8 @@ function paths(name: GensparkIconName, c: string): React.ReactNode {
       );
     case 'ChevDown':
       return <Path d="M6 9l6 6 6-6" stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />;
+    case 'ChevUp':
+      return <Path d="M6 15l6-6 6 6" stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />;
     case 'ChevRight':
       return <Path d="M9 6l6 6-6 6" stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />;
     case 'Plus':

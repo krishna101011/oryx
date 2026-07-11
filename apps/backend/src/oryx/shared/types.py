@@ -414,6 +414,12 @@ class AutomationLogEntry(_Base):
     window_start: datetime | None = Field(default=None, alias="windowStart")
     window_end: datetime | None = Field(default=None, alias="windowEnd")
     activity_inbox_id: str | None = Field(default=None, alias="activityInboxId")
+    # dispatch: which delivery channel this decision is about. digest: null.
+    channel: Channel | None = None
+    # dispatch: WHY a *_failed action failed (e.g. "no_registered_device",
+    # a provider error string). Null for successes/suppressions, digests, and
+    # rows recorded before reason capture (migration 0024).
+    detail: str | None = None
     created_at: datetime = Field(alias="createdAt")
 
 
@@ -595,6 +601,31 @@ class RecentIntakeItem(_Base):
 
     id: str
     subject: str | None = None
+    source_name: str = Field(alias="sourceName")
+    provider_name: str = Field(alias="providerName")
+    received_at: datetime = Field(alias="receivedAt")
+
+
+class IntakeItemLink(_Base):
+    """One extracted link on a normalized item (intake_items_normalized.links)."""
+
+    url: str
+    anchor: str = ""
+
+
+class IntakeItemDetail(_Base):
+    """GET /intake/items/{id} — one ingested item with its real content.
+
+    What an Activity "New item ingested" row and a search result open onto.
+    The normalized fields are None/empty when the normalizer hasn't reached
+    the item yet (same outer-join contract as /items/recent)."""
+
+    id: str
+    subject: str | None = None
+    body_text: str | None = Field(default=None, alias="bodyText")
+    sender_label: str | None = Field(default=None, alias="senderLabel")
+    sender_domain: str | None = Field(default=None, alias="senderDomain")
+    links: list[IntakeItemLink] = Field(default_factory=list)
     source_name: str = Field(alias="sourceName")
     provider_name: str = Field(alias="providerName")
     received_at: datetime = Field(alias="receivedAt")

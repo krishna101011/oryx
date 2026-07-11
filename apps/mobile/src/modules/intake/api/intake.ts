@@ -6,6 +6,7 @@
  */
 import type {
   ApiResponse,
+  IntakeItemDetail,
   IntakeSource,
   IntakeSourceAuditEntry,
   IntakeStatusSummary,
@@ -54,6 +55,9 @@ export const intakeApi = {
 
   recentItems: (limit = 10): Promise<ApiResponse<RecentIntakeItem[]>> =>
     apiClient().getEnvelope<RecentIntakeItem[]>(`/intake/items/recent?limit=${limit}`),
+
+  getItem: (itemId: string): Promise<IntakeItemDetail> =>
+    apiClient().get<IntakeItemDetail>(`/intake/items/${itemId}`),
 
   audit: (
     sourceId: string,

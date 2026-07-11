@@ -1,7 +1,8 @@
-import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
+  Divider,
   GensparkIcon,
   HornMark,
   Text,
@@ -10,7 +11,10 @@ import {
   useTheme,
 } from '@oryx/design-system';
 import type { MeResponse } from '@oryx/shared-types';
-import { WEB_NAV, type WebNavItem, navCounts } from './webNav';
+import { useAppDispatch } from '../../store';
+import { signout } from '../../store/thunks/auth';
+import { WEB_NAV, type WebNavItem, findNavItem, navCounts } from './webNav';
+import { workspaceMenu } from './workspaceMenu';
 
 /**
  * Web-only left sidebar — 1:1 visual port of app.jsx <Sidebar/> + styles.css
@@ -19,6 +23,12 @@ import { WEB_NAV, type WebNavItem, navCounts } from './webNav';
  * Real data only: workspace name/role, profile display name + initials, and the
  * build version badge come from /me. No "Jordan Mehta" / "ORYX Editorial" / fake
  * counts — pending nav items render dimmed; badges show real /me counts only.
+ *
+ * The workspace pill is a real button (2026-07-12): it opens an honestly-scoped
+ * menu — current workspace facts, Account settings, Sign out. Deliberately NOT
+ * a workspace switcher: exactly one workspace exists per account today
+ * (Team/Workspace architecture is frozen but unbuilt), so there is nothing to
+ * switch to — see workspaceMenu.ts.
  */
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -33,8 +43,21 @@ export const WebSidebar: React.FC<{
   onNavigate: (item: WebNavItem) => void;
 }> = ({ me, activeId, onNavigate }) => {
   const t = useTheme();
+  const dispatch = useAppDispatch();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const counts = navCounts(me);
+  const menu = me ? workspaceMenu(me) : null;
+
+  const onMenuAction = (id: 'account' | 'signout') => {
+    setMenuOpen(false);
+    if (id === 'account') {
+      // The same explicit-screen resolution every sidebar Settings press uses.
+      onNavigate(findNavItem('settings'));
+    } else {
+      void dispatch(signout());
+    }
+  };
 
   const wsName = me?.workspace.name ?? 'Workspace';
   const wsRole = me ? `${me.workspace.role.toUpperCase()} · ${me.workspace.kind.toUpperCase()}` : '';
@@ -60,16 +83,69 @@ export const WebSidebar: React.FC<{
           ) : null}
         </View>
 
-        {/* workspace pill (real) */}
-        <View style={gx.workspacePill}>
-          <View style={gx.wsIcon}>
-            <HornMark size={12} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text variant="navLabel" color="primary" numberOfLines={1}>{wsName}</Text>
-            {wsRole ? <Text variant="navGroup" color="tertiary">{wsRole}</Text> : null}
-          </View>
-          <GensparkIcon name="ChevDown" size={12} color={t.colors.text.tertiary} />
+        {/* workspace pill (real) — opens the workspace menu */}
+        <View style={styles.pillWrap}>
+          <Pressable
+            style={gx.workspacePill}
+            onPress={() => setMenuOpen((v) => !v)}
+            disabled={!menu}
+            accessibilityRole="button"
+            accessibilityLabel="Workspace menu"
+          >
+            <View style={gx.wsIcon}>
+              <HornMark size={12} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text variant="navLabel" color="primary" numberOfLines={1}>{wsName}</Text>
+              {wsRole ? <Text variant="navGroup" color="tertiary">{wsRole}</Text> : null}
+            </View>
+            <GensparkIcon
+              name={menuOpen ? 'ChevUp' : 'ChevDown'}
+              size={12}
+              color={t.colors.text.tertiary}
+            />
+          </Pressable>
+          {menuOpen && menu ? (
+            <View
+              style={[
+                styles.menu,
+                { backgroundColor: t.colors.bg.card, borderColor: t.colors.border.strong },
+              ]}
+            >
+              <View style={styles.menuHeader}>
+                <Text variant="navLabel" color="primary" numberOfLines={1}>{menu.name}</Text>
+                <Text variant="navGroup" color="tertiary">{menu.meta}</Text>
+                <Text variant="caption" color="tertiary">{menu.note}</Text>
+              </View>
+              <Divider />
+              {menu.items.map((item) => (
+                <Pressable
+                  key={item.id}
+                  style={styles.menuItem}
+                  onPress={() => onMenuAction(item.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                >
+                  <GensparkIcon
+                    name={item.id === 'account' ? 'Cog' : 'ChevRight'}
+                    size={12}
+                    color={
+                      item.id === 'signout'
+                        ? t.colors.semantic.danger
+                        : t.colors.text.tertiary
+                    }
+                  />
+                  <Text
+                    variant="navLabel"
+                    color={item.id === 'signout' ? undefined : 'secondary'}
+                    style={item.id === 'signout' ? { color: t.colors.semantic.danger } : undefined}
+                  >
+                    {item.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
         </View>
 
         {/* nav */}
@@ -136,3 +212,26 @@ export const WebSidebar: React.FC<{
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  // zIndex keeps the dropdown above the nav ScrollView that follows it.
+  pillWrap: { zIndex: 20 },
+  menu: {
+    position: 'absolute',
+    top: '100%',
+    left: 10,
+    right: 10,
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingVertical: 4,
+    zIndex: 21,
+  },
+  menuHeader: { paddingHorizontal: 10, paddingVertical: 8, rowGap: 2 },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+});

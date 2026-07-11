@@ -14,6 +14,7 @@ import { SourceManagementScreen } from '../modules/intake/screens/SourceManageme
 import { SourceDetailScreen } from '../modules/intake/screens/SourceDetailScreen';
 import { IntakeHealthScreen } from '../modules/intake/screens/IntakeHealthScreen';
 import { IntakeActivityScreen } from '../modules/intake/screens/IntakeActivityScreen';
+import { ItemDetailScreen } from '../modules/intake/screens/ItemDetailScreen';
 import { ManualIngestScreen } from '../modules/intake/screens/ManualIngestScreen';
 import { SourceCredibilityScreen } from '../modules/verification/screens/SourceCredibilityScreen';
 import { VerificationQueueScreen } from '../modules/verification/screens/VerificationQueueScreen';
@@ -57,6 +58,7 @@ export const SettingsStack: React.FC = () => {
       <Stack.Screen name="Analytics" component={AnalyticsHomeScreen} options={{ title: 'Analytics' }} />
       <Stack.Screen name="IntakeHealth" component={IntakeHealthScreen} options={{ title: 'Health' }} />
       <Stack.Screen name="IntakeActivity" component={IntakeActivityScreen} options={{ title: 'Activity' }} />
+      <Stack.Screen name="IntakeItemDetail" component={ItemDetailScreen} options={{ title: 'Item' }} />
       {isPlatformAdmin ? (
         <Stack.Screen name="ManualIngest" component={ManualIngestScreen} options={{ title: 'Manual ingest' }} />
       ) : null}

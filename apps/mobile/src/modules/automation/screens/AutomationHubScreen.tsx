@@ -209,6 +209,7 @@ const LogTab: React.FC = () => {
 
 const LogCard: React.FC<{ row: FeedRow }> = ({ row }) => {
   const t = useTheme();
+  const [expanded, setExpanded] = useState(false);
   const toneColor: Record<FeedTone, string> = {
     positive: t.colors.semantic.positiveText,
     warn: t.colors.semantic.warning,
@@ -216,29 +217,54 @@ const LogCard: React.FC<{ row: FeedRow }> = ({ row }) => {
     neutral: t.colors.text.tertiary,
   };
   return (
-    <Card variant="default">
-      <View style={styles.row}>
-        <View style={[styles.iconWrap, { backgroundColor: t.colors.bg.elevated }]}>
-          <Icon name={row.icon} size="sm" color="secondary" />
+    <Pressable
+      onPress={() => setExpanded((v) => !v)}
+      accessibilityRole="button"
+      accessibilityLabel={`${row.title} — ${expanded ? 'hide' : 'show'} details`}
+    >
+      <Card variant="default">
+        <View style={styles.row}>
+          <View style={[styles.iconWrap, { backgroundColor: t.colors.bg.elevated }]}>
+            <Icon name={row.icon} size="sm" color="secondary" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text variant="body">{row.title}</Text>
+            {row.subtitle ? (
+              <>
+                <Spacer size={1} />
+                <Text variant="bodySm" color="secondary">
+                  {row.subtitle}
+                </Text>
+              </>
+            ) : null}
+            <Spacer size={1} />
+            <Text variant="caption" color="tertiary">
+              {new Date(row.createdAt).toLocaleString()}
+            </Text>
+          </View>
+          <View style={[styles.toneDot, { backgroundColor: toneColor[row.tone] }]} />
+          <View style={styles.expandIcon}>
+            <Icon name={expanded ? 'ChevronUp' : 'ChevronDown'} size="sm" color="tertiary" />
+          </View>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text variant="body">{row.title}</Text>
-          {row.subtitle ? (
-            <>
-              <Spacer size={1} />
-              <Text variant="bodySm" color="secondary">
-                {row.subtitle}
-              </Text>
-            </>
-          ) : null}
-          <Spacer size={1} />
-          <Text variant="caption" color="tertiary">
-            {new Date(row.createdAt).toLocaleString()}
-          </Text>
-        </View>
-        <View style={[styles.toneDot, { backgroundColor: toneColor[row.tone] }]} />
-      </View>
-    </Card>
+        {expanded ? (
+          <View
+            style={[styles.detailBlock, { borderTopColor: t.colors.border.default }]}
+          >
+            {row.detail.map((line) => (
+              <View key={line.label} style={styles.detailLine}>
+                <Text variant="caption" color="tertiary">
+                  {line.label}
+                </Text>
+                <Text variant="bodySm" color="secondary" style={{ flexShrink: 1, textAlign: 'right' }}>
+                  {line.value}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </Card>
+    </Pressable>
   );
 };
 
@@ -271,4 +297,17 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   toneDot: { width: 8, height: 8, borderRadius: 4, marginTop: 8, marginLeft: 8 },
+  expandIcon: { marginTop: 4, marginLeft: 8 },
+  detailBlock: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    rowGap: 6,
+  },
+  detailLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    columnGap: 12,
+  },
 });

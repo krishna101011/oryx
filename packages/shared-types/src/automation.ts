@@ -6,6 +6,7 @@
  * automation_log (one row per dispatcher decision, including suppressions)
  * and digest_runs (one row per sent digest window). `kind` discriminates.
  */
+import type { Channel } from './alerts';
 import type { Id, Timestamp } from './common';
 import type { NotificationFrequency } from './preferences';
 
@@ -45,6 +46,14 @@ export interface AutomationLogEntry {
   windowEnd: Timestamp | null;
   /** The feed row this decision produced, when one exists. */
   activityInboxId: Id | null;
+  /** dispatch: which delivery channel this decision is about. digest: null. */
+  channel: Channel | null;
+  /**
+   * dispatch: WHY a *_failed action failed (e.g. "no_registered_device", a
+   * provider error string). Null for successes/suppressions, digests, and
+   * rows recorded before reason capture (migration 0024, 2026-07-12).
+   */
+  detail: string | null;
   createdAt: Timestamp;
 }
 
