@@ -517,6 +517,11 @@ class _MeBuild(_Base):
 class _MeVerification(_Base):
     pending_review_count: int = Field(alias="pendingReviewCount")
     open_conflict_count: int = Field(alias="openConflictCount")
+    # Command Center VERIFIED stat (2026-07-11): intelligence objects whose
+    # verification_status is 'verified' OR 'analyst_approved'. Approval flips
+    # an object AWAY from 'verified', so counting only 'verified' would make
+    # the stat DROP when an analyst approves — both statuses mean verified.
+    verified_count: int = Field(alias="verifiedCount")
 
 
 class _MeResearch(_Base):
@@ -582,6 +587,17 @@ class IntakeSourceAuditEntry(_Base):
 class IntakeStatusSummary(_Base):
     total: int
     by_health: dict[str, int] = Field(alias="byHealth")
+
+
+class RecentIntakeItem(_Base):
+    """One row of the Command Center "Today" feed — the real ingested content
+    (headline + source), not the generic activity_inbox notification row."""
+
+    id: str
+    subject: str | None = None
+    source_name: str = Field(alias="sourceName")
+    provider_name: str = Field(alias="providerName")
+    received_at: datetime = Field(alias="receivedAt")
 
 
 class IntakeItem(_Base):

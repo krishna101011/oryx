@@ -446,6 +446,25 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   member with intake.write can point a feed at internal/metadata IPs. Exposure
   exists independent of the ff_intake_rss flag (the endpoint was never
   flag-gated). Follow-up: port the safety guard into rss/client.fetch_feed.
+- A TAB-LEVEL NAVIGATE NEVER RESETS A NESTED STACK (two real web-sidebar bugs,
+  2026-07-11). `navigationRef.navigate('Tabs', { screen: X })` only FOCUSES tab
+  X with whatever nested state it already has — and if X is already focused it
+  is a complete no-op (no state event fires, so even the sidebar highlight
+  doesn't move). Bug 1: Verification Center originally landed on the Settings
+  root (expired sessions went undetected). Bug 2: the Settings root item itself
+  used the bare-tab path, so pressing "Settings" from Automation Hub/Analytics/
+  Verification stayed put. Convention now enforced by webNav tests: EVERY
+  sidebar item targeting the Settings tab names an explicit nested screen, and
+  performNav routes all Settings-tab items through navigateSettingsScreen
+  (falling back to SettingsHome). The SAME latent class exists for the Research
+  and Content sidebar items (bare-tab navigates over stacked tabs — e.g.
+  "Content Studio" pressed while deep in DraftEditor stays on DraftEditor);
+  flagged 2026-07-11 but out of that wave's scope, fix it the same way when a
+  wave touches that area. VERIFIED stat definition decided the same day:
+  claims have NO verification_status column — the per-item verdict is
+  intelligence_objects.verification_status, and the Command Center stat counts
+  'verified' + 'analyst_approved' (approval REPLACES 'verified', so excluding
+  it would decrement the stat on review).
 
 ## What This Skill Deliberately Does NOT Contain
 

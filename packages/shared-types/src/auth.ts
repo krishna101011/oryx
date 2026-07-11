@@ -88,6 +88,10 @@ export interface MeResponse {
   verification: {
     pendingReviewCount: number;
     openConflictCount: number;
+    // 2026-07-11 — Command Center VERIFIED stat: intelligence objects with
+    // verification_status 'verified' or 'analyst_approved' (approval replaces
+    // 'verified', so both statuses mean verified).
+    verifiedCount: number;
   };
   research: {
     activeWorkspaceCount: number;

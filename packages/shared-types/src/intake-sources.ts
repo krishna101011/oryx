@@ -48,3 +48,17 @@ export interface IntakeStatusSummary {
   total: number;
   byHealth: Record<SourceHealth, number>;
 }
+
+/**
+ * One row of the Command Center "Today" feed (GET /v1/intake/items/recent) —
+ * the real ingested content (headline + source), not the generic
+ * "New item ingested" activity_inbox notification. subject is null for items
+ * the normalizer hasn't processed yet.
+ */
+export interface RecentIntakeItem {
+  id: Id;
+  subject: string | null;
+  sourceName: string;
+  providerName: string;
+  receivedAt: Timestamp;
+}

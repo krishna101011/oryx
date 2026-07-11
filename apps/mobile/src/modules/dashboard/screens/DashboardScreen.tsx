@@ -8,22 +8,35 @@ import {
   Divider,
   useTheme,
 } from '@oryx/design-system';
-import { useIntakeStatus } from '../../intake/hooks/useIntakeSources';
-import { sourcesStatValue } from '../stats';
+import { useMe } from '../../../hooks/useMe';
+import { useIntakeStatus, useRecentIntakeItems } from '../../intake/hooks/useIntakeSources';
+import {
+  draftsStatValue,
+  sourcesStatValue,
+  todayPanelState,
+  verifiedStatValue,
+} from '../stats';
+
+function timeLabel(receivedAt: string): string {
+  const d = new Date(receivedAt);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
 
 /**
- * Phase 1 dashboard — not placeholder, real shell.
- * Renders the brand mark and a structured layout so the home tab feels
- * like the eventual product.
+ * Command Center. "Today" shows the real most-recent ingested items
+ * (GET /intake/items/recent — headline + source), not the generic
+ * activity_inbox notification rows; the Activity tab owns those.
  *
- * SOURCES is real (GET /intake/status). VERIFIED and DRAFTS are still the
- * Phase 1 hardcoded zeros — wiring them is flagged, not silently done, in
- * the 2026-07-11 report (they need an owner decision on which number
- * "VERIFIED" even means).
+ * All three stats are real: SOURCES (GET /intake/status), VERIFIED
+ * (/me verification.verifiedCount) and DRAFTS (/me content.draftCount).
  */
 export const DashboardScreen: React.FC = () => {
   const t = useTheme();
+  const me = useMe();
   const intakeStatus = useIntakeStatus();
+  const recentItems = useRecentIntakeItems();
+  const today = todayPanelState(recentItems.data);
   return (
     <Screen background="primary">
       <Spacer size={6} />
@@ -41,10 +54,28 @@ export const DashboardScreen: React.FC = () => {
 
       <Card variant="default">
         <Text variant="h2">Today</Text>
-        <Spacer size={4} />
-        <Text variant="body" color="secondary">
-          Nothing to surface yet. Connect a source to begin.
-        </Text>
+        {today.kind === 'empty' && (
+          <>
+            <Spacer size={4} />
+            <Text variant="body" color="secondary">
+              Nothing to surface yet. Connect a source to begin.
+            </Text>
+          </>
+        )}
+        {today.kind === 'list' &&
+          today.rows.map((row, idx) => (
+            <View key={row.id}>
+              <Spacer size={idx === 0 ? 4 : 3} />
+              <Text variant="body" numberOfLines={2}>
+                {row.headline}
+              </Text>
+              <Spacer size={1} />
+              <Text variant="caption" color="tertiary">
+                {row.source}
+                {timeLabel(row.receivedAt) ? `  ·  ${timeLabel(row.receivedAt)}` : ''}
+              </Text>
+            </View>
+          ))}
       </Card>
 
       <Spacer size={4} />
@@ -72,7 +103,7 @@ export const DashboardScreen: React.FC = () => {
             </Text>
             <Spacer size={1} />
             <Text variant="mono" color="primary">
-              0
+              {verifiedStatValue(me.data)}
             </Text>
           </View>
           <View
@@ -87,7 +118,7 @@ export const DashboardScreen: React.FC = () => {
             </Text>
             <Spacer size={1} />
             <Text variant="mono" color="primary">
-              0
+              {draftsStatValue(me.data)}
             </Text>
           </View>
         </View>

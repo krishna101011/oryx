@@ -32,6 +32,8 @@ from oryx.core.errors import (
 )
 from oryx.core.models import (
     IntakeAuditLog,
+    IntakeItem,
+    IntakeItemNormalized,
     IntakeSource,
 )
 from oryx.core.pagination import decode_cursor, encode_cursor
@@ -350,6 +352,59 @@ async def get_audit(
         request_id=get_request_id(request),
         pagination={"nextCursor": next_cursor, "prevCursor": None},
     )
+
+
+@router.get(
+    "/items/recent",
+    dependencies=[Depends(require_capability("intake.read"))],
+)
+async def recent_items(
+    request: Request,
+    ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+    db: AsyncSession = Depends(db_session),
+    limit: int = Query(default=10, ge=1, le=50),
+) -> dict:
+    """The Command Center "Today" feed — the most recently ingested items with
+    their REAL content (normalized subject + source name), newest first.
+
+    The activity_inbox row for an ingest is a generic "New item ingested"
+    notification carrying only ids; this endpoint is what lets the dashboard
+    show what actually came in. The normalized row is outer-joined: an item the
+    normalizer hasn't reached yet still appears (subject null), so the feed
+    never under-reports fresh ingests.
+    """
+    stmt = (
+        select(
+            IntakeItem.id,
+            IntakeItem.provider_name,
+            IntakeItem.received_at,
+            IntakeItemNormalized.subject,
+            IntakeSource.name,
+        )
+        .join(IntakeSource, IntakeSource.id == IntakeItem.intake_source_id)
+        .outerjoin(
+            IntakeItemNormalized,
+            IntakeItemNormalized.intake_item_id == IntakeItem.id,
+        )
+        .where(
+            IntakeItem.workspace_id == ws.workspace_id,
+            IntakeItem.deleted_at.is_(None),
+        )
+        .order_by(desc(IntakeItem.received_at))
+        .limit(limit)
+    )
+    rows = (await db.execute(stmt)).all()
+    payload = [
+        {
+            "id": str(item_id),
+            "subject": subject,
+            "sourceName": source_name,
+            "providerName": provider_name,
+            "receivedAt": received_at.isoformat(),
+        }
+        for item_id, provider_name, received_at, subject, source_name in rows
+    ]
+    return envelope(payload, request_id=get_request_id(request))
 
 
 @router.get(

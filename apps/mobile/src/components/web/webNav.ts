@@ -81,7 +81,12 @@ export const WEB_NAV: WebNavGroup[] = [
     group: 'SYSTEM',
     items: [
       { id: 'activity', label: 'Activity', icon: 'Bell', tab: 'Activity', countKey: 'activityUnread' },
-      { id: 'settings', label: 'Settings', icon: 'Cog', tab: 'Settings' },
+      // screen is REQUIRED here too (second real bug in this area, 2026-07-11):
+      // a bare tab navigate can only FOCUS the Settings stack — it never resets
+      // nested state, so clicking "Settings" while on Automation Hub/Analytics/
+      // Verification stayed on that screen. Naming the root screen makes the
+      // press an explicit destination, like every other Settings-tab item.
+      { id: 'settings', label: 'Settings', icon: 'Cog', tab: 'Settings', screen: 'SettingsHome' },
     ],
   },
 ];
@@ -111,11 +116,22 @@ export function findNavItem(id: string): WebNavItem {
   throw new Error(`webNav: no nav item with id "${id}"`);
 }
 
+/** Where a Settings-tab item without an explicit screen must land. */
+export const SETTINGS_ROOT_SCREEN = 'SettingsHome';
+
 /**
  * Resolve a nav item to real navigation. Extracted from WebShell so the topbar
  * shortcuts (bell → 'activity', gear → 'settings') go through the exact same
  * resolution as a sidebar click, and so tests can inject recording fakes.
  * Pending items resolve to nothing — they have no built destination.
+ *
+ * Settings-tab items ALWAYS resolve through navigateSettingsScreen with a
+ * concrete screen. The old shape (`tab && screen` → screen, else → tab) sent
+ * the Settings root item down the bare-tab path, and a tab-level navigate
+ * only FOCUSES an already-populated stack — it never resets it, so "Settings"
+ * was a no-op from any nested Settings screen. The root fallback here means a
+ * future Settings-tab item that forgets its screen still lands somewhere
+ * deterministic instead of silently reintroducing that bug.
  */
 export function performNav(
   item: WebNavItem,
@@ -125,8 +141,8 @@ export function performNav(
   },
 ): void {
   if (item.pending) return;
-  if (item.tab === 'Settings' && item.screen) {
-    nav.navigateSettingsScreen(item.screen);
+  if (item.tab === 'Settings') {
+    nav.navigateSettingsScreen(item.screen ?? SETTINGS_ROOT_SCREEN);
   } else if (item.tab) {
     nav.navigateTab(item.tab);
   }

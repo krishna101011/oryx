@@ -11,6 +11,7 @@ import type {
   IntakeStatusSummary,
   ManualIngestRequest,
   ManualIngestResponse,
+  RecentIntakeItem,
 } from '@oryx/shared-types';
 import { apiClient } from '../../../lib/api/client';
 
@@ -50,6 +51,9 @@ export const intakeApi = {
 
   status: (): Promise<IntakeStatusSummary> =>
     apiClient().get<IntakeStatusSummary>('/intake/status'),
+
+  recentItems: (limit = 10): Promise<ApiResponse<RecentIntakeItem[]>> =>
+    apiClient().getEnvelope<RecentIntakeItem[]>(`/intake/items/recent?limit=${limit}`),
 
   audit: (
     sourceId: string,

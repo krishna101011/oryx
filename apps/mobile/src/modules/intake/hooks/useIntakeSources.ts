@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { IntakeSource, IntakeStatusSummary } from '@oryx/shared-types';
+import type { IntakeSource, IntakeStatusSummary, RecentIntakeItem } from '@oryx/shared-types';
 import {
   intakeApi,
   type CreateSourceBody,
@@ -22,6 +22,15 @@ export function useIntakeStatus() {
     // invalidateQueries({ queryKey: ['intake'] }) refreshes this count too.
     queryKey: ['intake', 'status'],
     queryFn: () => intakeApi.status(),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useRecentIntakeItems(limit = 10) {
+  return useQuery<RecentIntakeItem[]>({
+    // Under the ['intake'] prefix for the same reason as status above.
+    queryKey: ['intake', 'recent-items', limit],
+    queryFn: async () => (await intakeApi.recentItems(limit)).data,
     staleTime: 30 * 1000,
   });
 }

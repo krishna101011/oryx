@@ -28,6 +28,7 @@ from oryx.core.models import (
     Claim,
     ConflictRecord,
     ContentDraft,
+    IntelligenceObject,
     OnboardingState,
     Profile,
     ResearchPacket,
@@ -137,6 +138,26 @@ async def get_me(
                 .where(
                     ConflictRecord.workspace_id == ws.workspace_id,
                     ConflictRecord.status == "open",
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    # Command Center VERIFIED stat. Note: claims carry NO verification status —
+    # the per-item verdict lives on intelligence_objects.verification_status.
+    # 'analyst_approved' counts too: an analyst approval REPLACES 'verified'
+    # (review flips the status), so excluding it would make approving an
+    # object silently decrement the stat.
+    verified_count = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(IntelligenceObject)
+                .where(
+                    IntelligenceObject.workspace_id == ws.workspace_id,
+                    IntelligenceObject.verification_status.in_(
+                        ("verified", "analyst_approved")
+                    ),
                 )
             )
         ).scalar_one()
@@ -266,6 +287,7 @@ async def get_me(
         verification={
             "pendingReviewCount": pending_review_count,
             "openConflictCount": open_conflict_count,
+            "verifiedCount": verified_count,
         },
         research={
             "activeWorkspaceCount": active_workspace_count,

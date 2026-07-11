@@ -41,7 +41,11 @@ async def test_me_includes_verification_and_research_counts(app) -> None:
         headers = await _auth(c)
         me = await c.get("/v1/auth/me", headers=headers)
         data = me.json()["data"]
-        assert data["verification"] == {"pendingReviewCount": 0, "openConflictCount": 0}
+        assert data["verification"] == {
+            "pendingReviewCount": 0,
+            "openConflictCount": 0,
+            "verifiedCount": 0,
+        }
         assert data["research"] == {"activeWorkspaceCount": 0, "readyPacketCount": 0}
 
 

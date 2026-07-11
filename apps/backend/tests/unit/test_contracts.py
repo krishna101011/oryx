@@ -97,7 +97,7 @@ def test_me_response_full_envelope() -> None:
         "activity": {"unreadCount": 0},
         "flags": {"ff_settings": True, "ff_dashboard": True},
         "onboarding": {"state": "complete", "nextStep": None},
-        "verification": {"pendingReviewCount": 3, "openConflictCount": 1},
+        "verification": {"pendingReviewCount": 3, "openConflictCount": 1, "verifiedCount": 5},
         "research": {"activeWorkspaceCount": 2, "readyPacketCount": 0},
         "content": {
             "draftCount": 4, "pendingReviewCount": 1,
@@ -111,6 +111,7 @@ def test_me_response_full_envelope() -> None:
     assert j["onboarding"]["state"] == "complete"
     assert j["activity"]["unreadCount"] == 0
     assert j["verification"]["pendingReviewCount"] == 3
+    assert j["verification"]["verifiedCount"] == 5
     assert j["research"]["readyPacketCount"] == 0
     assert j["content"]["draftCount"] == 4
     assert j["content"]["publishedThisWeek"] == 2

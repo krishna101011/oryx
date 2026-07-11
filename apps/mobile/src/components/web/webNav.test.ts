@@ -10,7 +10,14 @@
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { type NavCountSource, WEB_NAV, findNavItem, navCounts, performNav } from './webNav';
+import {
+  type NavCountSource,
+  SETTINGS_ROOT_SCREEN,
+  WEB_NAV,
+  findNavItem,
+  navCounts,
+  performNav,
+} from './webNav';
 
 /** Recording fakes standing in for navigationRef's navigateTab / navigateSettingsScreen. */
 function recordingNav() {
@@ -29,7 +36,7 @@ function recordingNav() {
 const seededMe: NavCountSource = {
   activity: { unreadCount: 7 },
   content: { draftCount: 2, pendingReviewCount: 0, scheduledCount: 0, publishedThisWeek: 0 },
-  verification: { pendingReviewCount: 3, openConflictCount: 1 },
+  verification: { pendingReviewCount: 3, openConflictCount: 1, verifiedCount: 0 },
 };
 
 // The topbar is global chrome — a click resolves identically no matter which
@@ -47,12 +54,15 @@ test('header bell navigates to the Activity tab (sidebar Activity destination) f
   }
 });
 
-test('header gear navigates to the Settings tab from multiple active screens', () => {
+test('header gear resolves to the SettingsHome screen explicitly, never a bare tab focus, from multiple active screens', () => {
+  // A bare navigateTab('Settings') only FOCUSES the stack — with nested state
+  // (e.g. Automation Hub on top) it lands there, not on the Account root.
+  // That was the 2026-07-11 live bug; the gear must name its destination.
   for (const activeScreen of SIMULATED_ACTIVE_SCREENS) {
     const { tabs, screens, nav } = recordingNav();
     performNav(findNavItem('settings'), nav);
-    assert.deepEqual(tabs, ['Settings'], `gear click while on ${activeScreen} must land on Settings`);
-    assert.deepEqual(screens, [], 'gear must not target a nested settings screen');
+    assert.deepEqual(screens, ['SettingsHome'], `gear click while on ${activeScreen} must land on SettingsHome`);
+    assert.deepEqual(tabs, [], 'gear must not use the non-resetting bare-tab path');
   }
 });
 
@@ -87,19 +97,22 @@ test('Verification Center resolves to VerificationQueue (fetch-on-mount, so an e
   assert.deepEqual(tabs, [], 'verify must not fall back to the bare Settings tab');
 });
 
-test('every Settings-tab sidebar item except Settings itself names a nested screen (pins the expired-session gap class)', () => {
-  // A Settings-tab item WITHOUT a screen lands on the Settings root, which
-  // makes no fresh API call — an expired session is silently undetected
-  // there. Only the actual Settings item may do that by design.
+test('EVERY Settings-tab sidebar item names a nested screen — a bare tab target is a bug class, twice now', () => {
+  // First bug (expired-session gap): a screenless item landed on the Settings
+  // root, which makes no fresh API call, so an expired session went undetected.
+  // Second bug (stack never resets): the screenless Settings root item itself
+  // couldn't leave a nested Settings screen, because a bare tab navigate only
+  // focuses the stack. Both have the same shape — so no exceptions anymore.
   for (const g of WEB_NAV) {
     for (const it of g.items) {
-      if (it.pending || it.tab !== 'Settings' || it.id === 'settings') continue;
+      if (it.pending || it.tab !== 'Settings') continue;
       assert.ok(
         it.screen,
-        `nav item "${it.id}" targets the Settings tab without a nested screen — silent Settings-root landing`,
+        `nav item "${it.id}" targets the Settings tab without a nested screen — non-deterministic landing`,
       );
     }
   }
+  assert.equal(findNavItem('settings').screen, SETTINGS_ROOT_SCREEN);
 });
 
 test('sidebar deep items still resolve through performNav (Settings-nested screens unchanged)', () => {
@@ -109,4 +122,104 @@ test('sidebar deep items still resolve through performNav (Settings-nested scree
   performNav(findNavItem('automation'), nav);
   assert.deepEqual(screens, ['AutomationHub']);
   assert.deepEqual(tabs, []);
+});
+
+// ---------------------------------------------------------------------------
+// Settings-tab reset regression matrix (2026-07-11, second nav bug in this
+// area). The recording fakes above can't catch the bug class — it lives in
+// the INTERACTION between performNav and React Navigation's stack semantics.
+// This fake models those semantics faithfully:
+//   - navigateTab: focuses a tab and PRESERVES its nested stack (never resets
+//     it; a same-tab navigate is a complete no-op). This is exactly why the
+//     old bare-tab path could not leave Automation Hub.
+//   - navigateSettingsScreen: StackRouter NAVIGATE — rewind to the screen if
+//     it is already in the stack, else push it. Either way it becomes focused.
+// ---------------------------------------------------------------------------
+
+function fakeNavigator(initialSettingsStack: string[] = ['SettingsHome']) {
+  let focusedTab = 'Home';
+  let stack = [...initialSettingsStack];
+  return {
+    get landedOn(): string {
+      return focusedTab === 'Settings' ? stack[stack.length - 1]! : focusedTab;
+    },
+    nav: {
+      navigateTab: (tab: string) => {
+        focusedTab = tab;
+      },
+      navigateSettingsScreen: (screen: string) => {
+        focusedTab = 'Settings';
+        const at = stack.indexOf(screen);
+        stack = at >= 0 ? stack.slice(0, at + 1) : [...stack, screen];
+      },
+    },
+  };
+}
+
+/** Every Settings-tab sidebar item and the screen a press must land on. */
+const SETTINGS_TAB_MATRIX = [
+  { id: 'verify', lands: 'VerificationQueue' },
+  { id: 'automation', lands: 'AutomationHub' },
+  { id: 'analytics', lands: 'Analytics' },
+  { id: 'settings', lands: 'SettingsHome' },
+] as const;
+
+test('LIVE REPRO regression: Automation Hub → press Settings lands on SettingsHome, not Automation Hub', () => {
+  const f = fakeNavigator();
+  performNav(findNavItem('automation'), f.nav);
+  assert.equal(f.landedOn, 'AutomationHub');
+  performNav(findNavItem('settings'), f.nav);
+  assert.equal(f.landedOn, 'SettingsHome', 'pressing Settings must leave Automation Hub');
+});
+
+test('matrix: from every Settings-tab screen, pressing every other Settings-tab item lands exactly on its screen', () => {
+  for (const start of SETTINGS_TAB_MATRIX) {
+    for (const next of SETTINGS_TAB_MATRIX) {
+      if (next.id === start.id) continue;
+      const f = fakeNavigator();
+      performNav(findNavItem(start.id), f.nav);
+      assert.equal(f.landedOn, start.lands, `setup: ${start.id} must land on ${start.lands}`);
+      performNav(findNavItem(next.id), f.nav);
+      assert.equal(
+        f.landedOn,
+        next.lands,
+        `${start.id} → ${next.id}: must land on ${next.lands}, not stay on ${start.lands}`,
+      );
+    }
+  }
+});
+
+test('matrix: pressing all four Settings-tab items IN SEQUENCE from each start lands correctly at every step', () => {
+  // Pairwise fresh navigators miss ordering effects (a stale stack built up by
+  // earlier presses); this walks every rotation of the full cycle on ONE stack.
+  for (let offset = 0; offset < SETTINGS_TAB_MATRIX.length; offset++) {
+    const f = fakeNavigator();
+    for (let i = 0; i < SETTINGS_TAB_MATRIX.length; i++) {
+      const item = SETTINGS_TAB_MATRIX[(offset + i) % SETTINGS_TAB_MATRIX.length]!;
+      performNav(findNavItem(item.id), f.nav);
+      assert.equal(f.landedOn, item.lands, `step ${i} of rotation ${offset}: ${item.id}`);
+    }
+  }
+});
+
+test('matrix: pressing the SAME Settings-tab item twice stays put (idempotent, no phantom push)', () => {
+  for (const item of SETTINGS_TAB_MATRIX) {
+    const f = fakeNavigator();
+    performNav(findNavItem(item.id), f.nav);
+    performNav(findNavItem(item.id), f.nav);
+    assert.equal(f.landedOn, item.lands, `double-press ${item.id}`);
+  }
+});
+
+test('deep nested Settings screen (ClaimDetail under verify) still resets to SettingsHome on Settings press', () => {
+  // ClaimDetail is reachable only by drilling in — it has no sidebar item.
+  const f = fakeNavigator(['SettingsHome', 'VerificationQueue', 'ClaimDetail']);
+  performNav(findNavItem('settings'), f.nav);
+  assert.equal(f.landedOn, 'SettingsHome');
+  // And from the same depth, every other item still lands correctly.
+  for (const item of SETTINGS_TAB_MATRIX) {
+    const deep = fakeNavigator(['SettingsHome', 'VerificationQueue', 'ClaimDetail']);
+    performNav(findNavItem(item.id), deep.nav);
+    assert.equal(deep.landedOn, item.lands, `from ClaimDetail: ${item.id}`);
+  }
 });
