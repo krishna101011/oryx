@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "eslint src --ext .ts,.tsx",
     "type-check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test src/modules/settings/alertCategories.test.ts src/modules/automation/feed.test.ts src/modules/settings/quietHours.test.ts src/lib/push/registration.test.ts src/modules/analytics/presenter.test.ts src/modules/content/provenance.test.ts"
+    "test": "tsx --test src/modules/settings/alertCategories.test.ts src/modules/automation/feed.test.ts src/modules/settings/quietHours.test.ts src/lib/push/registration.test.ts src/modules/analytics/presenter.test.ts src/modules/content/provenance.test.ts src/components/web/webNav.test.ts"
   },
   "dependencies": {
     "@babel/runtime": "^7.24.0",

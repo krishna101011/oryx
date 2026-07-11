@@ -1,4 +1,5 @@
 import type { GensparkIconName } from '@oryx/design-system';
+import type { MeResponse } from '@oryx/shared-types';
 
 /**
  * Web sidebar information architecture — the NAV group/label/icon STRUCTURE is
@@ -78,3 +79,49 @@ export const WEB_NAV: WebNavGroup[] = [
     ],
   },
 ];
+
+/** The /me slices that carry badge counts (full MeResponse satisfies this). */
+export type NavCountSource = Pick<MeResponse, 'activity' | 'content' | 'verification'>;
+
+/**
+ * The one place real /me counts become nav-badge numbers. Both the sidebar
+ * (numeric badges) and the topbar bell (unread dot) read from here, so the two
+ * can never disagree about unread state.
+ */
+export function navCounts(me?: NavCountSource): Record<NonNullable<WebNavItem['countKey']>, number> {
+  return {
+    verifyPending: me?.verification.pendingReviewCount ?? 0,
+    contentDrafts: me?.content.draftCount ?? 0,
+    activityUnread: me?.activity.unreadCount ?? 0,
+  };
+}
+
+/** Look up a nav item by id. WEB_NAV is static, so a missing id is a code bug. */
+export function findNavItem(id: string): WebNavItem {
+  for (const g of WEB_NAV) {
+    const it = g.items.find((i) => i.id === id);
+    if (it) return it;
+  }
+  throw new Error(`webNav: no nav item with id "${id}"`);
+}
+
+/**
+ * Resolve a nav item to real navigation. Extracted from WebShell so the topbar
+ * shortcuts (bell → 'activity', gear → 'settings') go through the exact same
+ * resolution as a sidebar click, and so tests can inject recording fakes.
+ * Pending items resolve to nothing — they have no built destination.
+ */
+export function performNav(
+  item: WebNavItem,
+  nav: {
+    navigateTab: (tab: WebNavTab) => void;
+    navigateSettingsScreen: (screen: string) => void;
+  },
+): void {
+  if (item.pending) return;
+  if (item.tab === 'Settings' && item.screen) {
+    nav.navigateSettingsScreen(item.screen);
+  } else if (item.tab) {
+    nav.navigateTab(item.tab);
+  }
+}

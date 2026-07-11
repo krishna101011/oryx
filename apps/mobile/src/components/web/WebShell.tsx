@@ -5,7 +5,7 @@ import { useMe } from '../../hooks/useMe';
 import { useAppSelector } from '../../store';
 import { navigateSettingsScreen, navigateTab, navigationRef } from '../../navigation/navigationRef';
 import type { SettingsStackParamList } from '../../navigation/types';
-import { WEB_NAV, type WebNavItem } from './webNav';
+import { WEB_NAV, type WebNavItem, performNav } from './webNav';
 import { WebSidebar } from './WebSidebar';
 import { WebTopBar } from './WebTopBar';
 
@@ -99,11 +99,11 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   }, []);
 
   const onNavigate = (item: WebNavItem) => {
-    if (item.tab === 'Settings' && item.screen) {
-      navigateSettingsScreen(item.screen as keyof SettingsStackParamList);
-    } else if (item.tab) {
-      navigateTab(item.tab);
-    }
+    performNav(item, {
+      navigateTab,
+      navigateSettingsScreen: (screen) =>
+        navigateSettingsScreen(screen as keyof SettingsStackParamList),
+    });
   };
 
   // Only show the desktop chrome once the user is fully into the app. Auth and
@@ -119,7 +119,7 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: t.colors.bg.primary }}>
       <WebSidebar me={me.data} activeId={activeId} onNavigate={onNavigate} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <WebTopBar crumbs={crumbsFor(activeId)} />
+        <WebTopBar crumbs={crumbsFor(activeId)} me={me.data} onNavigate={onNavigate} />
         <View style={{ flex: 1, minHeight: 0 }}>{children}</View>
       </View>
     </View>

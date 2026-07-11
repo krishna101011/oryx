@@ -1,6 +1,8 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { GensparkIcon, Text, gx, useTheme } from '@oryx/design-system';
+import type { MeResponse } from '@oryx/shared-types';
+import { type WebNavItem, findNavItem, navCounts } from './webNav';
 
 /**
  * Web-only topbar — 1:1 visual port of app.jsx <TopBar/> + styles.css .topbar /
@@ -9,9 +11,19 @@ import { GensparkIcon, Text, gx, useTheme } from '@oryx/design-system';
  * The ticker strip is intentionally EMPTY: data.jsx's TICKERS were fake numbers.
  * Real market data is Phase 9. Rather than render invented prices, the strip
  * shows a single muted "Markets · live data pending" marker.
+ *
+ * The bell and gear are shortcuts to the sidebar's SYSTEM items ('activity' /
+ * 'settings') — they route through the same onNavigate the sidebar uses, so
+ * they cannot drift to a different destination. The bell's unread dot reads
+ * the same navCounts.activityUnread as the sidebar's Activity badge.
  */
-export const WebTopBar: React.FC<{ crumbs: [string, string] }> = ({ crumbs }) => {
+export const WebTopBar: React.FC<{
+  crumbs: [string, string];
+  me?: MeResponse;
+  onNavigate: (item: WebNavItem) => void;
+}> = ({ crumbs, me, onNavigate }) => {
   const t = useTheme();
+  const activityUnread = navCounts(me).activityUnread;
   return (
     <View style={gx.topbar}>
       {/* breadcrumbs */}
@@ -41,27 +53,53 @@ export const WebTopBar: React.FC<{ crumbs: [string, string] }> = ({ crumbs }) =>
 
       {/* actions */}
       <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 4 }}>
-        <View style={gx.aiBtn}>
+        {/*
+         * AI Analyst is a pending surface (webNav 'ai', pending: true — feature
+         * not built yet). Deliberately NOT pressable, and dimmed to the same
+         * opacity the sidebar gives pending items, with the dot's "live" glow
+         * removed — it must read "coming later", not "active button".
+         */}
+        <View style={[gx.aiBtn, { opacity: 0.45 }]}>
           <View
             style={{
               width: 5,
               height: 5,
               borderRadius: 2.5,
               backgroundColor: t.colors.accent.coral,
-              shadowColor: t.colors.accent.coral,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.6,
-              shadowRadius: 3,
             }}
           />
           <Text variant="navLabel" color="primary">AI Analyst</Text>
         </View>
-        <View style={gx.iconBtn}>
+        <Pressable
+          style={gx.iconBtn}
+          onPress={() => onNavigate(findNavItem('activity'))}
+          accessibilityRole="button"
+          accessibilityLabel="Activity"
+        >
           <GensparkIcon name="Bell" size={14} color={t.colors.text.secondary} />
-        </View>
-        <View style={gx.iconBtn}>
+          {activityUnread > 0 ? (
+            // .bell-dot from styles.css — 5px --neg dot at top 6 / right 7.
+            <View
+              style={{
+                position: 'absolute',
+                top: 6,
+                right: 7,
+                width: 5,
+                height: 5,
+                borderRadius: 2.5,
+                backgroundColor: t.colors.semantic.danger,
+              }}
+            />
+          ) : null}
+        </Pressable>
+        <Pressable
+          style={gx.iconBtn}
+          onPress={() => onNavigate(findNavItem('settings'))}
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+        >
           <GensparkIcon name="Cog" size={14} color={t.colors.text.secondary} />
-        </View>
+        </Pressable>
       </View>
     </View>
   );

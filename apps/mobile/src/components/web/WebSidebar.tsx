@@ -10,7 +10,7 @@ import {
   useTheme,
 } from '@oryx/design-system';
 import type { MeResponse } from '@oryx/shared-types';
-import { WEB_NAV, type WebNavItem } from './webNav';
+import { WEB_NAV, type WebNavItem, navCounts } from './webNav';
 
 /**
  * Web-only left sidebar — 1:1 visual port of app.jsx <Sidebar/> + styles.css
@@ -34,11 +34,7 @@ export const WebSidebar: React.FC<{
 }> = ({ me, activeId, onNavigate }) => {
   const t = useTheme();
 
-  const counts = {
-    verifyPending: me?.verification.pendingReviewCount ?? 0,
-    contentDrafts: me?.content.draftCount ?? 0,
-    activityUnread: me?.activity.unreadCount ?? 0,
-  };
+  const counts = navCounts(me);
 
   const wsName = me?.workspace.name ?? 'Workspace';
   const wsRole = me ? `${me.workspace.role.toUpperCase()} · ${me.workspace.kind.toUpperCase()}` : '';
