@@ -419,6 +419,23 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   no backfill on purpose, and the client (feed.ts REASON_NOT_RECORDED) states
   "not recorded" honestly rather than inventing one. The /automation-log API
   exposes channel + detail; digest entries carry null for both.
+- THE DEV API SERVER DOES NOT AUTO-RELOAD — START IT WITH --reload (found live
+  2026-07-12). The documented startup command lacked the flag, so the :8000
+  process served the code imported at its start time FOREVER: an entire evening
+  of correct, committed, migrated changes (verifiedCount on /me, GET
+  /intake/items/recent, GET /intake/items/{id}) 404'd/missing live while the
+  full test suite passed and alembic sat at head. The symptom signature —
+  "endpoint exists in code + tests green + migrations at head, but live :8000
+  404s" — means the PROCESS is stale, not the code: check the listener's age
+  against git log (`Get-NetTCPConnection -LocalPort 8000 -State Listen` → PID →
+  `Get-CimInstance Win32_Process` CreationDate/CommandLine; no `--reload` in
+  CommandLine = it never picks anything up). Fix: kill the pair (uvicorn parent
+  + server child) and start with `uv run python -m uvicorn oryx.main:app --port
+  8000 --reload` — watchfiles 1.2.0 is installed so WatchFiles-based reload
+  works on Windows; a reload restarts the colocated monoprocess workers too,
+  which is correct in dev. The startup memory (project_dev_startup.md) now
+  carries the flag. In monoprocess dev there is exactly ONE backend process —
+  workers cannot be independently stale.
 - REACT-QUERY KEYS ARE A SHARED NAMESPACE, SHAPES INCLUDED (2026-07-12, caught
   in review before it shipped). Two callers using the SAME queryKey must cache
   the SAME data shape — the web search overlay initially cached the raw
