@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { IntakeSource } from '@oryx/shared-types';
+import type { IntakeSource, IntakeStatusSummary } from '@oryx/shared-types';
 import {
   intakeApi,
   type CreateSourceBody,
@@ -12,6 +12,16 @@ export function useIntakeSources() {
   return useQuery<IntakeSource[]>({
     queryKey: SOURCES_KEY,
     queryFn: async () => (await intakeApi.listSources()).data,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useIntakeStatus() {
+  return useQuery<IntakeStatusSummary>({
+    // Under the ['intake'] prefix so every source mutation's
+    // invalidateQueries({ queryKey: ['intake'] }) refreshes this count too.
+    queryKey: ['intake', 'status'],
+    queryFn: () => intakeApi.status(),
     staleTime: 30 * 1000,
   });
 }

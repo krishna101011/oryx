@@ -8,14 +8,22 @@ import {
   Divider,
   useTheme,
 } from '@oryx/design-system';
+import { useIntakeStatus } from '../../intake/hooks/useIntakeSources';
+import { sourcesStatValue } from '../stats';
 
 /**
  * Phase 1 dashboard — not placeholder, real shell.
  * Renders the brand mark and a structured layout so the home tab feels
- * like the eventual product. Real cards arrive in Phase 4.
+ * like the eventual product.
+ *
+ * SOURCES is real (GET /intake/status). VERIFIED and DRAFTS are still the
+ * Phase 1 hardcoded zeros — wiring them is flagged, not silently done, in
+ * the 2026-07-11 report (they need an owner decision on which number
+ * "VERIFIED" even means).
  */
 export const DashboardScreen: React.FC = () => {
   const t = useTheme();
+  const intakeStatus = useIntakeStatus();
   return (
     <Screen background="primary">
       <Spacer size={6} />
@@ -49,7 +57,7 @@ export const DashboardScreen: React.FC = () => {
             </Text>
             <Spacer size={1} />
             <Text variant="mono" color="primary">
-              0
+              {sourcesStatValue(intakeStatus.data)}
             </Text>
           </View>
           <View

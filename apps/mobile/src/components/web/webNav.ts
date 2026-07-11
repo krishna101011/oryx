@@ -34,7 +34,13 @@ export const WEB_NAV: WebNavGroup[] = [
     items: [
       { id: 'home', label: 'Command Center', icon: 'Home', tab: 'Home', countKey: 'activityUnread' },
       { id: 'news', label: 'News Intelligence', icon: 'News', pending: true },
-      { id: 'verify', label: 'Verification Center', icon: 'Shield', tab: 'Settings', countKey: 'verifyPending' },
+      // screen is REQUIRED here: without it the item lands on the Settings
+      // root, which fetches nothing — so an expired session is never detected
+      // (no 401 → no signedOut → no Sign In redirect). VerificationQueue
+      // fetches on mount, putting this item on the same expiry path as the
+      // rest of the app. WebShell's VERIFY_SCREENS highlight map also expects
+      // this destination.
+      { id: 'verify', label: 'Verification Center', icon: 'Shield', tab: 'Settings', screen: 'VerificationQueue', countKey: 'verifyPending' },
     ],
   },
   {

@@ -10,7 +10,7 @@
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { type NavCountSource, findNavItem, navCounts, performNav } from './webNav';
+import { type NavCountSource, WEB_NAV, findNavItem, navCounts, performNav } from './webNav';
 
 /** Recording fakes standing in for navigationRef's navigateTab / navigateSettingsScreen. */
 function recordingNav() {
@@ -78,6 +78,28 @@ test('AI Analyst badge is INTENTIONALLY non-interactive: pending feature, no nav
   performNav(ai, nav);
   assert.deepEqual(tabs, [], 'pending AI Analyst item must not navigate to any tab');
   assert.deepEqual(screens, [], 'pending AI Analyst item must not open any screen');
+});
+
+test('Verification Center resolves to VerificationQueue (fetch-on-mount, so an expired session hits the global 401 → signedOut → Sign In path), never a silent Settings-root landing', () => {
+  const { tabs, screens, nav } = recordingNav();
+  performNav(findNavItem('verify'), nav);
+  assert.deepEqual(screens, ['VerificationQueue']);
+  assert.deepEqual(tabs, [], 'verify must not fall back to the bare Settings tab');
+});
+
+test('every Settings-tab sidebar item except Settings itself names a nested screen (pins the expired-session gap class)', () => {
+  // A Settings-tab item WITHOUT a screen lands on the Settings root, which
+  // makes no fresh API call — an expired session is silently undetected
+  // there. Only the actual Settings item may do that by design.
+  for (const g of WEB_NAV) {
+    for (const it of g.items) {
+      if (it.pending || it.tab !== 'Settings' || it.id === 'settings') continue;
+      assert.ok(
+        it.screen,
+        `nav item "${it.id}" targets the Settings tab without a nested screen — silent Settings-root landing`,
+      );
+    }
+  }
 });
 
 test('sidebar deep items still resolve through performNav (Settings-nested screens unchanged)', () => {
