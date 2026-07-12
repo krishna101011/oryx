@@ -2,18 +2,21 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import {
   Card,
+  Icon,
+  Pressable,
   Screen,
   Spacer,
   Text,
-  Divider,
   useTheme,
 } from '@oryx/design-system';
 import { useMe } from '../../../hooks/useMe';
+import { navigateSettingsScreen } from '../../../navigation/navigationRef';
 import { useIntakeStatus, useRecentIntakeItems } from '../../intake/hooks/useIntakeSources';
 import {
   draftsStatValue,
   sourcesStatValue,
   todayPanelState,
+  todayRowTarget,
   verifiedStatValue,
 } from '../stats';
 
@@ -63,19 +66,36 @@ export const DashboardScreen: React.FC = () => {
           </>
         )}
         {today.kind === 'list' &&
-          today.rows.map((row, idx) => (
-            <View key={row.id}>
-              <Spacer size={idx === 0 ? 4 : 3} />
-              <Text variant="body" numberOfLines={2}>
-                {row.headline}
-              </Text>
-              <Spacer size={1} />
-              <Text variant="caption" color="tertiary">
-                {row.source}
-                {timeLabel(row.receivedAt) ? `  ·  ${timeLabel(row.receivedAt)}` : ''}
-              </Text>
-            </View>
-          ))}
+          today.rows.map((row, idx) => {
+            // Same destination as Activity rows and search results — the one
+            // registered IntakeItemDetail screen, resolved by todayRowTarget.
+            const target = todayRowTarget(row);
+            return (
+              <Pressable
+                key={row.id}
+                onPress={() => navigateSettingsScreen(target.screen, target.params)}
+                accessibilityRole="button"
+                accessibilityLabel={row.headline}
+              >
+                <Spacer size={idx === 0 ? 4 : 3} />
+                <View style={styles.todayRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="body" numberOfLines={2}>
+                      {row.headline}
+                    </Text>
+                    <Spacer size={1} />
+                    <Text variant="caption" color="tertiary">
+                      {row.source}
+                      {timeLabel(row.receivedAt) ? `  ·  ${timeLabel(row.receivedAt)}` : ''}
+                    </Text>
+                  </View>
+                  <View style={styles.chevron}>
+                    <Icon name="ChevronRight" size="sm" color="tertiary" />
+                  </View>
+                </View>
+              </Pressable>
+            );
+          })}
       </Card>
 
       <Spacer size={4} />
@@ -124,16 +144,6 @@ export const DashboardScreen: React.FC = () => {
         </View>
       </Card>
 
-      {__DEV__ && (
-        <>
-          <Spacer size={6} />
-          <Divider variant="subtle" />
-          <Spacer size={4} />
-          <Text variant="caption" color="tertiary">
-            PHASE 1 — FOUNDATION
-          </Text>
-        </>
-      )}
     </Screen>
   );
 };
@@ -142,4 +152,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   col: { flex: 1 },
   separator: { width: 1, marginHorizontal: 16 },
+  todayRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  chevron: { marginTop: 4, marginLeft: 8 },
 });

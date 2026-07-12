@@ -1,4 +1,5 @@
 import type { IntakeStatusSummary, MeResponse, RecentIntakeItem } from '@oryx/shared-types';
+import type { SettingsStackParamList } from '../../navigation/types';
 
 /**
  * Command Center stat + Today-panel presenters — pure, node:test-testable
@@ -70,4 +71,19 @@ export function todayPanelState(
       receivedAt: i.receivedAt,
     })),
   };
+}
+
+/**
+ * Where a Today-row press lands (2026-07-12). TodayRow.id IS the intake item
+ * id — /items/recent returns `"id": str(item.id)` and todayPanelState maps it
+ * 1:1 — so a press opens the SAME IntakeItemDetail screen Activity rows and
+ * search results open (SettingsStack registers exactly one ItemDetailScreen
+ * for that name). The params type is taken from SettingsStackParamList, so a
+ * drift from the real route's shape fails type-check, not at runtime.
+ */
+export function todayRowTarget(row: Pick<TodayRow, 'id'>): {
+  screen: 'IntakeItemDetail';
+  params: SettingsStackParamList['IntakeItemDetail'];
+} {
+  return { screen: 'IntakeItemDetail', params: { itemId: row.id } };
 }

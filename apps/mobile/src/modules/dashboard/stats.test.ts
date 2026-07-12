@@ -10,13 +10,17 @@
  * test_intake_recent_items.py.
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import type { IntakeStatusSummary, RecentIntakeItem } from '@oryx/shared-types';
+import { intakeItemIdOf } from '../activity/activityDetail';
 import {
   TODAY_MAX_ROWS,
   draftsStatValue,
   sourcesStatValue,
   todayPanelState,
+  todayRowTarget,
   verifiedStatValue,
 } from './stats';
 
@@ -116,4 +120,53 @@ test('Today panel: a not-yet-normalized item (null/blank subject) never renders 
     state.kind === 'list' ? state.rows.map((r) => r.headline) : [],
     ['Untitled item', 'Untitled item'],
   );
+});
+
+// ---- Today-row press → IntakeItemDetail (2026-07-12) -----------------------
+
+test('pressing a Today headline targets IntakeItemDetail with that row\'s real intake item id', () => {
+  // Full flow: the /items/recent shape → panel row → press target. The id the
+  // press carries is the SAME id the backend returned for the ingested item,
+  // so the detail screen fetches the full real content (headline, body,
+  // source/sender/received, links) — never a blank or partial view.
+  const state = todayPanelState([
+    item({ id: '8d966016-8d27-4df5-bb1f-ea999919294e', subject: 'Fed holds rates steady' }),
+  ]);
+  assert.equal(state.kind, 'list');
+  const row = state.kind === 'list' ? state.rows[0]! : (undefined as never);
+  assert.deepEqual(todayRowTarget(row), {
+    screen: 'IntakeItemDetail',
+    params: { itemId: '8d966016-8d27-4df5-bb1f-ea999919294e' },
+  });
+});
+
+test('a Today press and an Activity press on the same ingested item resolve to the IDENTICAL destination', () => {
+  // Same screen, not a thinner duplicate: build both paths' targets for one
+  // item. Activity resolves the id from the event payload (intakeItemIdOf) and
+  // navigates to the literal IntakeItemDetail route; Today resolves it from
+  // the /items/recent row. Both must be deep-equal — and SettingsStack
+  // registers exactly one component (ItemDetailScreen) for that route name,
+  // so equal targets means the same real screen. The params type of
+  // todayRowTarget is SettingsStackParamList['IntakeItemDetail'], so drifting
+  // from the registered route's shape fails type-check as well.
+  const itemId = 'b2f1c000-0000-4000-8000-00000000cafe';
+  const viaActivity = {
+    screen: 'IntakeItemDetail',
+    params: { itemId: intakeItemIdOf({ data: { intakeItemId: itemId } })! },
+  };
+  const viaToday = todayRowTarget({ id: itemId });
+  assert.deepEqual(viaToday, viaActivity);
+});
+
+test('the stale "PHASE 1 — FOUNDATION" badge is gone from Command Center source', () => {
+  // The repo has no component-render harness (pure-logic tests only), so the
+  // honest available proof is source-level: the screen file no longer contains
+  // the badge string or the __DEV__ block that rendered it.
+  const source = readFileSync(
+    fileURLToPath(new URL('./screens/DashboardScreen.tsx', import.meta.url)),
+    'utf8',
+  );
+  assert.ok(!source.includes('PHASE 1'), 'badge text must be removed');
+  assert.ok(!source.includes('FOUNDATION'), 'badge text must be removed');
+  assert.ok(!source.includes('__DEV__'), 'the badge\'s __DEV__ block must be gone entirely');
 });
