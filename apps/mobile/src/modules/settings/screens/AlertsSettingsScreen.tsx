@@ -94,7 +94,7 @@ export const AlertsSettingsScreen: React.FC = () => {
     <Screen background="primary">
       <ScrollView showsVerticalScrollIndicator={false}>
         <Spacer size={6} />
-        <Text variant="display">Notification preferences</Text>
+        <Text variant="pageTitle">Notification preferences</Text>
         <Spacer size={2} />
         <Text variant="body" color="secondary">
           How often each kind of activity reaches you. Daily digests arrive at

@@ -1,5 +1,5 @@
 import { StyleSheet, type TextStyle, type ViewStyle } from 'react-native';
-import { colors, gensparkPalette as g, tealAlpha } from '../tokens/colors';
+import { colors, gensparkPalette as g, withAlpha } from '../tokens/colors';
 
 /**
  * GENSPARK COMPONENT STYLES — exact 1:1 port of the real class rules in
@@ -60,9 +60,9 @@ export const gx = StyleSheet.create({
   } as ViewStyle,
   chipText: { color: g.text2 } as TextStyle,
   // .chip.teal { color:--teal; border:rgba(--teal,0.3); bg:rgba(--teal,0.06) }
-  // (2026-07-05 teal retirement: washes track tealAlpha; chip TEXT must stay
-  // legible on the dark ramp, so it reads semantic.positiveText, not --teal.)
-  chipTeal: { borderColor: tealAlpha(0.3), backgroundColor: tealAlpha(0.06) } as ViewStyle,
+  // (2026-07-05 teal retirement: washes track withAlpha(g.teal); chip TEXT must
+  // stay legible on the dark ramp, so it reads semantic.positiveText, not --teal.)
+  chipTeal: { borderColor: withAlpha(g.teal, 0.3), backgroundColor: withAlpha(g.teal, 0.06) } as ViewStyle,
   chipTealText: { color: colors.semantic.positiveText } as TextStyle,
   // .chip.violet
   chipViolet: { borderColor: 'rgba(139,92,246,0.3)', backgroundColor: 'rgba(139,92,246,0.06)' } as ViewStyle,
@@ -116,7 +116,7 @@ export const gx = StyleSheet.create({
   brandBadge: {
     marginLeft: 'auto',
     borderWidth: 1,
-    borderColor: tealAlpha(0.3),
+    borderColor: withAlpha(g.teal, 0.3),
     paddingVertical: 1,
     paddingHorizontal: 5,
     borderRadius: 2,
@@ -143,9 +143,9 @@ export const gx = StyleSheet.create({
     borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: tealAlpha(0.12),
+    backgroundColor: withAlpha(g.teal, 0.12),
     borderWidth: 1,
-    borderColor: tealAlpha(0.3),
+    borderColor: withAlpha(g.teal, 0.3),
   } as ViewStyle,
   // .nav { padding:6px 8px 12px }
   nav: { paddingTop: 6, paddingHorizontal: 8, paddingBottom: 12 } as ViewStyle,

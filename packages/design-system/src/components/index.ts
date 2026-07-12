@@ -7,6 +7,8 @@ export {
   type ButtonSize,
 } from './Button';
 export { Card, type CardProps, type CardVariant } from './Card';
+export { CardHeader, type CardHeaderProps } from './CardHeader';
+export { HairlineRowList, type HairlineRowListProps } from './HairlineRowList';
 export { Divider, type DividerProps } from './Divider';
 export { Spacer, type SpacerProps } from './Spacer';
 export { Pressable, type PressableProps } from './Pressable';

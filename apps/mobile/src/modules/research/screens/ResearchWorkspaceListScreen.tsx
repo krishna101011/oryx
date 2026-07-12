@@ -31,7 +31,7 @@ export const ResearchWorkspaceListScreen: React.FC = () => {
     <Screen background="primary">
       <ScrollView showsVerticalScrollIndicator={false}>
         <Spacer size={6} />
-        <Text variant="display">Research</Text>
+        <Text variant="pageTitle">Research</Text>
         <Spacer size={4} />
 
         <Card variant="elevated">

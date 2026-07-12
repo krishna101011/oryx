@@ -59,6 +59,12 @@ export const gensparkPalette = {
  * Accent gradients. CSS gradient strings have no RN equivalent — ported as
  * start/end color-stop pairs (consumed via expo-linear-gradient). `angle` is
  * the CSS `deg` for documentation; expo-linear-gradient uses start/end points.
+ *
+ * DECIDED (2026-07-12): the Verification confidence dial reuses `accent`
+ * (indigo→violet). The reference draws its dial with a teal→violet gradient
+ * (verification.jsx:92-95), but that cross-family pair predates the teal
+ * retirement and exists nowhere else — do NOT add a dial gradient here; the
+ * future dial component takes `gradients.accent`.
  */
 export const gradients = {
   // --accent-grad: linear-gradient(135deg, #5B5BF5 0%, #8B5CF6 100%)
@@ -78,11 +84,32 @@ export const gradients = {
 const g = gensparkPalette;
 
 /**
- * Alpha washes of the teal/positive base #08314A (rgb 8,49,74). The single
- * sanctioned way to produce rgba() variants of it outside this file — keeps
- * chip/badge/hover washes tracking the token instead of hardcoding channels.
+ * Alpha wash of any token color (2026-07-12; generalizes the old teal-only
+ * `tealAlpha`). The single sanctioned way to produce rgba() variants of a
+ * token outside this file — keeps chip/badge/hover washes tracking the token
+ * instead of hardcoding channel values. Accepts #RRGGBB only, by design: every
+ * color token that needs a wash is stored in that form.
  */
-export const tealAlpha = (alpha: number): string => `rgba(8,49,74,${alpha})`;
+export const withAlpha = (color: string, alpha: number): string => {
+  const hex = /^#([0-9a-fA-F]{6})$/.exec(color)?.[1];
+  if (hex === undefined) {
+    throw new Error(`withAlpha expects a #RRGGBB token value, got "${color}"`);
+  }
+  const n = parseInt(hex, 16);
+  return `rgba(${(n >> 16) & 0xff},${(n >> 8) & 0xff},${n & 0xff},${alpha})`;
+};
+
+/**
+ * Third-party channel identity colors (2026-07-12) — used ONLY to attribute a
+ * channel (Analytics attribution rows, Publishing target marks; reference
+ * analytics.jsx:113-116, publishing.jsx:3-5). These are external brands' own
+ * colors, not ORYX accents: never use them for emphasis, state, or anything
+ * except identifying the channel they name.
+ */
+export const channelColors = {
+  substack: '#FF6719',
+  linkedin: '#0a66c2',
+} as const;
 
 export const colors = {
   bg: {
@@ -113,7 +140,7 @@ export const colors = {
     coral: g.violet, // secondary solo accent — --violet #8B5CF6
     teal: g.teal, // --teal  #08314A — SURFACE-ONLY (1.49:1 vs bg); marks/text use semantic.positiveText
     tealMuted: g.teal2, // --teal-2 #041F35
-    tealGlow: 'rgba(8,49,74,0.15)', // selection glow (tracks --teal)
+    tealGlow: withAlpha(g.teal, 0.15), // selection glow (tracks --teal)
     // Hover for teal surfaces. No lighten()/darken() utility exists in the DS
     // (the only prior hover convention is Card's alpha-glow overlays), so the
     // documented formula is: HSL lightness +8 points, hue/sat preserved
@@ -174,3 +201,4 @@ export type Colors = typeof colors;
 export type OryxPalette = typeof oryxPalette;
 export type GensparkPalette = typeof gensparkPalette;
 export type Gradients = typeof gradients;
+export type ChannelColors = typeof channelColors;

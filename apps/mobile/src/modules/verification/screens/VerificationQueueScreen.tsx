@@ -50,7 +50,7 @@ export const VerificationQueueScreen: React.FC = () => {
     <Screen background="primary">
       <ScrollView showsVerticalScrollIndicator={false}>
         <Spacer size={6} />
-        <Text variant="display">Review queue</Text>
+        <Text variant="pageTitle">Review queue</Text>
         <Spacer size={6} />
 
         {pendingClaims.length === 0 && openConflicts.length === 0 ? (

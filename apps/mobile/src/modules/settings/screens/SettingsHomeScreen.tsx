@@ -20,7 +20,7 @@ export const SettingsHomeScreen: React.FC = () => {
           SETTINGS
         </Text>
         <Spacer size={2} />
-        <Text variant="display">Account</Text>
+        <Text variant="pageTitle">Account</Text>
         <Spacer size={6} />
 
         {me.data ? (

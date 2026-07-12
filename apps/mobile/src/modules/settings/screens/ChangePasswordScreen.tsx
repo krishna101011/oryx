@@ -34,7 +34,7 @@ export const ChangePasswordScreen: React.FC = () => {
   return (
     <Screen background="primary">
       <Spacer size={6} />
-      <Text variant="display">Change password</Text>
+      <Text variant="pageTitle">Change password</Text>
       <Spacer size={6} />
       <AuthFormField
         label="Current password"

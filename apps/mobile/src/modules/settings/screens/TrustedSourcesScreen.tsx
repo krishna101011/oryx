@@ -40,7 +40,7 @@ export const TrustedSourcesScreen: React.FC = () => {
     <Screen background="primary">
       <ScrollView showsVerticalScrollIndicator={false}>
         <Spacer size={6} />
-        <Text variant="display">Trusted sources</Text>
+        <Text variant="pageTitle">Trusted sources</Text>
         <Spacer size={2} />
         <Text variant="body" color="secondary">
           Toggle the sources that feed your intelligence pipeline.

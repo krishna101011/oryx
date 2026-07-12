@@ -64,6 +64,9 @@ export const typography = {
     fontWeight: '600' as const,
     lineHeight: 16,
     letterSpacing: 0.46, // 0.04em × 11.5
+    // text-transform: uppercase is part of the source rule (styles.css:316) —
+    // carried in the token so call sites keep natural-case strings.
+    textTransform: 'uppercase' as const,
   },
   // .nav-item — font-size:12; (weight 400/500); --font-ui
   navLabel: {

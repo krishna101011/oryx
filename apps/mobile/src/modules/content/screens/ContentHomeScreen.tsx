@@ -14,7 +14,7 @@ export const ContentHomeScreen: React.FC = () => {
     <Screen background="primary">
       <ScrollView showsVerticalScrollIndicator={false}>
         <Spacer size={6} />
-        <Text variant="display">Content</Text>
+        <Text variant="pageTitle">Content</Text>
         <Spacer size={2} />
         <Text variant="bodySm" color="secondary">
           Turn verified research packets into publishable content.

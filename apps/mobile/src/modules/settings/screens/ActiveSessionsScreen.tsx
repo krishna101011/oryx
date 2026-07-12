@@ -39,7 +39,7 @@ export const ActiveSessionsScreen: React.FC = () => {
     <Screen background="primary">
       <ScrollView>
         <Spacer size={6} />
-        <Text variant="display">Sessions</Text>
+        <Text variant="pageTitle">Sessions</Text>
         <Spacer size={2} />
         <Text variant="body" color="secondary">
           Devices currently signed in.

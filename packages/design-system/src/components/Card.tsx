@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, View, type ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { tealAlpha } from '../tokens/colors';
+import { withAlpha } from '../tokens/colors';
 import { useTheme } from '../theme/ThemeProvider';
 
 export type CardVariant = 'default' | 'elevated' | 'glass';
@@ -9,6 +9,12 @@ export type CardVariant = 'default' | 'elevated' | 'glass';
 export interface CardProps {
   children: React.ReactNode;
   variant?: CardVariant;
+  /**
+   * Optional full-bleed header strip rendered above the padded body — pass a
+   * <CardHeader/> here so its bottom border spans the card edge-to-edge
+   * (the reference .card-head sits outside .card-body's padding).
+   */
+  header?: React.ReactNode;
   style?: ViewStyle;
   testID?: string;
 }
@@ -16,12 +22,19 @@ export interface CardProps {
 /**
  * Card primitive — the only sanctioned surface for grouped content.
  *
+ * Density and border follow the reference .card exactly (styles.css:305-319):
+ * 12px body padding, 1px `--border` #1A2330 (border.default — NOT the 4%-white
+ * hairline, which is for in-card row separators), radius 6. Cards are FLAT:
+ * the reference has no card shadow language (see tokens/shadows.ts note), so
+ * `elevated` differs by surface step only (--elev background).
+ *
  * `glass` is reserved for overlays (modals, floating headers).
  * Never use it on dense content lists — kills readability.
  */
 export const Card: React.FC<CardProps> = ({
   children,
   variant = 'default',
+  header,
   style,
   testID,
 }) => {
@@ -46,10 +59,13 @@ export const Card: React.FC<CardProps> = ({
 
   const base: ViewStyle = {
     borderRadius: t.radius.lg,
-    padding: t.spacing[5],
     borderWidth: 1,
-    borderColor: t.colors.border.subtle,
+    borderColor: t.colors.border.default,
   };
+  // Padding lives on an inner body view so a `header` can run full-bleed.
+  const body = (
+    <View style={{ padding: t.spacing[3] }}>{children}</View>
+  );
 
   if (variant === 'glass') {
     return (
@@ -63,25 +79,14 @@ export const Card: React.FC<CardProps> = ({
         ]}
         testID={testID}
       >
-        {children}
+        {header}
+        {body}
       </BlurView>
     );
   }
 
   const bg =
     variant === 'elevated' ? t.colors.bg.elevated : t.colors.bg.card;
-  const elevatedShadow: ViewStyle =
-    variant === 'elevated'
-      ? {
-          // Shadows are not themable surfaces; RN shadows are black + opacity by spec.
-          // eslint-disable-next-line no-restricted-syntax
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.35,
-          shadowRadius: 12,
-          elevation: 4,
-        }
-      : {};
 
   // Web-only: smooth transition base (enables animated exit from hover too)
   const webTransition = Platform.OS === 'web' ? ({ transition: 'all 250ms ease' } as ViewStyle) : {};
@@ -89,18 +94,19 @@ export const Card: React.FC<CardProps> = ({
   const webHover =
     Platform.OS === 'web' && hovered
       ? ({
-          borderColor: tealAlpha(0.22),
-          boxShadow: `0 0 16px ${tealAlpha(0.18)}`,
+          borderColor: withAlpha(t.colors.accent.teal, 0.22),
+          boxShadow: `0 0 16px ${withAlpha(t.colors.accent.teal, 0.18)}`,
         } as ViewStyle)
       : {};
 
   return (
     <View
       ref={viewRef}
-      style={[base, { backgroundColor: bg }, elevatedShadow, webTransition, webHover, style]}
+      style={[base, { backgroundColor: bg }, webTransition, webHover, style]}
       testID={testID}
     >
-      {children}
+      {header}
+      {body}
     </View>
   );
 };

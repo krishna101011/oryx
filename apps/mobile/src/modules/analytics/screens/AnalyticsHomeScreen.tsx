@@ -71,7 +71,7 @@ const AnalyticsContent: React.FC = () => {
         OPERATIONS
       </Text>
       <Spacer size={2} />
-      <Text variant="display">Analytics</Text>
+      <Text variant="pageTitle">Analytics</Text>
       <Spacer size={2} />
       <Text variant="body" color="secondary">
         What the pipeline did, measured — nothing invented.
@@ -165,7 +165,7 @@ const OverviewTab: React.FC = () => {
               {kpi.label.toUpperCase()}
             </Text>
             <Spacer size={1} />
-            <Text variant="h1">{kpi.value === null ? '—' : String(kpi.value)}</Text>
+            <Text variant="kpiVal">{kpi.value === null ? '—' : String(kpi.value)}</Text>
             <Spacer size={1} />
             <Text variant="caption" color="tertiary">
               last 7 days
@@ -309,7 +309,7 @@ const PublishingTab: React.FC = () => {
           DELIVERY SUCCESS · LAST 30 DAYS
         </Text>
         <Spacer size={2} />
-        <Text variant="h1">{rate ?? '—'}</Text>
+        <Text variant="kpiVal">{rate ?? '—'}</Text>
         <Spacer size={1} />
         <Text variant="bodySm" color="secondary">
           {success.published} delivered · {success.failed} failed
@@ -327,7 +327,7 @@ const PublishingTab: React.FC = () => {
           </Text>
         ) : (
           <>
-            <Text variant="h1">{median ?? '—'}</Text>
+            <Text variant="kpiVal">{median ?? '—'}</Text>
             <Spacer size={1} />
             <Text variant="bodySm" color="secondary">
               median from draft to delivery · average {average} · last{' '}

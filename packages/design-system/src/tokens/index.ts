@@ -7,6 +7,9 @@ export {
   type GensparkPalette,
   gradients,
   type Gradients,
+  withAlpha,
+  channelColors,
+  type ChannelColors,
 } from './colors';
 export {
   typography,

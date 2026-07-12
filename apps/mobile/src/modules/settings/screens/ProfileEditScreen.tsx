@@ -38,7 +38,7 @@ export const ProfileEditScreen: React.FC = () => {
   return (
     <Screen background="primary">
       <Spacer size={6} />
-      <Text variant="display">Profile</Text>
+      <Text variant="pageTitle">Profile</Text>
       <Spacer size={6} />
       <AuthFormField
         label="Display name"

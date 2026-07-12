@@ -45,7 +45,7 @@ const HubContent: React.FC = () => {
         OPERATIONS
       </Text>
       <Spacer size={2} />
-      <Text variant="display">Automation Hub</Text>
+      <Text variant="pageTitle">Automation Hub</Text>
       <Spacer size={2} />
       <Text variant="body" color="secondary">
         What fires, what gets held back, and why.

@@ -56,7 +56,9 @@ export const DashboardScreen: React.FC = () => {
       <Spacer size={8} />
 
       <Card variant="default">
-        <Text variant="h2">Today</Text>
+        <Text variant="cardTitle" color="secondary">
+          Today
+        </Text>
         {today.kind === 'empty' && (
           <>
             <Spacer size={4} />
