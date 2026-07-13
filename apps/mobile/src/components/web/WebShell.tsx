@@ -3,8 +3,18 @@ import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'reac
 import { useTheme } from '@oryx/design-system';
 import { useMe } from '../../hooks/useMe';
 import { useAppSelector } from '../../store';
-import { navigateSettingsScreen, navigateTab, navigationRef } from '../../navigation/navigationRef';
-import type { SettingsStackParamList } from '../../navigation/types';
+import {
+  navigateContentScreen,
+  navigateResearchScreen,
+  navigateSettingsScreen,
+  navigateTab,
+  navigationRef,
+} from '../../navigation/navigationRef';
+import type {
+  ContentStackParamList,
+  ResearchStackParamList,
+  SettingsStackParamList,
+} from '../../navigation/types';
 import { WEB_NAV, type WebNavItem, performNav } from './webNav';
 import { WebSearchOverlay } from './WebSearchOverlay';
 import { WebSidebar } from './WebSidebar';
@@ -91,6 +101,10 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       navigateTab,
       navigateSettingsScreen: (screen) =>
         navigateSettingsScreen(screen as keyof SettingsStackParamList),
+      navigateResearchScreen: (screen) =>
+        navigateResearchScreen(screen as keyof ResearchStackParamList),
+      navigateContentScreen: (screen) =>
+        navigateContentScreen(screen as keyof ContentStackParamList),
     });
   };
 

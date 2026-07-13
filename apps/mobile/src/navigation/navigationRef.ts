@@ -1,5 +1,10 @@
 import { createNavigationContainerRef } from '@react-navigation/native';
-import type { RootStackParamList, SettingsStackParamList } from './types';
+import type {
+  ContentStackParamList,
+  ResearchStackParamList,
+  RootStackParamList,
+  SettingsStackParamList,
+} from './types';
 
 /**
  * Container-level navigation ref. Lets the web-only sidebar (which renders
@@ -26,6 +31,34 @@ export function navigateSettingsScreen<S extends keyof SettingsStackParamList>(
   if (!navigationRef.isReady()) return;
   navigationRef.navigate('Tabs', {
     screen: 'Settings',
+    params: params === undefined ? { screen } : { screen, params },
+  } as never);
+}
+
+/**
+ * Research/Content mirrors of navigateSettingsScreen (2026-07-13, third
+ * instance of the bare-tab bug class): a tab-level navigate only FOCUSES a
+ * populated stack, so their sidebar items need the same explicit-screen path
+ * the Settings-tab family got on 2026-07-11.
+ */
+export function navigateResearchScreen<S extends keyof ResearchStackParamList>(
+  screen: S,
+  params?: ResearchStackParamList[S],
+): void {
+  if (!navigationRef.isReady()) return;
+  navigationRef.navigate('Tabs', {
+    screen: 'Research',
+    params: params === undefined ? { screen } : { screen, params },
+  } as never);
+}
+
+export function navigateContentScreen<S extends keyof ContentStackParamList>(
+  screen: S,
+  params?: ContentStackParamList[S],
+): void {
+  if (!navigationRef.isReady()) return;
+  navigationRef.navigate('Tabs', {
+    screen: 'Content',
     params: params === undefined ? { screen } : { screen, params },
   } as never);
 }

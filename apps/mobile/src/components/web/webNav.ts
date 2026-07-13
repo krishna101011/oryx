@@ -46,7 +46,10 @@ export const WEB_NAV: WebNavGroup[] = [
   {
     group: 'RESEARCH',
     items: [
-      { id: 'research', label: 'Research Workspace', icon: 'Beaker', tab: 'Research' },
+      // screen is REQUIRED (third instance of the bare-tab bug class,
+      // 2026-07-13): pressed while deep in a packet, a bare tab navigate
+      // stayed on the packet. Same fix shape as the Settings-tab family.
+      { id: 'research', label: 'Research Workspace', icon: 'Beaker', tab: 'Research', screen: 'ResearchWorkspaceList' },
       { id: 'ai', label: 'AI Analyst', icon: 'Sparkles', pending: true },
     ],
   },
@@ -61,7 +64,9 @@ export const WEB_NAV: WebNavGroup[] = [
   {
     group: 'PUBLISHING',
     items: [
-      { id: 'content', label: 'Content Studio', icon: 'Pen', tab: 'Content', countKey: 'contentDrafts' },
+      // screen REQUIRED — same bug class as 'research' above (DraftEditor
+      // pressed-Content-Studio-stays-put was the flagged 2026-07-11 latent).
+      { id: 'content', label: 'Content Studio', icon: 'Pen', tab: 'Content', screen: 'ContentHome', countKey: 'contentDrafts' },
       { id: 'publish', label: 'Publishing Center', icon: 'Send', pending: true },
     ],
   },
@@ -118,6 +123,17 @@ export function findNavItem(id: string): WebNavItem {
 
 /** Where a Settings-tab item without an explicit screen must land. */
 export const SETTINGS_ROOT_SCREEN = 'SettingsHome';
+/** Same deterministic-root rule for the other two STACKED tabs (2026-07-13). */
+export const RESEARCH_ROOT_SCREEN = 'ResearchWorkspaceList';
+export const CONTENT_ROOT_SCREEN = 'ContentHome';
+
+/**
+ * The tabs that mount a nested stack — the only tabs where a bare tab-level
+ * navigate can strand the user on stale nested state. Home and Activity mount
+ * a single screen directly (RootTabNavigator), so the bare-tab path is
+ * CORRECT for them: there is no stack to reset.
+ */
+export const STACKED_TABS = ['Settings', 'Research', 'Content'] as const;
 
 /**
  * Resolve a nav item to real navigation. Extracted from WebShell so the topbar
@@ -125,25 +141,32 @@ export const SETTINGS_ROOT_SCREEN = 'SettingsHome';
  * resolution as a sidebar click, and so tests can inject recording fakes.
  * Pending items resolve to nothing — they have no built destination.
  *
- * Settings-tab items ALWAYS resolve through navigateSettingsScreen with a
- * concrete screen. The old shape (`tab && screen` → screen, else → tab) sent
- * the Settings root item down the bare-tab path, and a tab-level navigate
- * only FOCUSES an already-populated stack — it never resets it, so "Settings"
- * was a no-op from any nested Settings screen. The root fallback here means a
- * future Settings-tab item that forgets its screen still lands somewhere
- * deterministic instead of silently reintroducing that bug.
+ * Stacked-tab items (Settings 2026-07-11, Research/Content 2026-07-13) ALWAYS
+ * resolve through their stack's explicit-screen navigator with a concrete
+ * screen: a tab-level navigate only FOCUSES an already-populated stack — it
+ * never resets it, so a bare-tab item is a no-op from any nested screen of
+ * its own stack. The root fallbacks mean a future stacked-tab item that
+ * forgets its screen still lands somewhere deterministic instead of silently
+ * reintroducing the bug class.
  */
 export function performNav(
   item: WebNavItem,
   nav: {
     navigateTab: (tab: WebNavTab) => void;
     navigateSettingsScreen: (screen: string) => void;
+    navigateResearchScreen: (screen: string) => void;
+    navigateContentScreen: (screen: string) => void;
   },
 ): void {
   if (item.pending) return;
   if (item.tab === 'Settings') {
     nav.navigateSettingsScreen(item.screen ?? SETTINGS_ROOT_SCREEN);
+  } else if (item.tab === 'Research') {
+    nav.navigateResearchScreen(item.screen ?? RESEARCH_ROOT_SCREEN);
+  } else if (item.tab === 'Content') {
+    nav.navigateContentScreen(item.screen ?? CONTENT_ROOT_SCREEN);
   } else if (item.tab) {
+    // Home / Activity: stackless tabs — a bare focus is the whole job.
     nav.navigateTab(item.tab);
   }
 }

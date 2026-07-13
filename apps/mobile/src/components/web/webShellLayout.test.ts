@@ -77,30 +77,39 @@ test('both sidebar renders receive the SAME activeId state — the highlight can
 // ---- drawer navigation: same resolution, plus close ------------------------
 
 /** The React-Navigation-faithful fake from webNav.test.ts (tab focus never
- * resets a nested stack; screen navigate rewinds-or-pushes). */
-function fakeNavigator(initialSettingsStack: string[] = ['SettingsHome']) {
+ * resets a nested stack; screen navigate rewinds-or-pushes in its own stack). */
+function fakeNavigator(initial: { Settings?: string[]; Research?: string[]; Content?: string[] } = {}) {
   let focusedTab = 'Home';
-  let stack = [...initialSettingsStack];
+  const stacks: Record<string, string[]> = {
+    Settings: [...(initial.Settings ?? ['SettingsHome'])],
+    Research: [...(initial.Research ?? ['ResearchWorkspaceList'])],
+    Content: [...(initial.Content ?? ['ContentHome'])],
+  };
+  const navigateStackScreen = (tab: string) => (screen: string) => {
+    focusedTab = tab;
+    const stack = stacks[tab]!;
+    const at = stack.indexOf(screen);
+    stacks[tab] = at >= 0 ? stack.slice(0, at + 1) : [...stack, screen];
+  };
   return {
     get landedOn(): string {
-      return focusedTab === 'Settings' ? stack[stack.length - 1]! : focusedTab;
+      const stack = stacks[focusedTab];
+      return stack ? stack[stack.length - 1]! : focusedTab;
     },
     nav: {
       navigateTab: (tab: string) => {
         focusedTab = tab;
       },
-      navigateSettingsScreen: (screen: string) => {
-        focusedTab = 'Settings';
-        const at = stack.indexOf(screen);
-        stack = at >= 0 ? stack.slice(0, at + 1) : [...stack, screen];
-      },
+      navigateSettingsScreen: navigateStackScreen('Settings'),
+      navigateResearchScreen: navigateStackScreen('Research'),
+      navigateContentScreen: navigateStackScreen('Content'),
     },
   };
 }
 
 /** Drawer harness: drawerNavigate wired to the REAL performNav, like WebShell. */
-function drawerHarness(initialSettingsStack?: string[]) {
-  const f = fakeNavigator(initialSettingsStack);
+function drawerHarness(initial?: { Settings?: string[]; Research?: string[]; Content?: string[] }) {
+  const f = fakeNavigator(initial);
   let open = true;
   return {
     f,
@@ -121,7 +130,23 @@ test('a drawer press closes the drawer and resolves through the real performNav'
   const h = drawerHarness();
   h.press('research');
   assert.equal(h.open, false, 'drawer must close on navigation');
-  assert.equal(h.f.landedOn, 'Research');
+  assert.equal(h.f.landedOn, 'ResearchWorkspaceList');
+});
+
+test('REGRESSION through the collapsed path: Research and Content Studio presses reset their own stacks to their home screens', () => {
+  // The 2026-07-13 fix (third bare-tab instance) verified via the drawer too.
+  for (const [id, lands] of [
+    ['research', 'ResearchWorkspaceList'],
+    ['content', 'ContentHome'],
+  ] as const) {
+    const h = drawerHarness({
+      Research: ['ResearchWorkspaceList', 'ResearchWorkspaceDetail', 'ResearchPacket'],
+      Content: ['ContentHome', 'DraftEditor'],
+    });
+    h.press(id);
+    assert.equal(h.f.landedOn, lands, `drawer ${id} press with a dirty stack`);
+    assert.equal(h.open, false, `drawer must close after ${id}`);
+  }
 });
 
 test('REGRESSION through the collapsed path: Verification Center still lands on VerificationQueue, never a Settings-root landing', () => {
@@ -148,7 +173,7 @@ test('drawer presses on a deep nested stack (ClaimDetail) land every Settings-ta
     ['analytics', 'Analytics'],
     ['settings', 'SettingsHome'],
   ] as const) {
-    const h = drawerHarness(['SettingsHome', 'VerificationQueue', 'ClaimDetail']);
+    const h = drawerHarness({ Settings: ['SettingsHome', 'VerificationQueue', 'ClaimDetail'] });
     h.press(id);
     assert.equal(h.f.landedOn, lands, `from ClaimDetail via drawer: ${id}`);
     assert.equal(h.open, false, `drawer must close after ${id}`);

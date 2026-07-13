@@ -11,24 +11,33 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  CONTENT_ROOT_SCREEN,
   type NavCountSource,
+  RESEARCH_ROOT_SCREEN,
   SETTINGS_ROOT_SCREEN,
+  STACKED_TABS,
   WEB_NAV,
   findNavItem,
   navCounts,
   performNav,
 } from './webNav';
 
-/** Recording fakes standing in for navigationRef's navigateTab / navigateSettingsScreen. */
+/** Recording fakes standing in for navigationRef's four navigate functions. */
 function recordingNav() {
   const tabs: string[] = [];
   const screens: string[] = [];
+  const researchScreens: string[] = [];
+  const contentScreens: string[] = [];
   return {
     tabs,
     screens,
+    researchScreens,
+    contentScreens,
     nav: {
       navigateTab: (tab: string) => tabs.push(tab),
       navigateSettingsScreen: (screen: string) => screens.push(screen),
+      navigateResearchScreen: (screen: string) => researchScreens.push(screen),
+      navigateContentScreen: (screen: string) => contentScreens.push(screen),
     },
   };
 }
@@ -136,22 +145,31 @@ test('sidebar deep items still resolve through performNav (Settings-nested scree
 //     it is already in the stack, else push it. Either way it becomes focused.
 // ---------------------------------------------------------------------------
 
-function fakeNavigator(initialSettingsStack: string[] = ['SettingsHome']) {
+function fakeNavigator(initial: { Settings?: string[]; Research?: string[]; Content?: string[] } = {}) {
   let focusedTab = 'Home';
-  let stack = [...initialSettingsStack];
+  const stacks: Record<string, string[]> = {
+    Settings: [...(initial.Settings ?? ['SettingsHome'])],
+    Research: [...(initial.Research ?? ['ResearchWorkspaceList'])],
+    Content: [...(initial.Content ?? ['ContentHome'])],
+  };
+  const navigateStackScreen = (tab: string) => (screen: string) => {
+    focusedTab = tab;
+    const stack = stacks[tab]!;
+    const at = stack.indexOf(screen);
+    stacks[tab] = at >= 0 ? stack.slice(0, at + 1) : [...stack, screen];
+  };
   return {
     get landedOn(): string {
-      return focusedTab === 'Settings' ? stack[stack.length - 1]! : focusedTab;
+      const stack = stacks[focusedTab];
+      return stack ? stack[stack.length - 1]! : focusedTab;
     },
     nav: {
       navigateTab: (tab: string) => {
         focusedTab = tab;
       },
-      navigateSettingsScreen: (screen: string) => {
-        focusedTab = 'Settings';
-        const at = stack.indexOf(screen);
-        stack = at >= 0 ? stack.slice(0, at + 1) : [...stack, screen];
-      },
+      navigateSettingsScreen: navigateStackScreen('Settings'),
+      navigateResearchScreen: navigateStackScreen('Research'),
+      navigateContentScreen: navigateStackScreen('Content'),
     },
   };
 }
@@ -211,14 +229,100 @@ test('matrix: pressing the SAME Settings-tab item twice stays put (idempotent, n
   }
 });
 
+// ---------------------------------------------------------------------------
+// Research / Content Studio — the THIRD instance of the bare-tab bug class
+// (2026-07-13), disclosed as still-open by the sidebar-collapse wave. Same
+// fix shape, same regression suite shape as the Settings-tab family above.
+// ---------------------------------------------------------------------------
+
+test('Research Workspace resolves to ResearchWorkspaceList explicitly, never a bare tab focus', () => {
+  const { tabs, researchScreens, nav } = recordingNav();
+  performNav(findNavItem('research'), nav);
+  assert.deepEqual(researchScreens, ['ResearchWorkspaceList']);
+  assert.deepEqual(tabs, [], 'research must not use the non-resetting bare-tab path');
+  assert.equal(findNavItem('research').screen, RESEARCH_ROOT_SCREEN);
+});
+
+test('Content Studio resolves to ContentHome explicitly, never a bare tab focus', () => {
+  const { tabs, contentScreens, nav } = recordingNav();
+  performNav(findNavItem('content'), nav);
+  assert.deepEqual(contentScreens, ['ContentHome']);
+  assert.deepEqual(tabs, [], 'content must not use the non-resetting bare-tab path');
+  assert.equal(findNavItem('content').screen, CONTENT_ROOT_SCREEN);
+});
+
+test('LIVE-CLASS regression: deep in a Research packet, pressing Research Workspace resets to the workspace list', () => {
+  // The exact flagged scenario: ResearchWorkspaceList → detail → packet,
+  // then press the sidebar item again.
+  const f = fakeNavigator({
+    Research: ['ResearchWorkspaceList', 'ResearchWorkspaceDetail', 'ResearchPacket'],
+  });
+  performNav(findNavItem('research'), f.nav);
+  assert.equal(f.landedOn, 'ResearchWorkspaceList', 'must leave the packet, not stay on it');
+});
+
+test('LIVE-CLASS regression: deep in DraftEditor, pressing Content Studio resets to ContentHome', () => {
+  // "Content Studio pressed while deep in DraftEditor stays on DraftEditor"
+  // — the 2026-07-11 flagged wording, now a failing-then-fixed case.
+  const f = fakeNavigator({ Content: ['ContentHome', 'DraftEditor'] });
+  performNav(findNavItem('content'), f.nav);
+  assert.equal(f.landedOn, 'ContentHome', 'must leave DraftEditor, not stay on it');
+});
+
+test('cross-stack: stale nested state in EVERY stacked tab, each sidebar item still lands on its own root', () => {
+  for (const [id, lands] of [
+    ['research', 'ResearchWorkspaceList'],
+    ['content', 'ContentHome'],
+    ['settings', 'SettingsHome'],
+  ] as const) {
+    const f = fakeNavigator({
+      Settings: ['SettingsHome', 'AutomationHub'],
+      Research: ['ResearchWorkspaceList', 'ResearchPacket'],
+      Content: ['ContentHome', 'DraftEditor'],
+    });
+    performNav(findNavItem(id), f.nav);
+    assert.equal(f.landedOn, lands, `${id} with all three stacks dirty`);
+  }
+});
+
+test('project-wide guard: EVERY item targeting a stacked tab names a nested screen — the class is closed everywhere it can occur', () => {
+  // Extends the Settings-only guard above to all stacked tabs. Home and
+  // Activity mount a single screen (RootTabNavigator.tsx) — no stack, so
+  // they are exempt BY CONSTRUCTION, not by oversight.
+  const stacked = new Set<string>(STACKED_TABS);
+  for (const g of WEB_NAV) {
+    for (const it of g.items) {
+      if (it.pending || !it.tab || !stacked.has(it.tab)) continue;
+      assert.ok(
+        it.screen,
+        `nav item "${it.id}" targets stacked tab ${it.tab} without a nested screen — the bare-tab bug class, fourth time`,
+      );
+    }
+  }
+});
+
+test('Home and Activity are stackless tabs: the bare-tab path remains their correct resolution', () => {
+  // Phase-0 finding: fixing Research/Content does NOT close performNav's
+  // bare navigateTab branch — these two legitimately keep it.
+  for (const [id, tab] of [
+    ['home', 'Home'],
+    ['activity', 'Activity'],
+  ] as const) {
+    const { tabs, screens, researchScreens, contentScreens, nav } = recordingNav();
+    performNav(findNavItem(id), nav);
+    assert.deepEqual(tabs, [tab]);
+    assert.deepEqual([...screens, ...researchScreens, ...contentScreens], []);
+  }
+});
+
 test('deep nested Settings screen (ClaimDetail under verify) still resets to SettingsHome on Settings press', () => {
   // ClaimDetail is reachable only by drilling in — it has no sidebar item.
-  const f = fakeNavigator(['SettingsHome', 'VerificationQueue', 'ClaimDetail']);
+  const f = fakeNavigator({ Settings: ['SettingsHome', 'VerificationQueue', 'ClaimDetail'] });
   performNav(findNavItem('settings'), f.nav);
   assert.equal(f.landedOn, 'SettingsHome');
   // And from the same depth, every other item still lands correctly.
   for (const item of SETTINGS_TAB_MATRIX) {
-    const deep = fakeNavigator(['SettingsHome', 'VerificationQueue', 'ClaimDetail']);
+    const deep = fakeNavigator({ Settings: ['SettingsHome', 'VerificationQueue', 'ClaimDetail'] });
     performNav(findNavItem(item.id), deep.nav);
     assert.equal(deep.landedOn, item.lands, `from ClaimDetail: ${item.id}`);
   }
