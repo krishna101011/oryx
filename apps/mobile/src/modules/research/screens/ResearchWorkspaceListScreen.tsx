@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
   Button,
   Card,
+  CardHeader,
+  HairlineRowList,
   Screen,
   Skeleton,
   Spacer,
@@ -12,8 +14,19 @@ import {
 } from '@oryx/design-system';
 import { useCreateWorkspace, useResearchWorkspaces } from '../hooks/useResearch';
 import { WorkspaceCard } from '../components/WorkspaceCard';
+import { workspaceCountSub } from '../list';
 import { EmptyState } from '../../../components/EmptyState';
 
+/**
+ * Research Workspace list (design-foundation wave, 2026-07-13). Rows render
+ * through CardHeader + HairlineRowList with the RW-1 anatomy (WorkspaceCard).
+ * RW-2's selected treatment is DEFERRED: no "currently open workspace"
+ * concept exists anywhere in state (status 'active'|'archived' is lifecycle,
+ * not selection), and inventing one here would be a fake state with no
+ * backing logic. RW-4's inner-card outline sections are NOT applicable: this
+ * list is a flat, ungrouped collection — the card header's real count sub is
+ * the honest extent of that pattern here.
+ */
 export const ResearchWorkspaceListScreen: React.FC = () => {
   const navigation = useNavigation();
   const theme = useTheme();
@@ -45,7 +58,16 @@ export const ResearchWorkspaceListScreen: React.FC = () => {
             onChangeText={setName}
             placeholder="Workspace name"
             placeholderTextColor={theme.colors.text.tertiary}
-            style={[styles.input, { color: theme.colors.text.primary }]}
+            // Reference input surface (--elev bg, --border, 5px corners — the
+            // .card-head input radius, radius.md): tokens only, the RW-3 fix.
+            style={{
+              backgroundColor: theme.colors.bg.elevated,
+              borderColor: theme.colors.border.default,
+              borderRadius: theme.radius.md,
+              borderWidth: 1,
+              padding: theme.spacing[3],
+              color: theme.colors.text.primary,
+            }}
           />
           <Spacer size={2} />
           <Button
@@ -69,30 +91,28 @@ export const ResearchWorkspaceListScreen: React.FC = () => {
             onPress={() => nameInput.current?.focus()}
           />
         ) : (
-          (workspaces.data ?? []).map((w) => (
-            <View key={w.id}>
-              <WorkspaceCard
-                workspace={w}
-                onPress={() =>
-                  // @ts-expect-error param-carrying navigate
-                  navigation.navigate('ResearchWorkspaceDetail', { rwsId: w.id })
-                }
-              />
-              <Spacer size={2} />
-            </View>
-          ))
+          <Card
+            header={
+              <CardHeader title="Workspaces" sub={workspaceCountSub(workspaces.data)} />
+            }
+          >
+            <HairlineRowList>
+              {(workspaces.data ?? []).map((w) => (
+                <View key={w.id}>
+                  <WorkspaceCard
+                    workspace={w}
+                    onPress={() =>
+                      // @ts-expect-error param-carrying navigate
+                      navigation.navigate('ResearchWorkspaceDetail', { rwsId: w.id })
+                    }
+                  />
+                </View>
+              ))}
+            </HairlineRowList>
+          </Card>
         )}
         <Spacer size={8} />
       </ScrollView>
     </Screen>
   );
 };
-
-const styles = StyleSheet.create({
-  input: {
-    borderColor: 'rgba(127,127,127,0.35)',
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: 12,
-  },
-});
