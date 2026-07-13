@@ -26,13 +26,26 @@ export const WebTopBar: React.FC<{
   me?: MeResponse;
   onNavigate: (item: WebNavItem) => void;
   onOpenSearch: () => void;
-}> = ({ crumbs, me, onNavigate, onOpenSearch }) => {
+  /** Present only while the sidebar is collapsed — renders the hamburger. */
+  onOpenNav?: () => void;
+}> = ({ crumbs, me, onNavigate, onOpenSearch, onOpenNav }) => {
   const t = useTheme();
   const activityUnread = navCounts(me).activityUnread;
   return (
     <View style={gx.topbar}>
-      {/* breadcrumbs */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 6, minWidth: 200 }}>
+      {/* hamburger — same gx.iconBtn language as the bell/gear */}
+      {onOpenNav ? (
+        <Pressable
+          style={gx.iconBtn}
+          onPress={onOpenNav}
+          accessibilityRole="button"
+          accessibilityLabel="Open navigation"
+        >
+          <GensparkIcon name="Menu" size={14} color={t.colors.text.secondary} />
+        </Pressable>
+      ) : null}
+      {/* breadcrumbs — minWidth relaxes when collapsed: 200 reserved px don't fit a 390px window */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 6, minWidth: onOpenNav ? 0 : 200 }}>
         <Text variant="bodySm" color="tertiary">{crumbs[0]}</Text>
         <GensparkIcon name="ChevRight" size={10} color={t.colors.text.tertiary} />
         <Text variant="bodySm" color="primary">{crumbs[1]}</Text>

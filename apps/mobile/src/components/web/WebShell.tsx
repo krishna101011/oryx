@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useTheme } from '@oryx/design-system';
 import { useMe } from '../../hooks/useMe';
 import { useAppSelector } from '../../store';
@@ -9,34 +9,7 @@ import { WEB_NAV, type WebNavItem, performNav } from './webNav';
 import { WebSearchOverlay } from './WebSearchOverlay';
 import { WebSidebar } from './WebSidebar';
 import { WebTopBar } from './WebTopBar';
-
-/** tab route name → web nav id, to mirror back-button / deep-link navigation. */
-const TAB_TO_NAV: Record<string, string> = {
-  Home: 'home',
-  Research: 'research',
-  Content: 'content',
-  Activity: 'activity',
-  Settings: 'settings',
-};
-
-/**
- * Verification surfaces are nested inside the Settings tab's stack, and the
- * sidebar has two items pointing at that tab ('settings' and 'verify'). The
- * tab name alone is ambiguous for them — the focused nested screen decides.
- */
-const VERIFY_SCREENS = new Set([
-  'VerificationQueue',
-  'ConflictReview',
-  'ClaimDetail',
-  'SourceCredibility',
-  'IntelligenceObjectDetail',
-]);
-
-/** Same disambiguation for the Automation Hub, also nested under Settings. */
-const AUTOMATION_SCREENS = new Set(['AutomationHub']);
-
-/** And for the Analytics dashboard (Phase 7 Wave B), nested under Settings. */
-const ANALYTICS_SCREENS = new Set(['Analytics']);
+import { SIDEBAR_WIDTH, activeNavIdFor, drawerNavigate, sidebarMode } from './webShellLayout';
 
 function crumbsFor(activeId: string): [string, string] {
   for (const g of WEB_NAV) {
@@ -67,6 +40,12 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const me = useMe();
   const [activeId, setActiveId] = useState('home');
   const [searchOpen, setSearchOpen] = useState(false);
+  // Below the derived breakpoint (see webShellLayout.ts) the fixed 232px
+  // sidebar would crowd content, so it collapses into a topbar hamburger
+  // opening an overlay drawer. useWindowDimensions re-renders on resize.
+  const { width } = useWindowDimensions();
+  const collapsed = sidebarMode(width) === 'collapsed';
+  const [navOpen, setNavOpen] = useState(false);
 
   // The topbar's ⌘K badge is a real shortcut: Cmd+K (mac) / Ctrl+K opens the
   // search overlay from anywhere in the app chrome.
@@ -96,17 +75,11 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         tabState?.routes && typeof tabState.index === 'number'
           ? tabState.routes[tabState.index]?.name
           : route?.name;
-      if (!tabName || !TAB_TO_NAV[tabName]) return;
-      // getCurrentRoute() is the deepest focused screen — it disambiguates the
-      // two Settings-tab nav items (verification screens → 'verify').
-      const focusedScreen = route?.name;
-      let id = TAB_TO_NAV[tabName]!;
-      if (tabName === 'Settings' && focusedScreen) {
-        if (VERIFY_SCREENS.has(focusedScreen)) id = 'verify';
-        else if (AUTOMATION_SCREENS.has(focusedScreen)) id = 'automation';
-        else if (ANALYTICS_SCREENS.has(focusedScreen)) id = 'analytics';
-      }
-      setActiveId(id);
+      // getCurrentRoute() is the deepest focused screen — activeNavIdFor uses
+      // it to disambiguate the Settings-tab nav items (verify/automation/
+      // analytics); null keeps the previous highlight (no-op navigations).
+      const id = activeNavIdFor(tabName, route?.name);
+      if (id) setActiveId(id);
     };
     const unsub = navigationRef.addListener?.('state', sync);
     sync();
@@ -121,6 +94,11 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     });
   };
 
+  // Drawer presses resolve through the SAME performNav via drawerNavigate —
+  // nav resolution must never fork by viewport (third bug in this area).
+  const onDrawerNavigate = (item: WebNavItem) =>
+    drawerNavigate(item, { close: () => setNavOpen(false), perform: onNavigate });
+
   // Only show the desktop chrome once the user is fully into the app. Auth and
   // onboarding render full-bleed (no sidebar), matching their mobile UX.
   const showChrome =
@@ -132,16 +110,31 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   return (
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: t.colors.bg.primary }}>
-      <WebSidebar me={me.data} activeId={activeId} onNavigate={onNavigate} />
+      {!collapsed ? <WebSidebar me={me.data} activeId={activeId} onNavigate={onNavigate} /> : null}
       <View style={{ flex: 1, minWidth: 0 }}>
         <WebTopBar
           crumbs={crumbsFor(activeId)}
           me={me.data}
           onNavigate={onNavigate}
           onOpenSearch={() => setSearchOpen(true)}
+          onOpenNav={collapsed ? () => setNavOpen(true) : undefined}
         />
         <View style={{ flex: 1, minHeight: 0 }}>{children}</View>
       </View>
+      {collapsed && navOpen ? (
+        // Overlay drawer, NOT push-content: the WebSearchOverlay backdrop
+        // convention (absolute rgba(0,0,0,0.55) Pressable-to-close), with the
+        // SAME WebSidebar and the SAME activeId the expanded rail shows.
+        <Pressable
+          style={styles.drawerBackdrop}
+          onPress={() => setNavOpen(false)}
+          accessibilityLabel="Close navigation"
+        >
+          <Pressable style={styles.drawerPanel} onPress={(e) => e.stopPropagation()}>
+            <WebSidebar me={me.data} activeId={activeId} onNavigate={onDrawerNavigate} />
+          </Pressable>
+        </Pressable>
+      ) : null}
       {searchOpen ? (
         <WebSearchOverlay
           onClose={() => setSearchOpen(false)}
@@ -161,3 +154,18 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  // WebSearchOverlay backdrop convention; zIndex under search (1000) so ⌘K
+  // opened from the drawer still layers above it.
+  drawerBackdrop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    zIndex: 900,
+  },
+  drawerPanel: { width: SIDEBAR_WIDTH, height: '100%' },
+});

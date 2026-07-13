@@ -52,7 +52,8 @@ export type GensparkIconName =
   | 'Upload'
   | 'Play'
   | 'Code'
-  | 'Layers';
+  | 'Layers'
+  | 'Menu';
 
 const sw = 1.5;
 
@@ -287,6 +288,11 @@ function paths(name: GensparkIconName, c: string): React.ReactNode {
           <Path d="M3 13l9 5 9-5M3 18l9 5 9-5" stroke={c} strokeWidth={sw} strokeLinejoin="round" />
         </>
       );
+    // ADDITIVE (2026-07-13, sidebar-collapse wave): not in icons.jsx — the
+    // reference had no responsive pattern at all. Same 24×24/1.5-stroke/round
+    // conventions as every ported icon.
+    case 'Menu':
+      return <Path d="M4 6h16M4 12h16M4 18h16" stroke={c} strokeWidth={sw} strokeLinecap="round" />;
     default:
       return <Circle cx={12} cy={12} r={4} fill={c} />;
   }
