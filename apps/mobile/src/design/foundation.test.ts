@@ -134,11 +134,15 @@ test('Analytics stat values render in kpiVal mono, not the h1 alias', () => {
   assert.ok(!source.includes('variant="h1"'));
 });
 
-test("Command Center's Today panel title uses the cardTitle variant", () => {
+test("Command Center's Today panel title renders through CardHeader (which owns cardTitle)", () => {
+  // The foundation wave put cardTitle directly on the screen; the CC wave
+  // then wired the real CardHeader primitive (whose own test pins that it
+  // renders variant="cardTitle"). The invariant here stays: the Today title
+  // is the reference card-head strip, and no oversized h2 alias remains.
   const source = read(
     'apps/mobile/src/modules/dashboard/screens/DashboardScreen.tsx',
   );
-  assert.ok(source.includes('variant="cardTitle"'));
+  assert.ok(source.includes('<CardHeader title="Today"'));
   assert.ok(!source.includes('variant="h2"'));
 });
 

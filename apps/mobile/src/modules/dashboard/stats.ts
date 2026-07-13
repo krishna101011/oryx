@@ -40,6 +40,26 @@ export interface TodayRow {
   headline: string;
   source: string;
   receivedAt: string;
+  /** Leading source-type tag chip (CC-3 row anatomy) — from providerName. */
+  tag: string;
+}
+
+/**
+ * Display tag for an intake provider (backend IntakeProviderName literal:
+ * gmail | rss | webhook | api_pull | manual — shared/types.py:567; the TS
+ * mirror types providerName as plain string, so unknown values fall back to
+ * their own uppercase rather than a wrong label).
+ */
+const PROVIDER_TAGS: Record<string, string> = {
+  gmail: 'GMAIL',
+  rss: 'RSS',
+  webhook: 'WEBHOOK',
+  api_pull: 'API',
+  manual: 'MANUAL',
+};
+
+export function providerTag(providerName: string): string {
+  return PROVIDER_TAGS[providerName] ?? providerName.toUpperCase();
 }
 
 export type TodayPanelState =
@@ -69,8 +89,21 @@ export function todayPanelState(
       headline: i.subject?.trim() ? i.subject.trim() : 'Untitled item',
       source: i.sourceName,
       receivedAt: i.receivedAt,
+      tag: providerTag(i.providerName),
     })),
   };
+}
+
+/**
+ * The Today card-header mono sub ("6 ITEMS") — the REAL rendered row count,
+ * never the uncapped feed length. Loading shows no sub at all (same rule as
+ * the '—' stats: nothing is claimed before data exists); a loaded-but-empty
+ * feed states its zero plainly.
+ */
+export function todayCountSub(state: TodayPanelState): string | undefined {
+  if (state.kind === 'loading') return undefined;
+  if (state.kind === 'empty') return '0 ITEMS';
+  return `${state.rows.length} ${state.rows.length === 1 ? 'ITEM' : 'ITEMS'}`;
 }
 
 /**

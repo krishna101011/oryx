@@ -18,7 +18,9 @@ import { intakeItemIdOf } from '../activity/activityDetail';
 import {
   TODAY_MAX_ROWS,
   draftsStatValue,
+  providerTag,
   sourcesStatValue,
+  todayCountSub,
   todayPanelState,
   todayRowTarget,
   verifiedStatValue,
@@ -120,6 +122,44 @@ test('Today panel: a not-yet-normalized item (null/blank subject) never renders 
     state.kind === 'list' ? state.rows.map((r) => r.headline) : [],
     ['Untitled item', 'Untitled item'],
   );
+});
+
+// ---- CC-3 row anatomy: provider tag chip + header count sub ----------------
+
+test('providerTag maps all five real intake providers and uppercases unknown ones', () => {
+  // The full backend IntakeProviderName literal (shared/types.py:567).
+  assert.equal(providerTag('gmail'), 'GMAIL');
+  assert.equal(providerTag('rss'), 'RSS');
+  assert.equal(providerTag('webhook'), 'WEBHOOK');
+  assert.equal(providerTag('api_pull'), 'API');
+  assert.equal(providerTag('manual'), 'MANUAL');
+  // TS types providerName as string — an unknown value must never get a
+  // wrong known label, just its own uppercase.
+  assert.equal(providerTag('carrier_pigeon'), 'CARRIER_PIGEON');
+});
+
+test('every Today row carries the provider tag for its leading chip', () => {
+  const state = todayPanelState([
+    item({ id: 'a', providerName: 'rss' }),
+    item({ id: 'b', providerName: 'gmail' }),
+    item({ id: 'c', providerName: 'api_pull' }),
+  ]);
+  assert.deepEqual(
+    state.kind === 'list' ? state.rows.map((r) => r.tag) : [],
+    ['RSS', 'GMAIL', 'API'],
+  );
+});
+
+test('todayCountSub states the real rendered row count and stays silent while loading', () => {
+  assert.equal(todayCountSub({ kind: 'loading' }), undefined);
+  assert.equal(todayCountSub({ kind: 'empty' }), '0 ITEMS');
+  const one = todayPanelState([item({ id: 'a' })]);
+  assert.equal(todayCountSub(one), '1 ITEM');
+  const six = todayPanelState(
+    Array.from({ length: TODAY_MAX_ROWS + 4 }, (_, i) => item({ id: `i${i}` })),
+  );
+  // The sub is the RENDERED count (capped), never the uncapped feed length.
+  assert.equal(todayCountSub(six), `${TODAY_MAX_ROWS} ITEMS`);
 });
 
 // ---- Today-row press → IntakeItemDetail (2026-07-12) -----------------------

@@ -497,6 +497,20 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   intelligence_objects.verification_status, and the Command Center stat counts
   'verified' + 'analyst_approved' (approval REPLACES 'verified', so excluding
   it would decrement the stat on review).
+- LIVE BROWSER VERIFICATION NEEDS A PRE-EXISTING SIGNED-IN SESSION (2026-07-12,
+  design-foundation wave). Expo web persists auth via expo-secure-store →
+  localStorage, but tokens expire: a full page reload on a stale token bounces
+  to /auth/sign-in, and Claude Code cannot re-authenticate (typing passwords is
+  policy-prohibited) — the remaining visual checks then block on the owner
+  signing in first. Plan visual waves accordingly: capture EVERY screenshot
+  needed early, while the session is alive; in-app navigation keeps a live
+  session, full reloads are what kill an expired one. Two related quirks:
+  (1) CDP screenshots through the Chrome extension routinely time out once
+  ("renderer frozen") right after an action — the immediate retry succeeds;
+  (2) to visually prove a deliberately-unwired primitive, mount it via a
+  clearly-marked TEMP block in an existing screen, screenshot, then remove the
+  block and re-run the suite before committing (done for CardHeader/
+  HairlineRowList; Metro hot-reloads the temp block in ~300ms).
 
 ## What This Skill Deliberately Does NOT Contain
 
