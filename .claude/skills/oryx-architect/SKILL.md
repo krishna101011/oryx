@@ -511,6 +511,20 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   clearly-marked TEMP block in an existing screen, screenshot, then remove the
   block and re-run the suite before committing (done for CardHeader/
   HairlineRowList; Metro hot-reloads the temp block in ~300ms).
+- THE BROWSER PAGE CAN RUN A STALE EXPO WEB BUNDLE — CHECK METRO'S "Web
+  Bundled" LOG BEFORE TRUSTING ANY LIVE OBSERVATION (2026-07-13, the frontend
+  twin of the stale-:8000 trap). A long-lived Expo web tab does NOT reliably
+  hot-apply edits (the loaded bundle URL carries hot=false): an entire
+  live-verification pass once ran against a bundle predating the wave's
+  edits — the "new code doesn't work" observation was false, and a workaround
+  (params nonce) was nearly shipped for a defect that did not exist. Symptom
+  signature: gates green + Metro running, but live behavior matches PRE-edit
+  code. Check: compare the Metro log's last "Web Bundled …" lines against
+  when the edits were saved; no new bundle line = stale page. Fix: full
+  browser reload — which drops the signed-in session (see the session entry
+  above), so expect a re-login and capture screenshots immediately after.
+  Corollary: a "fix didn't work" live result must be cross-checked against
+  bundle freshness before theorizing about the code.
 
 ## What This Skill Deliberately Does NOT Contain
 
