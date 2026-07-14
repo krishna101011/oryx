@@ -24,7 +24,7 @@ web-build/
 ~$*
 .DS_Store
 .idea/
-.vscode/
+.vscode/*
 !.vscode/extensions.json
 
 # Logs
