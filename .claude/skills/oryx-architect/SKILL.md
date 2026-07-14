@@ -276,6 +276,23 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   ADDENDUM (Phase 7 Wave B, 2026-07-08): the `test` script is an EXPLICIT file
   list — a new `.test.ts` file that isn't appended to it silently never runs;
   adding the file to the list is part of adding the test.
+  ADDENDUM (2026-07-14): rendered-component tests ARE now possible without
+  jest — apps/mobile/src/test/shims/ aliases ONLY the platform packages
+  (react-native, react-native-svg, expo-blur, lucide-react-native,
+  react-native-safe-area-context) to inert prop-forwarding hosts via a
+  Module._resolveFilename patch (register.js), letting react-test-renderer
+  mount real screens + design-system components under `tsx --test`. First
+  user: modules/research/rowNavigation.test.tsx (renders the real
+  ResearchWorkspaceListScreen, presses a row, asserts
+  navigate('ResearchWorkspaceDetail', {rwsId})). TWO TRAPS: (1) load
+  register.js via createRequire BEFORE anything importing react-native, and
+  load ALL runtime modules in the test through that same require — a dynamic
+  import() pulls the ESM build of react-query/react-navigation while product
+  code under tsx uses the CJS build, giving two context instances and a
+  provider the hook can't see ("No QueryClient set" with a provider plainly
+  present). (2) Inject navigation with NavigationContext.Provider (from
+  @react-navigation/native) + a recording fake and seed react-query with
+  setQueryData + staleTime Infinity — no NavigationContainer, no network.
 
 - CHARTS ARE HAND-ROLLED react-native-svg, NO CHARTING LIBRARY (confirmed
   Phase 7 Wave B). The design system's Spark (sparkline) and Candles

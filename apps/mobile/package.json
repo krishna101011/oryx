@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "eslint src --ext .ts,.tsx",
     "type-check": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test src/modules/settings/alertCategories.test.ts src/modules/automation/feed.test.ts src/modules/settings/quietHours.test.ts src/lib/push/registration.test.ts src/modules/analytics/presenter.test.ts src/modules/content/provenance.test.ts src/components/web/webNav.test.ts src/modules/dashboard/stats.test.ts src/components/web/search.test.ts src/components/web/workspaceMenu.test.ts src/modules/activity/activityDetail.test.ts src/design/foundation.test.ts src/modules/dashboard/hero.test.ts src/components/web/webShellLayout.test.ts src/modules/research/list.test.ts"
+    "test": "tsx --test src/modules/settings/alertCategories.test.ts src/modules/automation/feed.test.ts src/modules/settings/quietHours.test.ts src/lib/push/registration.test.ts src/modules/analytics/presenter.test.ts src/modules/content/provenance.test.ts src/components/web/webNav.test.ts src/modules/dashboard/stats.test.ts src/components/web/search.test.ts src/components/web/workspaceMenu.test.ts src/modules/activity/activityDetail.test.ts src/design/foundation.test.ts src/modules/dashboard/hero.test.ts src/components/web/webShellLayout.test.ts src/modules/research/list.test.ts src/modules/research/rowNavigation.test.tsx"
   },
   "dependencies": {
     "@babel/runtime": "^7.24.0",
@@ -49,7 +49,9 @@
     "@oryx/config": "workspace:*",
     "@types/node": "^20.12.0",
     "@types/react": "~18.2.79",
+    "@types/react-test-renderer": "^18",
     "eslint-plugin-react-native": "^4.1.0",
+    "react-test-renderer": "18.2.0",
     "tsx": "^4.7.1",
     "typescript": "^5.4.5"
   }
