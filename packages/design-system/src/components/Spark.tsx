@@ -15,22 +15,35 @@ export const Spark: React.FC<{
   width?: number;
   height?: number;
   pos?: boolean;
-}> = ({ data, width = 60, height = 18, pos = true }) => {
+  /**
+   * The reference KPI micro-spark mode (primitives.jsx:58, .kpi .micro
+   * styles.css:372): stretch to the parent's full width — Svg width 100%
+   * over a normalized 0–100 viewBox with preserveAspectRatio "none" — instead
+   * of a fixed pixel width. `width` is ignored in this mode.
+   */
+  fullWidth?: boolean;
+}> = ({ data, width = 60, height = 18, pos = true, fullWidth = false }) => {
   const t = useTheme();
   if (!data || data.length === 0) return null;
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
+  const spanX = fullWidth ? 100 : width;
   const points = data
     .map(
       (v, i) =>
-        `${(i / (data.length - 1)) * width},${
+        `${(i / (data.length - 1)) * spanX},${
           height - ((v - min) / range) * (height - 2) - 1
         }`,
     )
     .join(' ');
   return (
-    <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+    <Svg
+      width={fullWidth ? '100%' : width}
+      height={height}
+      viewBox={`0 0 ${spanX} ${height}`}
+      preserveAspectRatio={fullWidth ? 'none' : undefined}
+    >
       <Polyline
         points={points}
         fill="none"

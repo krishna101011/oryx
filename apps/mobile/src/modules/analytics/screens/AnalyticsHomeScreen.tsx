@@ -22,9 +22,11 @@ import {
   buildFunnel,
   buildKpis,
   formatDuration,
+  formatFunnelDrop,
   formatSuccessRate,
   formatTrend,
   funnelIsEmpty,
+  funnelSummary,
   hasAnyData,
   padDailySeries,
 } from '../presenter';
@@ -91,6 +93,13 @@ const AnalyticsContent: React.FC = () => {
   );
 };
 
+/**
+ * Reference .tab-row / .tab scale (styles.css:262-264) — the exact fix
+ * shipped for Automation Hub in the AH-4 wave, ported verbatim: radius-5
+ * container, 2px padding + 2px gap, radius-3 tabs at 3×10 padding, 11px text
+ * (bodySm, the closest variant at 11.5), active = --elev-2 fill, and 12px
+ * vertical hitSlop keeping the touch target ≥44px at the ~22px drawn height.
+ */
 const TabRow: React.FC<{ tab: AnalyticsTab; onChange: (t: AnalyticsTab) => void }> = ({
   tab,
   onChange,
@@ -102,23 +111,33 @@ const TabRow: React.FC<{ tab: AnalyticsTab; onChange: (t: AnalyticsTab) => void 
     { key: 'publishing', label: 'Publishing' },
   ];
   return (
-    <View style={[styles.tabRow, { backgroundColor: t.colors.bg.elevated, borderColor: t.colors.border.default }]}>
+    <View
+      style={[
+        styles.tabRow,
+        {
+          backgroundColor: t.colors.bg.elevated,
+          borderColor: t.colors.border.default,
+          borderRadius: t.radius.md,
+        },
+      ]}
+    >
       {tabs.map(({ key, label }) => {
         const active = key === tab;
         return (
           <Pressable
             key={key}
             onPress={() => onChange(key)}
+            hitSlop={{ top: 12, bottom: 12 }}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={label}
             style={[
               styles.tabBtn,
-              active && {
-                backgroundColor: t.colors.bg.card,
-                borderColor: t.colors.border.strong,
-                borderWidth: 1,
-              },
+              { borderRadius: t.radius.sm },
+              active && { backgroundColor: t.colors.bg.elevated2 },
             ]}
           >
-            <Text variant="navLabel" color={active ? 'primary' : 'tertiary'}>
+            <Text variant="bodySm" color={active ? 'primary' : 'tertiary'}>
               {label}
             </Text>
           </Pressable>
@@ -172,7 +191,8 @@ const OverviewTab: React.FC = () => {
             </Text>
             <TrendLine trend={kpi.trend} />
             <Spacer size={2} />
-            <Spark data={kpi.spark} width={96} height={18} />
+            {/* Reference .kpi .micro (styles.css:372): full tile width × 28. */}
+            <Spark data={kpi.spark} fullWidth height={28} />
           </Card>
         ))}
       </View>
@@ -233,6 +253,7 @@ const ResearchTab: React.FC = () => {
   if (!rollups.data) return null;
 
   const stages = buildFunnel(rollups.data.series, todayUtc(), CHART_WINDOW_DAYS);
+  const summary = funnelSummary(stages);
   if (funnelIsEmpty(stages)) {
     return (
       <EmptyState
@@ -250,30 +271,69 @@ const ResearchTab: React.FC = () => {
         totals · last {CHART_WINDOW_DAYS} days
       </Text>
       <Spacer size={3} />
-      {stages.map((stage) => (
-        <View key={stage.key} style={styles.funnelRow}>
-          <View style={styles.funnelLabel}>
-            <Text variant="bodySm" color="secondary">
-              {stage.label}
-            </Text>
-          </View>
-          <View style={[styles.funnelTrack, { backgroundColor: t.colors.bg.elevated }]}>
+      {stages.map((stage) => {
+        const drop = formatFunnelDrop(stage.drop);
+        return (
+          <View key={stage.key} style={styles.funnelRow}>
+            {/* Reference funnel row head (analytics.jsx:68-72): label, mono
+                count right-aligned, then the drop column — which only exists
+                for stages a real predecessor feeds (see FUNNEL_DEFS). */}
+            <View style={styles.funnelHead}>
+              <Text variant="bodySm" color="secondary" style={{ flex: 1 }}>
+                {stage.label}
+              </Text>
+              <Text variant="mono">{String(stage.total)}</Text>
+              {drop ? (
+                <Text
+                  variant="caption"
+                  style={[
+                    styles.funnelDrop,
+                    {
+                      color:
+                        drop.tone === 'danger'
+                          ? t.colors.semantic.danger
+                          : t.colors.text.tertiary,
+                    },
+                  ]}
+                >
+                  {drop.text}
+                </Text>
+              ) : null}
+            </View>
             <View
               style={[
-                styles.funnelFill,
+                styles.funnelTrack,
                 {
-                  backgroundColor: t.colors.accent.plum,
-                  // Non-zero stages keep a visible sliver even when dwarfed.
-                  width: `${stage.total > 0 ? Math.max(stage.ratio * 100, 3) : 0}%`,
+                  backgroundColor: t.colors.bg.elevated,
+                  borderRadius: t.gensparkRadius.r2,
                 },
               ]}
-            />
+            >
+              <View
+                style={[
+                  styles.funnelFill,
+                  {
+                    backgroundColor: t.colors.accent.plum,
+                    borderRadius: t.gensparkRadius.r2,
+                    // Non-zero stages keep a visible sliver even when dwarfed.
+                    width: `${stage.total > 0 ? Math.max(stage.ratio * 100, 3) : 0}%`,
+                  },
+                ]}
+              />
+            </View>
           </View>
-          <View style={styles.funnelCount}>
-            <Text variant="bodySm">{String(stage.total)}</Text>
-          </View>
+        );
+      })}
+      {summary ? (
+        <View style={[styles.funnelSummary, { borderTopColor: t.colors.border.default }]}>
+          <Text variant="caption" color="tertiary">
+            {summary.label}
+          </Text>
+          <Text variant="mono" style={{ color: t.colors.semantic.positiveText }}>
+            {summary.text}
+          </Text>
         </View>
-      ))}
+      ) : null}
     </Card>
   );
 };
@@ -341,17 +401,18 @@ const PublishingTab: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  // .tab-row { gap:2px; border:1px; padding:2px } — radius via t.radius.md.
   tabRow: {
     flexDirection: 'row',
-    borderRadius: 10,
+    columnGap: 2,
     borderWidth: 1,
-    padding: 3,
+    padding: 2,
     alignSelf: 'flex-start',
   },
+  // .tab-row .tab { padding:3px 10px } — radius via t.radius.sm.
   tabBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 18,
-    borderRadius: 8,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
   },
   kpiGrid: {
     flexDirection: 'row',
@@ -362,22 +423,31 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexBasis: '47%',
   },
-  funnelRow: {
+  // Reference funnel row (analytics.jsx:67-76): stacked head line + full-width
+  // 18px track; radii applied inline via t.gensparkRadius.r2.
+  funnelRow: { marginBottom: 8 },
+  funnelHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    columnGap: 8,
+    marginBottom: 3,
   },
-  funnelLabel: { width: 140 },
+  // The reference's fixed drop column: width 56, right-aligned.
+  funnelDrop: { width: 56, textAlign: 'right' },
   funnelTrack: {
-    flex: 1,
-    height: 10,
-    borderRadius: 5,
+    height: 18,
     overflow: 'hidden',
-    marginHorizontal: 8,
   },
   funnelFill: {
     height: '100%',
-    borderRadius: 5,
   },
-  funnelCount: { width: 40, alignItems: 'flex-end' },
+  // Reference summary row (analytics.jsx:79): top border + spaced pair.
+  funnelSummary: {
+    marginTop: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
 });

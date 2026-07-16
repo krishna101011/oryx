@@ -190,6 +190,15 @@ export interface FunnelStage {
   total: number;
   /** total / max stage total — drives the proportional bar width. */
   ratio: number;
+  /**
+   * Percent change vs the stage that genuinely FEEDS this one (AN-3,
+   * design-foundation wave): positive = a drop, negative = the window-edge
+   * case where an event's successor lands inside the window but the
+   * predecessor fired before it (rendered signed, never disguised). null =
+   * no honest predecessor exists (see FUNNEL_DEFS) or the predecessor total
+   * is 0 (no denominator).
+   */
+  drop: number | null;
 }
 
 /**
@@ -197,15 +206,26 @@ export interface FunnelStage {
  * the top, verified intelligence and research packets come out the bottom.
  * research_packets_ready is the only direct research-usage signal that
  * exists; the frozen doc forbids a research view without it.
+ *
+ * `dropFrom` names the stage that GENUINELY feeds a stage, so the reference's
+ * per-stage drop figure (analytics.jsx:65) is only computed where the
+ * arithmetic is honest: extracted→typed→verified is the real claims pipeline
+ * (verification.claim.* event chain) and resolved ⊂ detected for conflicts.
+ * Everything else deliberately carries none: claims_failed is the FAILURE
+ * BRANCH of typing/verification (not fed by claims_verified), evidence rows
+ * are per-claim volume (can exceed claim counts), the three object metrics
+ * are distinct operations on the same entities (updated is not a subset of
+ * created within a window), and a research packet aggregates many claims —
+ * none of those adjacent pairs form a conversion a drop%% could describe.
  */
-export const FUNNEL_DEFS: { key: string; label: string }[] = [
+export const FUNNEL_DEFS: { key: string; label: string; dropFrom?: string }[] = [
   { key: 'claims_extracted', label: 'Claims extracted' },
-  { key: 'claims_typed', label: 'Claims typed' },
-  { key: 'claims_verified', label: 'Claims verified' },
+  { key: 'claims_typed', label: 'Claims typed', dropFrom: 'claims_extracted' },
+  { key: 'claims_verified', label: 'Claims verified', dropFrom: 'claims_typed' },
   { key: 'claims_failed', label: 'Claims failed' },
   { key: 'evidence_collected', label: 'Evidence collected' },
   { key: 'conflicts_detected', label: 'Conflicts detected' },
-  { key: 'conflicts_resolved', label: 'Conflicts resolved' },
+  { key: 'conflicts_resolved', label: 'Conflicts resolved', dropFrom: 'conflicts_detected' },
   { key: 'intelligence_objects_created', label: 'Objects created' },
   { key: 'intelligence_objects_updated', label: 'Objects updated' },
   { key: 'intelligence_objects_reviewed', label: 'Objects reviewed' },
@@ -213,13 +233,65 @@ export const FUNNEL_DEFS: { key: string; label: string }[] = [
 ];
 
 export function buildFunnel(series: Series, today: string, days: number): FunnelStage[] {
-  const totals = FUNNEL_DEFS.map(({ key, label }) => ({
+  const totals = FUNNEL_DEFS.map(({ key, label, dropFrom }) => ({
     key,
     label,
+    dropFrom,
     total: sumWindow(series, key, today, days) ?? 0,
   }));
   const max = Math.max(...totals.map((s) => s.total), 0);
-  return totals.map((s) => ({ ...s, ratio: max > 0 ? s.total / max : 0 }));
+  const byKey = new Map(totals.map((s) => [s.key, s.total]));
+  return totals.map(({ dropFrom, ...s }) => {
+    const feeder = dropFrom !== undefined ? (byKey.get(dropFrom) ?? 0) : 0;
+    return {
+      ...s,
+      ratio: max > 0 ? s.total / max : 0,
+      drop:
+        dropFrom !== undefined && feeder > 0
+          ? ((feeder - s.total) / feeder) * 100
+          : null,
+    };
+  });
+}
+
+export interface FunnelDropDisplay {
+  text: string;
+  /** danger = a real drop (the reference's neg style); neutral = the honest
+   * signed window-edge increase. */
+  tone: 'danger' | 'neutral';
+}
+
+/** Renderable per-stage drop (reference analytics.jsx:71's `-N.N%` column).
+ * null = render no figure at all for this stage. */
+export function formatFunnelDrop(drop: number | null): FunnelDropDisplay | null {
+  if (drop === null) return null;
+  if (drop >= 0) return { text: `-${drop.toFixed(1)}%`, tone: 'danger' };
+  return { text: `+${Math.abs(drop).toFixed(1)}%`, tone: 'neutral' };
+}
+
+export interface FunnelSummary {
+  /** Mono uppercase left label (reference "VISITOR → PAID"). */
+  label: string;
+  /** e.g. "60.00%" — verified as a share of extracted. */
+  text: string;
+}
+
+/**
+ * The bottom summary row (reference analytics.jsx:79-82's first→last
+ * conversion). The honest ORYX end-to-end figure is claims extracted →
+ * claims verified: the real conversion of the sequential claims chain.
+ * It deliberately does NOT run to research_packets_ready — a packet
+ * aggregates many claims, so claims:packets is not a conversion rate.
+ * null when nothing was extracted in the window (no denominator).
+ */
+export function funnelSummary(stages: FunnelStage[]): FunnelSummary | null {
+  const extracted = stages.find((s) => s.key === 'claims_extracted')?.total ?? 0;
+  const verified = stages.find((s) => s.key === 'claims_verified')?.total ?? 0;
+  if (extracted <= 0) return null;
+  return {
+    label: 'EXTRACTED → VERIFIED',
+    text: `${((verified / extracted) * 100).toFixed(2)}%`,
+  };
 }
 
 /** True when no funnel stage has any activity — the research tab's

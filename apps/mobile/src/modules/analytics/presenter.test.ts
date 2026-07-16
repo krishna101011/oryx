@@ -10,7 +10,9 @@
  * without dressing "nothing measured yet" up as a hard zero.
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
   type Series,
   buildFunnel,
@@ -18,9 +20,11 @@ import {
   computeTrend,
   dayBefore,
   formatDuration,
+  formatFunnelDrop,
   formatSuccessRate,
   formatTrend,
   funnelIsEmpty,
+  funnelSummary,
   hasAnyData,
   padDailySeries,
   sumWindow,
@@ -289,4 +293,148 @@ test('trend derives only from the series passed in — cross-workspace isolation
   assert.deepEqual(second, {
     kind: 'trend', direction: 'up', current: 6, prior: 2, pctChange: 200,
   });
+});
+
+// -------------------- Funnel drops + summary (AN-3, design-foundation wave) --------------------
+
+/** One same-day point per stage, all inside the 30-day window. */
+const funnelSeries = (totals: Record<string, number>): Series =>
+  Object.fromEntries(
+    Object.entries(totals).map(([key, value]) => [key, [{ date: TODAY, value }]]),
+  );
+
+test('funnel drops appear only between genuinely sequential stages, with hand-checked math', () => {
+  const stages = buildFunnel(
+    funnelSeries({
+      claims_extracted: 40,
+      claims_typed: 30,
+      claims_verified: 24,
+      claims_failed: 6,
+      evidence_collected: 100,
+      conflicts_detected: 10,
+      conflicts_resolved: 4,
+      intelligence_objects_created: 8,
+      intelligence_objects_updated: 12,
+      intelligence_objects_reviewed: 5,
+      research_packets_ready: 2,
+    }),
+    TODAY,
+    30,
+  );
+  const byKey = new Map(stages.map((s) => [s.key, s]));
+  // Hand-verified: (40-30)/40 = 25%, (30-24)/30 = 20%, (10-4)/10 = 60%.
+  assert.equal(byKey.get('claims_typed')!.drop, 25);
+  assert.equal(byKey.get('claims_verified')!.drop, 20);
+  assert.equal(byKey.get('conflicts_resolved')!.drop, 60);
+  // Branch/volume/operation rows must carry NO drop — the arithmetic would
+  // be dishonest (failed is a branch, evidence is per-claim volume, the
+  // object metrics are distinct operations, packets aggregate claims).
+  for (const key of [
+    'claims_extracted',
+    'claims_failed',
+    'evidence_collected',
+    'conflicts_detected',
+    'intelligence_objects_created',
+    'intelligence_objects_updated',
+    'intelligence_objects_reviewed',
+    'research_packets_ready',
+  ]) {
+    assert.equal(byKey.get(key)!.drop, null, `${key} must have no drop figure`);
+  }
+});
+
+test('a zero-total feeder yields no drop figure — no denominator, no percentage', () => {
+  const stages = buildFunnel(funnelSeries({ claims_typed: 5 }), TODAY, 30);
+  assert.equal(stages.find((s) => s.key === 'claims_typed')!.drop, null);
+});
+
+test('a window-edge increase renders signed and neutral, never disguised as a drop', () => {
+  // 10 extracted but 12 typed inside the window (predecessors fired before
+  // the window opened): drop = (10-12)/10 = -20%.
+  const stages = buildFunnel(
+    funnelSeries({ claims_extracted: 10, claims_typed: 12 }),
+    TODAY,
+    30,
+  );
+  const typed = stages.find((s) => s.key === 'claims_typed')!;
+  assert.equal(typed.drop, -20);
+  assert.deepEqual(formatFunnelDrop(typed.drop), { text: '+20.0%', tone: 'neutral' });
+  assert.deepEqual(formatFunnelDrop(25), { text: '-25.0%', tone: 'danger' });
+  assert.equal(formatFunnelDrop(null), null);
+});
+
+test('funnel summary is the real extracted→verified conversion, absent without a denominator', () => {
+  const stages = buildFunnel(
+    funnelSeries({ claims_extracted: 40, claims_typed: 30, claims_verified: 24 }),
+    TODAY,
+    30,
+  );
+  // Hand-verified: 24/40 = 60.00%.
+  assert.deepEqual(funnelSummary(stages), {
+    label: 'EXTRACTED → VERIFIED',
+    text: '60.00%',
+  });
+  const empty = buildFunnel(funnelSeries({ claims_verified: 24 }), TODAY, 30);
+  assert.equal(funnelSummary(empty), null);
+});
+
+// -------------------- Source scans (AN wave honesty checks) --------------------
+
+const read = (relToRepoRoot: string): string =>
+  readFileSync(
+    fileURLToPath(new URL(`../../../../../${relToRepoRoot}`, import.meta.url)),
+    'utf8',
+  );
+
+const stripComments = (src: string): string =>
+  src.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
+
+test("the KPI sparkline stretches to the tile's full width at 28px height", () => {
+  const screen = read(
+    'apps/mobile/src/modules/analytics/screens/AnalyticsHomeScreen.tsx',
+  );
+  assert.ok(
+    screen.includes('<Spark data={kpi.spark} fullWidth height={28} />'),
+    'the KPI spark must use the full-width micro-spark mode at 28px',
+  );
+  assert.ok(!screen.includes('width={96}'), 'the fixed 96px spark must be gone');
+  const spark = read('packages/design-system/src/components/Spark.tsx');
+  assert.ok(
+    spark.includes("preserveAspectRatio={fullWidth ? 'none' : undefined}") &&
+      spark.includes("fullWidth ? '100%' : width"),
+    "Spark's fullWidth mode must stretch via width 100% + preserveAspectRatio none",
+  );
+});
+
+test('MANDATORY: no hardcoded radius or color literals remain on the Analytics screen', () => {
+  const code = stripComments(
+    read('apps/mobile/src/modules/analytics/screens/AnalyticsHomeScreen.tsx'),
+  );
+  assert.ok(
+    !/borderRadius:\s*\d/.test(code),
+    'all radii must come from t.radius / t.gensparkRadius — the carried-over radius:10/8 must be gone',
+  );
+  assert.ok(
+    !/#[0-9a-fA-F]{3,8}\b/.test(code) && !/rgba?\(/.test(code),
+    'no raw hex/rgba color literals — colors flow through theme tokens',
+  );
+});
+
+test('confirmation: kpiVal typography (AN-1) and BarSeries (AN-4) were not regressed', () => {
+  const screen = read(
+    'apps/mobile/src/modules/analytics/screens/AnalyticsHomeScreen.tsx',
+  );
+  // Same invariant foundation.test.ts pins: exactly 3 kpiVal stat values.
+  assert.equal(screen.match(/variant="kpiVal"/g)?.length, 3);
+  const bars = stripComments(
+    read('apps/mobile/src/modules/analytics/components/BarSeries.tsx'),
+  );
+  // The recon-verified chart grammar markers, all still present:
+  assert.ok(bars.includes('border.default'), 'grid stroke = border.default');
+  assert.ok(bars.includes('JetBrainsMono_400Regular'), 'axis labels in mono');
+  assert.ok(bars.includes('accent.slateBlue'), 'bars = accent.slateBlue');
+  assert.ok(
+    !/#[0-9a-fA-F]{3,8}\b/.test(bars) && !/rgba?\(/.test(bars),
+    'BarSeries stays literal-free',
+  );
 });
