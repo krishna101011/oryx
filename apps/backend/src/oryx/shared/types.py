@@ -155,6 +155,8 @@ Focus = Literal["markets", "crypto", "both"]
 ContentStyle = Literal["concise", "balanced", "detailed"]
 VerificationStrictness = Literal["loose", "balanced", "strict"]
 NotificationFrequency = Literal["off", "instant", "daily", "weekly"]
+# Theming Phase A (2026-07-16): account-synced light/dark mode.
+ThemeMode = Literal["dark", "light"]
 
 
 class Preferences(_Base):
@@ -163,6 +165,7 @@ class Preferences(_Base):
     content_style: ContentStyle = Field(alias="contentStyle")
     verification_strictness: VerificationStrictness = Field(alias="verificationStrictness")
     notification_frequency: NotificationFrequency = Field(alias="notificationFrequency")
+    theme_mode: ThemeMode = Field(default="dark", alias="themeMode")
     custom_topics: list[str] = Field(default_factory=list, alias="customTopics")
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
@@ -177,6 +180,7 @@ class UpdatePreferencesRequest(_Base):
     notification_frequency: NotificationFrequency | None = Field(
         default=None, alias="notificationFrequency"
     )
+    theme_mode: ThemeMode | None = Field(default=None, alias="themeMode")
     custom_topics: list[str] | None = Field(default=None, alias="customTopics")
 
 

@@ -5,6 +5,7 @@ import { apiClient } from '../lib/api/client';
 import { isApiError } from '../lib/errors';
 import { useAppDispatch, useAppSelector } from '../store';
 import { authActions } from '../store/slices/auth';
+import { themeActions } from '../store/slices/theme';
 
 /**
  * Bootstrap query: pulls account + profile + workspace + preferences + flags + onboarding.
@@ -50,6 +51,19 @@ export function useMe() {
       dispatch(authActions.workspaceSet(query.data.workspace.id));
     }
   }, [query.data?.workspace.id, dispatch]);
+
+  // Theming Phase A: the account-synced mode hydrates from the same payload.
+  // The Settings toggle also writes the ['me'] cache on success, so this
+  // effect never fights an in-flight local switch with stale server data.
+  // Deep optional chain on purpose: rendered tests seed ['me'] with partial
+  // payloads (workspace + flags only), and the query cache is a shared
+  // namespace — never assume another writer supplied the full shape.
+  const themeMode = query.data?.preferences?.themeMode;
+  useEffect(() => {
+    if (themeMode) {
+      dispatch(themeActions.modeSet(themeMode));
+    }
+  }, [themeMode, dispatch]);
 
   useEffect(() => {
     if (!query.error) return;

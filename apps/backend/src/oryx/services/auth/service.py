@@ -119,6 +119,7 @@ class AuthService:
                 content_style="balanced",
                 verification_strictness="balanced",
                 notification_frequency="daily",
+                theme_mode="dark",
                 custom_topics=[],
             )
         )

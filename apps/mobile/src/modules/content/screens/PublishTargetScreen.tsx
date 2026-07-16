@@ -195,7 +195,7 @@ export const PublishTargetScreen: React.FC = () => {
         animationType="slide"
         onRequestClose={() => setShowAdd(false)}
       >
-        <View style={styles.sheetOverlay}>
+        <View style={[styles.sheetOverlay, { backgroundColor: theme.colors.overlay.scrim }]}>
           <View style={[styles.sheet, { backgroundColor: theme.colors.bg.elevated }]}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text variant="h2">Add target</Text>
@@ -362,6 +362,5 @@ const styles = StyleSheet.create({
   sheetOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
 });

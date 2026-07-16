@@ -11,7 +11,8 @@ export interface ThemeProviderProps {
 
 /**
  * Wraps the app and provides the design system theme tokens via context.
- * Phase 1 ships dark mode only; the `mode` field exists for future light mode.
+ * Pass `theme={themes[mode]}` to switch modes (theming Phase A, 2026-07-16);
+ * with no prop it provides the dark default.
  */
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   theme = defaultTheme,

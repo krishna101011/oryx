@@ -107,7 +107,13 @@ export const ClaimDetailScreen: React.FC = () => {
               multiline
               placeholder="Required: explain your decision"
               placeholderTextColor={theme.colors.text.tertiary}
-              style={[styles.note, { color: theme.colors.text.primary }]}
+              style={[
+                styles.note,
+                {
+                  borderColor: theme.colors.border.default,
+                  color: theme.colors.text.primary,
+                },
+              ]}
             />
             <Spacer size={3} />
             <Button
@@ -157,7 +163,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   note: {
-    borderColor: 'rgba(127,127,127,0.35)',
     borderRadius: 10,
     borderWidth: 1,
     minHeight: 80,

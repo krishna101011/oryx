@@ -376,7 +376,7 @@ export const DraftEditorScreen: React.FC = () => {
           animationType="slide"
           onRequestClose={() => setShowSwitchSheet(false)}
         >
-          <View style={styles.sheetOverlay}>
+          <View style={[styles.sheetOverlay, { backgroundColor: theme.colors.overlay.scrim }]}>
             <View
               style={[
                 styles.sheet,
@@ -453,7 +453,7 @@ export const DraftEditorScreen: React.FC = () => {
           animationType="slide"
           onRequestClose={() => setReviewAction(null)}
         >
-          <View style={styles.sheetOverlay}>
+          <View style={[styles.sheetOverlay, { backgroundColor: theme.colors.overlay.scrim }]}>
             <View
               style={[styles.sheet, { backgroundColor: theme.colors.bg.elevated }]}
             >
@@ -520,7 +520,7 @@ export const DraftEditorScreen: React.FC = () => {
           animationType="slide"
           onRequestClose={() => setShowPublish(false)}
         >
-          <View style={styles.sheetOverlay}>
+          <View style={[styles.sheetOverlay, { backgroundColor: theme.colors.overlay.scrim }]}>
             <View style={[styles.sheet, { backgroundColor: theme.colors.bg.elevated }]}>
               <Text variant="h2">Publish</Text>
               <Spacer size={2} />
@@ -609,7 +609,7 @@ export const DraftEditorScreen: React.FC = () => {
           animationType="slide"
           onRequestClose={() => setShowSchedule(false)}
         >
-          <View style={styles.sheetOverlay}>
+          <View style={[styles.sheetOverlay, { backgroundColor: theme.colors.overlay.scrim }]}>
             <View style={[styles.sheet, { backgroundColor: theme.colors.bg.elevated }]}>
               <Text variant="h2">Schedule for later</Text>
               <Spacer size={2} />
@@ -784,7 +784,6 @@ const styles = StyleSheet.create({
   sheetOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   targetRow: {
     alignItems: 'center',

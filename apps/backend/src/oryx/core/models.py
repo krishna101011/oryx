@@ -193,6 +193,10 @@ class Preferences(Base):
         Enum("off", "instant", "daily", "weekly", name="notification_frequency"),
         nullable=False, default="daily",
     )
+    theme_mode: Mapped[str] = mapped_column(
+        Enum("dark", "light", name="theme_mode"),
+        nullable=False, default="dark", server_default="dark",
+    )
     custom_topics: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

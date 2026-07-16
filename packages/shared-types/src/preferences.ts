@@ -4,6 +4,8 @@ export type Focus = 'markets' | 'crypto' | 'both';
 export type ContentStyle = 'concise' | 'balanced' | 'detailed';
 export type VerificationStrictness = 'loose' | 'balanced' | 'strict';
 export type NotificationFrequency = 'off' | 'instant' | 'daily' | 'weekly';
+// Theming Phase A (2026-07-16): account-synced light/dark mode.
+export type ThemeMode = 'dark' | 'light';
 
 export interface Preferences {
   accountId: Id;
@@ -11,6 +13,7 @@ export interface Preferences {
   contentStyle: ContentStyle;
   verificationStrictness: VerificationStrictness;
   notificationFrequency: NotificationFrequency;
+  themeMode: ThemeMode;
   customTopics: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -21,5 +24,6 @@ export interface UpdatePreferencesRequest {
   contentStyle?: ContentStyle;
   verificationStrictness?: VerificationStrictness;
   notificationFrequency?: NotificationFrequency;
+  themeMode?: ThemeMode;
   customTopics?: string[];
 }

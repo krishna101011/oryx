@@ -51,7 +51,13 @@ export const IntelligenceObjectPickerScreen: React.FC = () => {
           onChangeText={setSearch}
           placeholder="Search headlines"
           placeholderTextColor={theme.colors.text.tertiary}
-          style={[styles.input, { color: theme.colors.text.primary }]}
+          style={[
+            styles.input,
+            {
+              borderColor: theme.colors.border.default,
+              color: theme.colors.text.primary,
+            },
+          ]}
         />
         <Spacer size={3} />
         <View style={styles.filterRow}>
@@ -98,7 +104,6 @@ export const IntelligenceObjectPickerScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   input: {
-    borderColor: 'rgba(127,127,127,0.35)',
     borderRadius: 10,
     borderWidth: 1,
     padding: 12,

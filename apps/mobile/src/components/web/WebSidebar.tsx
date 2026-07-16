@@ -6,7 +6,6 @@ import {
   GensparkIcon,
   HornMark,
   Text,
-  gradients,
   gx,
   useTheme,
 } from '@oryx/design-system';
@@ -67,7 +66,7 @@ export const WebSidebar: React.FC<{
   return (
     <View style={[gx.sidebar, { height: '100%' }]}>
       <LinearGradient
-        colors={[gradients.sidebar.from, gradients.sidebar.to]}
+        colors={[t.gradients.sidebar.from, t.gradients.sidebar.to]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={{ flex: 1 }}
@@ -168,7 +167,7 @@ export const WebSidebar: React.FC<{
                   >
                     {active ? (
                       <LinearGradient
-                        colors={[gradients.accent.from, gradients.accent.to]}
+                        colors={[t.gradients.accent.from, t.gradients.accent.to]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={gx.navActiveBar}
@@ -194,7 +193,7 @@ export const WebSidebar: React.FC<{
         {displayName ? (
           <View style={gx.sidebarFoot}>
             <LinearGradient
-              colors={[gradients.avatar.from, gradients.avatar.to]}
+              colors={[t.gradients.avatar.from, t.gradients.avatar.to]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={gx.avatar}

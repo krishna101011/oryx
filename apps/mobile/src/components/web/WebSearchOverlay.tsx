@@ -44,7 +44,11 @@ export const WebSearchOverlay: React.FC<{
   const empty = hasQuery && results.sources.length === 0 && results.items.length === 0;
 
   return (
-    <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close search">
+    <Pressable
+      style={[styles.backdrop, { backgroundColor: t.colors.overlay.scrim }]}
+      onPress={onClose}
+      accessibilityLabel="Close search"
+    >
       {/* Stop backdrop-close from swallowing clicks inside the panel. */}
       <Pressable
         style={[
@@ -162,7 +166,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center',
     zIndex: 1000,
   },

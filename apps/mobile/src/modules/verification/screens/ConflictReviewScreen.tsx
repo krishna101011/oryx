@@ -91,7 +91,10 @@ export const ConflictReviewScreen: React.FC = () => {
           placeholderTextColor={theme.colors.text.tertiary}
           style={[
             styles.note,
-            { color: theme.colors.text.primary },
+            {
+              borderColor: theme.colors.border.default,
+              color: theme.colors.text.primary,
+            },
           ]}
         />
 
@@ -183,7 +186,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   note: {
-    borderColor: 'rgba(127,127,127,0.35)',
     borderRadius: 10,
     borderWidth: 1,
     minHeight: 90,

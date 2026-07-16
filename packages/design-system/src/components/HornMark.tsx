@@ -14,6 +14,14 @@ import { useTheme } from '../theme/ThemeProvider';
  *
  * `glow` reproduces the source drop-shadow (RN has no SVG `filter`, so it is
  * approximated with a colored container shadow).
+ *
+ * LIGHT MODE (theming Phase A, 2026-07-16 — a designed variant, verified):
+ * the deep-navy gradient is deliberately KEPT in the light theme
+ * (12.76:1 / 17.83:1 vs bg #F7F8FA — the mark flips from the dark theme's
+ * tone-on-tone emboss to a bold positive mark, the classic dark-mark-on-light
+ * treatment). The cutout logic is "carve with the page background": the curl
+ * stroke reads bg.primary, so it follows the theme on its own — #05070A
+ * carving the dark mark, #F7F8FA carving the light one.
  */
 export const HornMark: React.FC<{ size?: number; glow?: boolean }> = ({
   size = 56,

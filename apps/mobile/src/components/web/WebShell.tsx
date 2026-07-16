@@ -137,10 +137,10 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       </View>
       {collapsed && navOpen ? (
         // Overlay drawer, NOT push-content: the WebSearchOverlay backdrop
-        // convention (absolute rgba(0,0,0,0.55) Pressable-to-close), with the
+        // convention (absolute overlay.scrim Pressable-to-close), with the
         // SAME WebSidebar and the SAME activeId the expanded rail shows.
         <Pressable
-          style={styles.drawerBackdrop}
+          style={[styles.drawerBackdrop, { backgroundColor: t.colors.overlay.scrim }]}
           onPress={() => setNavOpen(false)}
           accessibilityLabel="Close navigation"
         >
@@ -178,7 +178,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)',
     zIndex: 900,
   },
   drawerPanel: { width: SIDEBAR_WIDTH, height: '100%' },

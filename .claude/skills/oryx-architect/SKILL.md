@@ -551,6 +551,27 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   Corollary: a "fix didn't work" live result must be cross-checked against
   bundle freshness before theorizing about the code.
 
+- LIGHT/DARK THEMING IS LIVE — PHASE A SHAPE (2026-07-16). `themes.dark` /
+  `themes.light` live in packages/design-system/src/tokens (lightPalette /
+  lightColors / lightGradients in colors.ts; the core light values are
+  owner-provided WCAG-verified, the rest derived + contrast-checked — see the
+  colors.ts block comment). The switch: Redux theme slice (modeSet) → the
+  app's ThemedProvider passes themes[mode] into ThemeProvider; hydration from
+  /auth/me preferences.themeMode; the SettingsHome Appearance toggle PATCHes
+  /v1/preferences {themeMode} (migration 0025) and patches the ['me'] cache in
+  place. FOUR STANDING RULES: (1) the `gx` StyleSheet is STILL static-dark —
+  restructuring it is theming Phase B; components consuming gx keep dark
+  pockets in light mode by design, don't "fix" one ad hoc. (2) ErrorBoundary
+  is PERMANENTLY outside ThemeProvider (its 4 hexes are a deliberate
+  exception — it must render when theming itself breaks). (3) statusColors /
+  severityColors / draftColors are spec-locked mode-invariant per their own
+  headers — never give them light variants without an owner decision.
+  (4) Pure tests import tokens from '@oryx/design-system/tokens' (the package
+  root pulls react-native and breaks tsx); rendered both-mode tests use the
+  shims harness. Trap found live: rendered tests seed PARTIAL ['me'] payloads,
+  so any new useMe field read needs a deep optional chain
+  (`query.data?.preferences?.themeMode`) or every seeded-cache test crashes.
+
 ## What This Skill Deliberately Does NOT Contain
 
 Current phase/wave status, current commit hashes, current test counts.

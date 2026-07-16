@@ -1,16 +1,59 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Icon, Screen, Spacer, Text } from '@oryx/design-system';
+import type {
+  MeResponse,
+  Preferences,
+  ThemeMode,
+  UpdatePreferencesRequest,
+} from '@oryx/shared-types';
 import { useMe } from '../../../hooks/useMe';
-import { useAppDispatch } from '../../../store';
+import { apiClient } from '../../../lib/api/client';
+import { useAppDispatch, useAppSelector } from '../../../store';
+import { themeActions } from '../../../store/slices/theme';
 import { signout } from '../../../store/thunks/auth';
+import { ChoiceTile } from '../../onboarding/components/ChoiceTile';
 import { SettingsRow } from '../components/SettingsRow';
+
+const THEME_COPY: Record<ThemeMode, { label: string; description: string }> = {
+  dark: { label: 'Dark', description: 'The ORYX terminal baseline' },
+  light: { label: 'Light', description: 'High-glare and print-adjacent work' },
+};
+const THEME_MODES: ThemeMode[] = ['dark', 'light'];
 
 export const SettingsHomeScreen: React.FC = () => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
   const me = useMe();
+  const mode = useAppSelector((s) => s.theme.mode);
+
+  // Theming Phase A: the switch applies instantly via Redux (onMutate) and
+  // persists account-synced through the real Preferences PATCH. On success the
+  // ['me'] cache is patched in place so useMe's hydration effect agrees with
+  // the local state instead of flickering back on the next refetch.
+  const setTheme = useMutation({
+    mutationFn: (themeMode: ThemeMode) =>
+      apiClient().patch<Preferences, UpdatePreferencesRequest>('/preferences', {
+        themeMode,
+      }),
+    onMutate: (themeMode) => dispatch(themeActions.modeSet(themeMode)),
+    onSuccess: (_prefs, themeMode) => {
+      queryClient.setQueryData<MeResponse>(['me'], (old) =>
+        old
+          ? { ...old, preferences: { ...old.preferences, themeMode } }
+          : old,
+      );
+    },
+    onError: (_err, _themeMode) => {
+      // Persistence failed — fall back to the server's last-known mode so the
+      // UI never lies about what the account will see on next boot.
+      const server = queryClient.getQueryData<MeResponse>(['me'])?.preferences.themeMode;
+      if (server) dispatch(themeActions.modeSet(server));
+    },
+  });
 
   return (
     <Screen background="primary">
@@ -47,6 +90,25 @@ export const SettingsHomeScreen: React.FC = () => {
         />
 
         <Spacer size={6} />
+        <Text variant="caption" color="tertiary">
+          APPEARANCE
+        </Text>
+        <Spacer size={2} />
+        {THEME_MODES.map((m) => (
+          <React.Fragment key={m}>
+            <ChoiceTile
+              label={THEME_COPY[m].label}
+              description={THEME_COPY[m].description}
+              selected={mode === m}
+              onPress={() => {
+                if (mode !== m) setTheme.mutate(m);
+              }}
+            />
+            <Spacer size={2} />
+          </React.Fragment>
+        ))}
+
+        <Spacer size={4} />
         <Text variant="caption" color="tertiary">
           SECURITY
         </Text>

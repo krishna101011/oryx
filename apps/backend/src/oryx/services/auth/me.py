@@ -277,6 +277,7 @@ async def get_me(
             contentStyle=prefs.content_style,
             verificationStrictness=prefs.verification_strictness,
             notificationFrequency=prefs.notification_frequency,
+            themeMode=prefs.theme_mode,
             customTopics=list(prefs.custom_topics or []),
             createdAt=prefs.created_at,
             updatedAt=prefs.updated_at,

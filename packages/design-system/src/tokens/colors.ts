@@ -172,10 +172,134 @@ export const colors = {
     strong: g.borderStrong, // --border-strong #232F42
   },
   overlay: {
-    scrim: 'rgba(0,0,0,0.60)',
+    // 2026-07-16 theming Phase A: 0.60 → 0.55, consolidating the app's three
+    // scrim literals (0.5 sheets, 0.55 backdrops, 0.60 token — the token had
+    // zero consumers) onto the established WebSearchOverlay convention.
+    scrim: 'rgba(0,0,0,0.55)',
     glass: 'rgba(10,14,20,0.70)', // --panel @ 0.70 (glass over cool base)
   },
 } as const;
+
+/**
+ * ===========================================================================
+ * LIGHT MODE (theming Phase A, 2026-07-16).
+ * The core values (bg/panel/elev, text.primary, indigo, violet, the semantic
+ * set, positiveSurface) are OWNER-PROVIDED and WCAG-verified — do not alter.
+ * The remaining values are derived to occupy the same perceptual role as
+ * their dark analog, each confirmed with a real WCAG ratio check
+ * (scripted, relative-luminance):
+ *   border   #D7DDE5  1.29:1 vs bg / 1.37:1 vs panel (dark analog #1A2330 is
+ *                     1.27:1 / 1.22:1 — same subtle-hairline role)
+ *   borderStrong #C4CDD9 1.51:1 vs bg (dark #232F42 is 1.50:1 — exact role)
+ *   text2    #3E4756  8.82:1 vs bg (dark #A8B0BF is 9.25:1) — AAA
+ *   text3    #556072  5.98:1 vs bg (dark #6B7588 is 4.35:1) — AA
+ *   text4    #8A94A6  2.88:1 vs bg (dark #4A5263 is 2.57:1) — decorative ramp
+ *                     step only, same as dark; never used for readable copy
+ * Given values verified: text.primary 16.90:1, positiveText 6.64:1, danger
+ * 7.25:1, warning 4.79:1, info 7.86:1, violet 5.73:1 (all vs bg #F7F8FA);
+ * positiveText on positiveSurface 6.05:1; white on indigo 4.93:1, white on
+ * light violet #7440D6 6.09:1 (Button primary label stays white).
+ * ===========================================================================
+ */
+export const lightPalette = {
+  bg: '#F7F8FA', // provided
+  panel: '#FFFFFF', // provided
+  elev: '#EDEFF3', // provided
+  elev2: '#E2E6EC', // derived: one ramp step past elev (mirrors --elev-2)
+  border: '#D7DDE5', // derived + contrast-checked (see block comment)
+  borderStrong: '#C4CDD9', // derived: 1.51:1 vs bg == dark strong's 1.50:1
+  hairline: 'rgba(20,23,28,0.05)', // text.primary channels @5% (mirrors 4%-white)
+
+  text: '#14171C', // provided
+  text2: '#3E4756', // derived, 8.82:1 vs bg
+  text3: '#556072', // derived, 5.98:1 vs bg
+  text4: '#8A94A6', // derived, decorative ramp step (2.88:1, matches dark role)
+
+  indigo: '#5B5BF5', // provided — unchanged across modes
+  violet: '#7440D6', // provided — light-verified violet (dark holds #8B5CF6)
+  teal: '#E3EFFA', // provided positiveSurface — the light surface-wash family
+  teal2: '#D2E4F6', // derived: same ΔL step the dark teal→teal-2 pair uses
+  softblue: '#17517E', // == info (softblue tracks --info in both modes)
+  pos: '#E3EFFA', // provided positiveSurface (fills only, like dark --pos)
+  neg: '#9E241E', // provided danger
+  warn: '#96640A', // provided warning
+  info: '#17517E', // provided info
+
+  indigoSoft: '#4338CA', // chip-indigo text, 7.44:1 vs bg (dark #818cf8 role)
+  calEventText: '#4338CA', // calendar event text — same readable indigo family
+  onAccent: '#FFFFFF', // white on accent fills verified above
+} as const;
+
+const l = lightPalette;
+
+/** Light-mode gradients — same start/end roles as `gradients`, light values. */
+export const lightGradients = {
+  accent: { from: '#5B5BF5', to: '#7440D6', angle: 135 },
+  accentSoft: { from: 'rgba(91,91,245,0.18)', to: 'rgba(116,64,214,0.18)', angle: 135 },
+  // one shade off bg → bg, same 180° recede the dark sidebar uses
+  sidebar: { from: '#FBFCFD', to: '#F7F8FA', angle: 180 },
+  // muted-wash → full-wash, mirroring the dark teal-2→teal subtlety
+  meterTeal: { from: '#D2E4F6', to: '#E3EFFA', angle: 90 },
+  // muted-danger → danger (dark mirrors #b45a5a → --neg)
+  meterNeg: { from: '#C0706B', to: '#9E241E', angle: 90 },
+  // border-strong → elev, the dark avatar's exact role
+  avatar: { from: '#C4CDD9', to: '#EDEFF3', angle: 135 },
+} as const;
+
+/**
+ * Light structured colors — the SAME key shape as `colors`, light values.
+ * HornMark note: accent.brand/brandSecondary keep the deep-navy gradient in
+ * light mode (12.76:1 / 17.83:1 vs light bg — the mark reads strongly); the
+ * cutout stroke follows bg.primary, which is what actually flips per mode.
+ */
+export const lightColors: { [K in keyof Colors]: { [J in keyof Colors[K]]: string } } = {
+  bg: {
+    primary: l.bg,
+    secondary: l.elev, // recede gutter reads a shade off the app bg (role match)
+    card: l.panel,
+    elevated: l.elev,
+    elevated2: l.elev2,
+  },
+  text: {
+    primary: l.text,
+    secondary: l.text2,
+    tertiary: l.text3,
+    inverse: '#FFFFFF', // white on saturated pill/accent fills (mode-invariant fills)
+    onAmber: '#FFFFFF',
+    onCoral: '#FFFFFF',
+    // light teal is a pale wash — readable ink on it is positiveText (6.05:1)
+    onTeal: '#155A9C',
+  },
+  accent: {
+    amber: l.indigo,
+    coral: l.violet,
+    teal: l.teal, // surface wash, fill-only (same rule as dark)
+    tealMuted: l.teal2,
+    tealGlow: withAlpha(l.teal2, 0.6), // selection glow: deeper wash, light-legible
+    tealHover: '#C0DAF3', // hover darkens on light (dark mode lightens): −8 L
+    slateBlue: l.indigo,
+    plum: l.violet,
+    cream: l.indigoSoft,
+    brand: '#08314A', // HornMark gradient base — kept (12.76:1 vs light bg)
+    brandSecondary: '#03121D', // HornMark gradient end — kept (17.83:1)
+  },
+  semantic: {
+    positiveSurface: '#E3EFFA', // provided
+    positiveText: '#155A9C', // provided — 6.64:1 vs bg, 7.06:1 vs panel
+    warning: l.warn,
+    danger: l.neg,
+    info: l.info,
+  },
+  border: {
+    subtle: l.hairline,
+    default: l.border,
+    strong: l.borderStrong,
+  },
+  overlay: {
+    scrim: 'rgba(0,0,0,0.55)', // scrims stay black-based in both modes
+    glass: 'rgba(255,255,255,0.70)', // light panel @ 0.70
+  },
+};
 
 /**
  * Legacy flat alias kept so any `oryxPalette.*` reference still resolves.
@@ -199,6 +323,7 @@ export const oryxPalette = {
 } as const;
 
 export type Colors = typeof colors;
+export type LightPalette = typeof lightPalette;
 export type OryxPalette = typeof oryxPalette;
 export type GensparkPalette = typeof gensparkPalette;
 export type Gradients = typeof gradients;

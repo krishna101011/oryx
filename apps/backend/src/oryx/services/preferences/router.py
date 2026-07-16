@@ -28,6 +28,7 @@ def _to_schema(p: PreferencesRow) -> Preferences:
         contentStyle=p.content_style,
         verificationStrictness=p.verification_strictness,
         notificationFrequency=p.notification_frequency,
+        themeMode=p.theme_mode,
         customTopics=list(p.custom_topics or []),
         createdAt=p.created_at,
         updatedAt=p.updated_at,
