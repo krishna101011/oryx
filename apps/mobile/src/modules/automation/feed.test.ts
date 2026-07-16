@@ -8,7 +8,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Automation } from '@oryx/shared-types';
-import { REASON_NOT_RECORDED, toDetailLines, toFeedRow, toFeedRows } from './feed';
+import {
+  REASON_NOT_RECORDED,
+  logTimestamp,
+  outcomeChipLabel,
+  toDetailLines,
+  toFeedRow,
+  toFeedRows,
+} from './feed';
 
 const dispatchEntry = (
   over: Partial<Automation.AutomationLogEntry> = {},
@@ -132,6 +139,24 @@ test('a digest row expands to its real window and category, no channel line', ()
   assert.deepEqual(lines.map((l) => l.label), ['Window', 'Category']);
   assert.equal(lines[1]!.value, 'Publishing alerts');
   assert.equal(lines.some((l) => l.label === 'Channel'), false);
+});
+
+// ------------------- row anatomy (AH-3, design-foundation wave) -------------------
+
+test('outcome chips map the real vocabulary: delivered OK, suppressed SKIP, failed FAIL', () => {
+  assert.equal(outcomeChipLabel(toFeedRow(dispatchEntry()).tone), 'OK');
+  assert.equal(outcomeChipLabel(toFeedRow(dispatchEntry({ action: 'suppressed_by_preference' })).tone), 'SKIP');
+  assert.equal(outcomeChipLabel(toFeedRow(dispatchEntry({ action: 'push_suppressed_quiet_hours' })).tone), 'SKIP');
+  assert.equal(outcomeChipLabel(toFeedRow(dispatchEntry({ action: 'email_failed' })).tone), 'FAIL');
+  assert.equal(outcomeChipLabel(toFeedRow(digestEntry()).tone), 'OK');
+  assert.equal(outcomeChipLabel('neutral'), '—');
+});
+
+test('logTimestamp yields a stacked time+date column and an honest dash for garbage input', () => {
+  const ts = logTimestamp('2026-07-06T10:00:00Z');
+  assert.match(ts.time, /^\d{2}:\d{2}:\d{2}$/);
+  assert.ok(ts.date.length > 0);
+  assert.deepEqual(logTimestamp('not-a-date'), { time: '—', date: '' });
 });
 
 test('every feed row carries its detail lines (the screen renders row.detail on expand)', () => {

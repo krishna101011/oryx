@@ -119,6 +119,7 @@ export const colors = {
     secondary: g.panel, // --panel #0A0E14
     card: g.panel, // --panel #0A0E14 (card/.kpi surface)
     elevated: g.elev, // --elev  #10151D (inputs, .cmd, tab-row)
+    elevated2: g.elev2, // --elev-2 #161D28 (.tab.active, .nav-badge)
   },
   text: {
     primary: g.text, // --text   #E6EAF2

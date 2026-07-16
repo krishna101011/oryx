@@ -121,6 +121,44 @@ export function toFeedRow(entry: Automation.AutomationLogEntry): FeedRow {
   };
 }
 
+/**
+ * The reference log table's State chip (automation.jsx:96 — OK/SKIP/RETRY),
+ * mapped onto our REAL outcome vocabulary: delivered/sent → OK, suppressed
+ * (preference or quiet hours) → SKIP, failed → FAIL. Nothing here retries, so
+ * RETRY is deliberately absent. Neutral (unknown action fallback) shows '—'.
+ */
+export function outcomeChipLabel(tone: FeedTone): 'OK' | 'SKIP' | 'FAIL' | '—' {
+  switch (tone) {
+    case 'positive':
+      return 'OK';
+    case 'warn':
+      return 'SKIP';
+    case 'danger':
+      return 'FAIL';
+    case 'neutral':
+      return '—';
+  }
+}
+
+/**
+ * The fixed-width mono timestamp column (reference automation.jsx:78's 130px
+ * Timestamp cell). The reference mocks a single day so HH:MM:SS suffices; the
+ * real feed spans days, so the column carries time + date stacked.
+ */
+export function logTimestamp(createdAt: string): { time: string; date: string } {
+  const d = new Date(createdAt);
+  if (Number.isNaN(d.getTime())) return { time: '—', date: '' };
+  return {
+    time: d.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }),
+    date: d.toLocaleDateString([], { month: 'short', day: 'numeric' }),
+  };
+}
+
 /** Presenter for the whole feed — API order is already newest-first, but the
  * merge invariant matters to the screen, so it is re-asserted here. */
 export function toFeedRows(entries: Automation.AutomationLogEntry[]): FeedRow[] {

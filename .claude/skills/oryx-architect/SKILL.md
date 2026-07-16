@@ -293,6 +293,14 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   present). (2) Inject navigation with NavigationContext.Provider (from
   @react-navigation/native) + a recording fake and seed react-query with
   setQueryData + staleTime Infinity — no NavigationContainer, no network.
+  ADDENDUM (2026-07-16, second user: modules/automation/expandOnPress.test.tsx):
+  screens behind FeatureGate/useMe also need react-redux — wrap in Provider
+  with the REAL singleton store (req('../../store').store; default auth status
+  'unknown' is fine) and seed ['me'] with { workspace:{id}, flags:{ff_*: true} }.
+  useMe's `enabled: status==='authenticated'` only gates FETCHING — useQuery
+  still returns seeded cache data when disabled, so FeatureGate opens without
+  faking auth. Locate pressables via their accessibility contract and assert
+  on JSON.stringify(tree.toJSON()) for rendered/absent copy.
 
 - CHARTS ARE HAND-ROLLED react-native-svg, NO CHARTING LIBRARY (confirmed
   Phase 7 Wave B). The design system's Spark (sparkline) and Candles
