@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
   Card,
+  CardHeader,
+  HairlineRowList,
   Icon,
   Screen,
   Spacer,
@@ -14,6 +16,7 @@ import type { Session } from '@oryx/shared-types';
 import { apiClient } from '../../../lib/api/client';
 import { useAppDispatch } from '../../../store';
 import { signout } from '../../../store/thunks/auth';
+import { deviceCountSub } from '../sessions';
 
 export const ActiveSessionsScreen: React.FC = () => {
   const t = useTheme();
@@ -46,35 +49,43 @@ export const ActiveSessionsScreen: React.FC = () => {
         </Text>
         <Spacer size={6} />
 
-        {(sessions.data ?? []).map((s) => (
-          <View key={s.id}>
-            <Card variant="default">
-              <View style={styles.row}>
-                <View style={[styles.iconWrap, { backgroundColor: t.colors.accent.tealGlow }]}>
-                  <Icon name="Smartphone" color="brand" />
+        {(sessions.data ?? []).length > 0 && (
+          <Card
+            header={<CardHeader title="Sessions" sub={deviceCountSub(sessions.data)} />}
+          >
+            <HairlineRowList>
+              {(sessions.data ?? []).map((s) => (
+                <View key={s.id} style={styles.row}>
+                  <View
+                    style={[
+                      styles.iconWrap,
+                      { backgroundColor: t.colors.accent.tealGlow, borderRadius: t.radius.xl },
+                    ]}
+                  >
+                    <Icon name="Smartphone" color="brand" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="body">
+                      {s.deviceLabel} {s.current ? '· This device' : ''}
+                    </Text>
+                    <Spacer size={1} />
+                    <Text variant="caption" color="tertiary">
+                      Last active {new Date(s.lastUsedAt).toLocaleString()}
+                    </Text>
+                  </View>
+                  {!s.current && (
+                    <Button
+                      label="Revoke"
+                      variant="ghost"
+                      size="sm"
+                      onPress={() => revoke.mutate(s.id)}
+                    />
+                  )}
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text variant="body">
-                    {s.deviceLabel} {s.current ? '· This device' : ''}
-                  </Text>
-                  <Spacer size={1} />
-                  <Text variant="caption" color="tertiary">
-                    Last active {new Date(s.lastUsedAt).toLocaleString()}
-                  </Text>
-                </View>
-                {!s.current && (
-                  <Button
-                    label="Revoke"
-                    variant="ghost"
-                    size="sm"
-                    onPress={() => revoke.mutate(s.id)}
-                  />
-                )}
-              </View>
-            </Card>
-            <Spacer size={2} />
-          </View>
-        ))}
+              ))}
+            </HairlineRowList>
+          </Card>
+        )}
 
         <Spacer size={6} />
         <Button
@@ -92,7 +103,10 @@ export const ActiveSessionsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   iconWrap: {
-    width: 36, height: 36, borderRadius: 8,
-    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
 });

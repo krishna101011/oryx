@@ -2,7 +2,16 @@ import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Icon, Screen, Spacer, Text } from '@oryx/design-system';
+import {
+  Button,
+  Card,
+  CardHeader,
+  HairlineRowList,
+  Icon,
+  Screen,
+  Spacer,
+  Text,
+} from '@oryx/design-system';
 import type {
   MeResponse,
   Preferences,
@@ -66,30 +75,35 @@ export const SettingsHomeScreen: React.FC = () => {
         <Text variant="pageTitle">Account</Text>
         <Spacer size={6} />
 
-        {me.data ? (
-          <Card variant="elevated">
-            <Text variant="h2">{me.data.profile.displayName}</Text>
-            <Spacer size={1} />
-            <Text variant="bodySm" color="secondary">
-              {me.data.account.email}
-            </Text>
-          </Card>
-        ) : null}
+        {/* PROFILE — identity summary + the one editable row, grouped under
+            one CardHeader instead of a floating identity card + a separate
+            caption label (the pre-migration pattern this wave retires). */}
+        <Card header={<CardHeader title="Profile" />}>
+          <HairlineRowList>
+            {me.data ? (
+              <View>
+                <Text variant="h2">{me.data.profile.displayName}</Text>
+                <Spacer size={1} />
+                <Text variant="bodySm" color="secondary">
+                  {me.data.account.email}
+                </Text>
+              </View>
+            ) : null}
+            <SettingsRow
+              label="Edit profile"
+              description="Display name, headline"
+              icon="User"
+              accent="amber"
+              onPress={() => navigation.navigate('ProfileEdit' as never)}
+            />
+          </HairlineRowList>
+        </Card>
 
         <Spacer size={6} />
-        <Text variant="caption" color="tertiary">
-          PROFILE
-        </Text>
-        <Spacer size={2} />
-        <SettingsRow
-          label="Edit profile"
-          description="Display name, headline"
-          icon="User"
-          accent="amber"
-          onPress={() => navigation.navigate('ProfileEdit' as never)}
-        />
-
-        <Spacer size={6} />
+        {/* APPEARANCE stays on the ChoiceTile anatomy deliberately (see the
+            module-level note above ChoiceTile usage): each tile is already a
+            Card with real typography + token colors, and ChoiceTile is a
+            shared onboarding/settings component this wave does not touch. */}
         <Text variant="caption" color="tertiary">
           APPEARANCE
         </Text>
@@ -109,24 +123,23 @@ export const SettingsHomeScreen: React.FC = () => {
         ))}
 
         <Spacer size={4} />
-        <Text variant="caption" color="tertiary">
-          SECURITY
-        </Text>
-        <Spacer size={2} />
-        <SettingsRow
-          label="Change password"
-          icon="KeyRound"
-          accent="slateBlue"
-          onPress={() => navigation.navigate('ChangePassword' as never)}
-        />
-        <Spacer size={2} />
-        <SettingsRow
-          label="Active sessions"
-          description="Devices currently signed in"
-          icon="MonitorSmartphone"
-          accent="slateBlue"
-          onPress={() => navigation.navigate('ActiveSessions' as never)}
-        />
+        <Card header={<CardHeader title="Security" sub="AES-256-GCM" />}>
+          <HairlineRowList>
+            <SettingsRow
+              label="Change password"
+              icon="KeyRound"
+              accent="slateBlue"
+              onPress={() => navigation.navigate('ChangePassword' as never)}
+            />
+            <SettingsRow
+              label="Active sessions"
+              description="Devices currently signed in"
+              icon="MonitorSmartphone"
+              accent="slateBlue"
+              onPress={() => navigation.navigate('ActiveSessions' as never)}
+            />
+          </HairlineRowList>
+        </Card>
         <Spacer size={2} />
         <View style={styles.footnote}>
           <Icon name="ShieldCheck" size="sm" color="secondary" />
@@ -136,72 +149,70 @@ export const SettingsHomeScreen: React.FC = () => {
         </View>
 
         <Spacer size={6} />
-        <Text variant="caption" color="tertiary">
-          ALERTS
-        </Text>
-        <Spacer size={2} />
-        <SettingsRow
-          label="Notification preferences"
-          description="Frequency and channels"
-          icon="Bell"
-          accent="coral"
-          onPress={() => navigation.navigate('AlertsSettings' as never)}
-        />
+        <Card header={<CardHeader title="Alerts" />}>
+          <HairlineRowList>
+            <SettingsRow
+              label="Notification preferences"
+              description="Frequency and channels"
+              icon="Bell"
+              accent="coral"
+              onPress={() => navigation.navigate('AlertsSettings' as never)}
+            />
+          </HairlineRowList>
+        </Card>
 
         <Spacer size={6} />
-        <Text variant="caption" color="tertiary">
-          AUTOMATION
-        </Text>
-        <Spacer size={2} />
-        <SettingsRow
-          label="Automation Hub"
-          description="Rules in force and the delivery log"
-          icon="Zap"
-          accent="amber"
-          onPress={() => navigation.navigate('AutomationHub' as never)}
-        />
-        <Spacer size={2} />
-        <SettingsRow
-          label="Analytics"
-          description="Pipeline metrics, research funnel, publishing"
-          icon="BarChart3"
-          accent="amber"
-          onPress={() => navigation.navigate('Analytics' as never)}
-        />
+        <Card header={<CardHeader title="Automation" />}>
+          <HairlineRowList>
+            <SettingsRow
+              label="Automation Hub"
+              description="Rules in force and the delivery log"
+              icon="Zap"
+              accent="amber"
+              onPress={() => navigation.navigate('AutomationHub' as never)}
+            />
+            <SettingsRow
+              label="Analytics"
+              description="Pipeline metrics, research funnel, publishing"
+              icon="BarChart3"
+              accent="amber"
+              onPress={() => navigation.navigate('Analytics' as never)}
+            />
+          </HairlineRowList>
+        </Card>
 
         <Spacer size={6} />
-        <Text variant="caption" color="tertiary">
-          SOURCES
-        </Text>
-        <Spacer size={2} />
-        <SettingsRow
-          label="Trusted sources"
-          description="Enable, disable, and override confidence"
-          icon="ListChecks"
-          accent="plum"
-          onPress={() => navigation.navigate('TrustedSources' as never)}
-        />
-        <Spacer size={2} />
-        <SettingsRow
-          label="Source intake"
-          description="Connections, sync health, activity"
-          icon="Inbox"
-          accent="plum"
-          onPress={() => navigation.navigate('IntakeHome' as never)}
-        />
+        <Card header={<CardHeader title="Sources" />}>
+          <HairlineRowList>
+            <SettingsRow
+              label="Trusted sources"
+              description="Enable, disable, and override confidence"
+              icon="ListChecks"
+              accent="plum"
+              onPress={() => navigation.navigate('TrustedSources' as never)}
+            />
+            <SettingsRow
+              label="Source intake"
+              description="Connections, sync health, activity"
+              icon="Inbox"
+              accent="plum"
+              onPress={() => navigation.navigate('IntakeHome' as never)}
+            />
+          </HairlineRowList>
+        </Card>
 
         <Spacer size={6} />
-        <Text variant="caption" color="tertiary">
-          VERIFICATION
-        </Text>
-        <Spacer size={2} />
-        <SettingsRow
-          label="Review queue"
-          description="Claims to review and open conflicts"
-          icon="ShieldCheck"
-          accent="teal"
-          onPress={() => navigation.navigate('VerificationQueue' as never)}
-        />
+        <Card header={<CardHeader title="Verification" />}>
+          <HairlineRowList>
+            <SettingsRow
+              label="Review queue"
+              description="Claims to review and open conflicts"
+              icon="ShieldCheck"
+              accent="teal"
+              onPress={() => navigation.navigate('VerificationQueue' as never)}
+            />
+          </HairlineRowList>
+        </Card>
 
         <Spacer size={8} />
         <Button
