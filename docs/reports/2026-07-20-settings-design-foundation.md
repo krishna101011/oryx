@@ -1,6 +1,11 @@
-# Settings adopts the design foundation (ST-1..ST-4) — completion report
+# Settings adopts the design foundation (ST-1..ST-5) — completion report
 
-Commit: `92ab78a9c6d0ae4e54876544b62d0b02719e0b48` — `feat(settings): Settings adopts the design foundation (ST-1..ST-4)`
+Commits: `92ab78a9c6d0ae4e54876544b62d0b02719e0b48` —
+`feat(settings): Settings adopts the design foundation (ST-1..ST-4)`;
+`869f8a51f5d75da7f0ebd9e569f441505588537f` —
+`fix(settings): ST-5 — Verification row's icon glyph used the surface-only teal accent`
+(found during Phase 3 visual proof, below); report commit `ccee4886e6cc2fde6937f9e65a398b7afbedd2f7`
+plus this update.
 
 ## Phase 0 — confirm current state
 
@@ -156,42 +161,78 @@ also used by sign-in/sign-up (out of scope — "do not touch any screen
 outside Settings"). Flagged here for a dedicated auth-module or
 cross-cutting token-sweep wave; not fixed in this commit.
 
-## Phase 3 — visual proof: BLOCKED
+## Phase 3 — visual proof: DONE (initially blocked, then unblocked by the owner)
 
-Both dev servers were already running (backend :8000, Expo web :8081).
-Navigating to `http://localhost:8081` redirected to `/auth/sign-in` with no
-existing session (confirmed via `tabs_context_mcp` — a fresh tab, no prior
-group). Typing a password into that form is policy-prohibited (credential
-entry is a hard-blocked action category), matching the previously-recorded
-`live_browser_verification_needs_session` gotcha exactly. **No screenshots
-were captured.** This phase is blocked on the owner signing in; once signed
-in, in-app navigation (not a reload) will keep the session alive for capture.
+Both dev servers were already running (backend :8000, Expo web :8081). On
+first attempt, navigating to `http://localhost:8081` redirected to
+`/auth/sign-in` with no existing session — typing a password is
+policy-prohibited, matching the previously-recorded
+`live_browser_verification_needs_session` gotcha. Work paused there and the
+owner was asked to sign in. **The owner signed in** and confirmed; in-app
+navigation (clicking the gear icon, not a reload) then reached Settings with
+the session intact.
 
-Planned shots, ready to take once unblocked:
-- Settings home at desktop width (~1280px) and at the confirmed narrow-content
-  width. **Breakpoint confirmation** (the "don't reuse 576 blindly" check):
-  `SIDEBAR_COLLAPSE_BREAKPOINT` (576 = 232px sidebar + 344px
-  `MIN_CONTENT_WIDTH`) is a single global constant driving the whole web
-  shell's sidebar collapse (`webShellLayout.ts`), derived from Command
-  Center's KPI-tile floor (two 150px tiles + 12px gap + 32px screen padding).
-  Settings' own content — single-line label/description rows with a
-  trailing chevron, no fixed-width tiles — has a genuinely SMALLER minimum
-  than that KPI-tile floor, so 576 remains valid and conservative for
-  Settings; it does not need raising. This was verified by inspecting
-  Settings' row anatomy against the KPI-tile derivation, not reused blindly.
-  Screenshot width for "narrow" = 576px per this confirmation.
-- Appearance section in both dark and light mode at both widths (the one
-  section where the toggle it controls is visible on the same page).
-- Security (post-migration CardHeader/HairlineRowList), Active Sessions,
-  Alerts, Sources, Verification — desktop width only (no mode-sensitive
-  content beyond what Appearance already covers).
+**Breakpoint confirmation** (the "don't reuse 576 blindly" check):
+`SIDEBAR_COLLAPSE_BREAKPOINT` (576 = 232px sidebar + 344px
+`MIN_CONTENT_WIDTH`) is a single global constant driving the whole web
+shell's sidebar collapse (`webShellLayout.ts`), derived from Command
+Center's KPI-tile floor. Settings' own content — single-line label/
+description rows with a trailing chevron, no fixed-width tiles — has a
+genuinely smaller minimum than that KPI-tile floor. Confirmed live at
+576×900: the sidebar correctly collapses to the hamburger, and every row
+stays fully readable with no wrapping/overlap/truncation — 576 holds without
+needing to be raised.
+
+**Shots captured** (all real, via `mcp__claude-in-chrome`):
+1. Settings home, desktop (1280×900), dark — Profile/Appearance/Security.
+2. Settings home, desktop, dark, scrolled — Alerts/Automation/Sources/
+   Verification (post-fix, see ST-5 below).
+3. Settings home, desktop, **light** mode — Profile/Appearance/Security
+   (confirms token-driven theming: cards, borders, and text correctly
+   invert; the sidebar itself stays dark by design — the `gx` StyleSheet is
+   documented as still static-dark, Theming Phase B territory, not this
+   wave's scope).
+4. Settings home, desktop, light, scrolled — Alerts/Automation/Sources/
+   Verification (post-fix).
+5. Settings home, narrow (576×900), dark — Profile/Appearance/Security.
+6. Settings home, narrow, dark, scrolled — Alerts/Automation/Sources/
+   Verification (post-fix).
+7. Active Sessions screen, desktop, dark — confirms the `CardHeader
+   title="Sessions" sub="54 DEVICES"` real pluralized count and
+   `HairlineRowList` rows render correctly against real data (54 real
+   session rows).
+
+**ST-5 — a real bug found during this phase, fixed on the spot.** The
+Verification row's icon well rendered as a blank box with zero visible
+glyph, in both themes. Traced via `Icon`'s color resolution
+(`packages/design-system/src/components/Icon.tsx`) to `accent="teal"` on
+that row → `t.colors.accent.teal`, which `tokens/colors.ts` documents as
+**SURFACE-ONLY** (fills/washes; 1.49:1 contrast vs bg in dark; a near-white
+`#E3EFFA` wash in light) — never meant for icon/text glyphs, which should
+use `semantic.positiveText` instead. `Icon`'s `color` prop has no path to
+`semantic.positiveText`, so the scoped, Settings-only fix was to swap the
+row's accent to `"coral"` (a real glyph-safe accent — resolves to violet
+`#8B5CF6`/`l.violet`, already used elsewhere on this screen).
+Repo-wide grep confirmed this `accent="teal"`/`color="teal"` icon-glyph
+usage was the **only** one anywhere in the mobile app — fully self-contained
+to this one Settings row, so fixing it stayed within this wave's scope.
+Pinned by a new test. Commit `869f8a5`.
+
+**False alarm, investigated and ruled out:** the Active Sessions screen's
+per-row `Icon name="Smartphone" color="brand"` also looked like a blank box
+in a normal-resolution screenshot. DOM inspection (`elementFromPoint`,
+computed style, and a precise pixel-region zoom) confirmed the SVG renders
+correctly — correct 20×20 size, correct `stroke="#5B5BF5"` indigo, fully
+opaque and visible — it was just a thin 1.75px stroke that a
+downscaled/compressed full-page screenshot washes out. No code change was
+needed; this is a screenshot-fidelity limitation, not an app defect.
 
 ## Tests
 
 New: `apps/mobile/src/modules/settings/sessions.test.ts` (1 test),
-`apps/mobile/src/modules/settings/foundation.test.ts` (8 tests) — both
-registered in `apps/mobile/package.json`'s explicit test-file list (no glob
-support on this runner).
+`apps/mobile/src/modules/settings/foundation.test.ts` (9 tests, one added
+for the ST-5 fix) — both registered in `apps/mobile/package.json`'s explicit
+test-file list (no glob support on this runner).
 
 Named tests:
 - `deviceCountSub stays silent while loading, states a real zero plainly, and pluralizes`
@@ -202,6 +243,7 @@ Named tests:
 - `ActiveSessionsScreen groups sessions under a real CardHeader with the pluralized device-count sub`
 - `deferred honestly: Appearance, Alerts-preferences, and Trusted Sources keep their ChoiceTile anatomy`
 - `deferred honestly: ProfileEdit and ChangePassword stay plain forms — no row/list anatomy exists to migrate`
+- `ST-5 fixed: no Settings row uses the surface-only teal accent as an icon glyph color`
 - `out of scope, not part of this Settings module: AutomationHub/Analytics/IntakeHome/VerificationQueue rows only link out`
 
 ## Full suite before/after
@@ -210,31 +252,40 @@ A pre-existing, unrelated "Theming Phase B" restructure
 (`packages/design-system/src/styles/genspark.ts` and consumers in
 automation/content/dashboard/research/web-shell) was already sitting
 uncommitted in the working tree when this wave started — it is not part of
-this commit and was left untouched (staged and committed only the
+either commit and was left untouched (staged and committed only the
 Settings-scoped files by name; the shared `package.json` test-script line
 was reconstructed to include only the pre-wave baseline plus this wave's two
-new files, then the working tree was restored afterward so Phase B's pending
-edit isn't lost).
+new files for the first commit, then the working tree was restored
+afterward so Phase B's pending edit isn't lost; the ST-5 fix commit needed
+no `package.json` change).
 
 - **True before-baseline** (`git stash`'d to the exact pre-wave state,
   including Phase B's pending edits, then tested): 192 passed / 0 failed.
   `pnpm type-check` clean.
-- **This commit's own contribution**: +9 tests (`sessions.test.ts` ×1,
-  `foundation.test.ts` ×8) — 192 → 201 on top of clean `HEAD~1`.
-- **After** (full working tree, this commit plus the still-uncommitted,
-  unrelated Phase B work): 208 passed / 0 failed. `pnpm type-check` clean.
-  `pnpm drift:check` clean (40 string-literal unions match). `pnpm lint`: 35
-  warnings / 0 errors (pre-existing `sort-imports` pattern; two of the
-  warnings are this wave's own touched files, consistent with the ~36-warning
-  baseline the project already carries — not a new error class).
+- **This wave's own contribution**: +10 tests (`sessions.test.ts` ×1,
+  `foundation.test.ts` ×9) — 192 → 202 on top of clean pre-wave `HEAD`.
+- **After** (full working tree, both this wave's commits plus the
+  still-uncommitted, unrelated Phase B work): 209 passed / 0 failed.
+  `pnpm type-check` clean. `pnpm drift:check` clean (40 string-literal
+  unions match). `pnpm lint`: 35 warnings / 0 errors (pre-existing
+  `sort-imports` pattern; two of the warnings are this wave's own touched
+  files, consistent with the ~36-warning baseline the project already
+  carries — not a new error class).
 
-## Commit
+## Commits
 
-`92ab78a9c6d0ae4e54876544b62d0b02719e0b48` —
-`feat(settings): Settings adopts the design foundation (ST-1..ST-4)`
-(7 files changed: `SettingsRow.tsx`, `SettingsHomeScreen.tsx`,
-`ActiveSessionsScreen.tsx`, `sessions.ts`, `sessions.test.ts`,
-`foundation.test.ts`, `package.json`).
+- `92ab78a9c6d0ae4e54876544b62d0b02719e0b48` —
+  `feat(settings): Settings adopts the design foundation (ST-1..ST-4)`
+  (7 files: `SettingsRow.tsx`, `SettingsHomeScreen.tsx`,
+  `ActiveSessionsScreen.tsx`, `sessions.ts`, `sessions.test.ts`,
+  `foundation.test.ts`, `package.json`).
+- `ccee4886e6cc2fde6937f9e65a398b7afbedd2f7` — `docs(reports): Settings
+  design-foundation wave completion report` (this report, first version).
+- `869f8a51f5d75da7f0ebd9e569f441505588537f` — `fix(settings): ST-5 —
+  Verification row's icon glyph used the surface-only teal accent`
+  (2 files: `SettingsHomeScreen.tsx`, `foundation.test.ts`).
+- This report's update (Phase 3 completed, ST-5 documented) is committed
+  separately, following the project convention of never amending.
 
 ## New/updated memory and skill files
 
