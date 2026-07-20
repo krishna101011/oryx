@@ -107,6 +107,21 @@ test('deferred honestly: ProfileEdit and ChangePassword stay plain forms — no 
   }
 });
 
+test('ST-5 fixed: no Settings row uses the surface-only teal accent as an icon glyph color', () => {
+  // Live-verification bug (2026-07-20): the Verification row passed
+  // accent="teal" to SettingsRow -> Icon color="teal", which resolves to
+  // colors.ts's accent.teal — documented SURFACE-ONLY (fills/washes; 1.49:1
+  // contrast vs bg in dark, a near-white wash in light). The icon rendered
+  // faintly in dark mode by coincidence and was fully invisible in light
+  // mode (light accent.teal = #E3EFFA, a pale wash, on a near-white icon
+  // well). Confirmed this was the ONLY accent="teal"/color="teal" icon-glyph
+  // usage anywhere in the mobile app (repo-wide grep) — fixed by swapping to
+  // "coral" (a real glyph-safe accent, same family already used elsewhere in
+  // this screen).
+  const home = read('./screens/SettingsHomeScreen.tsx');
+  assert.ok(!/accent="teal"/.test(home), 'Verification row no longer uses the surface-only teal accent');
+});
+
 test('out of scope, not part of this Settings module: AutomationHub/Analytics/IntakeHome/VerificationQueue rows only link out', () => {
   // These four rows in SettingsHomeScreen navigate to screens owned by other
   // modules (automation/, analytics/, intake/, verification/) that already

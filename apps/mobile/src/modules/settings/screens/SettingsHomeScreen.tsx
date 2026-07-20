@@ -208,7 +208,7 @@ export const SettingsHomeScreen: React.FC = () => {
               label="Review queue"
               description="Claims to review and open conflicts"
               icon="ShieldCheck"
-              accent="teal"
+              accent="coral"
               onPress={() => navigation.navigate('VerificationQueue' as never)}
             />
           </HairlineRowList>
