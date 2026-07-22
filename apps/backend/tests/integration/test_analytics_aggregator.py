@@ -1,10 +1,11 @@
 """AnalyticsAggregator — Phase 7 Wave A coverage (Source A of ADR-047).
 
 FROZEN_CATALOG below is the complete 20-event metric catalog from
-docs/PHASE_7_ARCHITECTURE.md §3.3 (Rev 2.1), deliberately duplicated here as
-literals rather than imported from the aggregator — the test checks the code
-against the frozen document, not against itself (same principle as
-test_notification_dispatcher.py's catalog table).
+docs/PHASE_7_ARCHITECTURE.md §3.3 (Rev 2.1) plus its documented post-freeze
+extensions, deliberately duplicated here as literals rather than imported
+from the aggregator — the test checks the code against the frozen document,
+not against itself (same principle as test_notification_dispatcher.py's
+catalog table).
 """
 from __future__ import annotations
 
@@ -38,6 +39,10 @@ FROZEN_CATALOG: tuple[tuple[str, str], ...] = (
     ("content.publish.failed", "publish_failures"),
     ("content.draft.scheduled", "drafts_scheduled"),
     ("content.calendar.cancelled", "calendar_cancellations"),
+    # Post-freeze §3.3 extension (2026-07-22 ADR): AI parse-failure quality
+    # signal — same precedent as push_suppressed_quiet_hours (2026-07-08) and
+    # the email family (2026-07-21).
+    ("verification.ai.parse_failed", "ai_parse_failures_total"),
 )
 
 
@@ -113,11 +118,12 @@ async def _raw_rows(sm, workspace_id):
 
 
 def test_subscribed_tuple_matches_frozen_catalog() -> None:
-    """The aggregator subscribes to exactly the frozen 20 — no more, no less."""
+    """The aggregator subscribes to exactly the frozen 20 plus the one
+    post-freeze extension — no more, no less."""
     from oryx.services.analytics.aggregator import ANALYTICS_EVENTS
 
     assert sorted(ANALYTICS_EVENTS) == sorted(name for name, _ in FROZEN_CATALOG)
-    assert len(ANALYTICS_EVENTS) == 20
+    assert len(ANALYTICS_EVENTS) == 21
 
 
 # --- Mandatory scenario 1: every catalog event -> exactly one fact row ---

@@ -32,6 +32,7 @@ from oryx.services.evidence.repository import EvidenceRepository
 from oryx.services.queue.bus import DomainEvent
 from oryx.services.queue.drainer import PermanentDeliveryError
 from oryx.services.queue.outbox import enqueue_event
+from oryx.services.verification.events.constants import AI_PARSE_FAILED
 
 logger = get_logger(__name__)
 
@@ -156,6 +157,21 @@ class EvidenceService:
         if linking.parse_failed:
             async with self._sm() as session:
                 await ClaimsRepository(session).flag_for_review(claim_id)
+                # Durable quality fact (2026-07-22 ADR): distinguishes "flagged
+                # because the linker output was unparseable" from every other
+                # review reason. Same transaction as the flag; analytics-only.
+                await enqueue_event(
+                    session,
+                    name=AI_PARSE_FAILED,
+                    payload={
+                        "callType": "evidence_linker",
+                        "workspaceId": str(workspace_id),
+                        "claimId": str(claim_id),
+                    },
+                    workspace_id=workspace_id,
+                    correlation_id=correlation_id,
+                    causation_id=causation_event_id,
+                )
                 await session.commit()
             await self._emit_collected(
                 claim_id=claim_id,

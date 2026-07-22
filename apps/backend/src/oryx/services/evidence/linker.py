@@ -14,7 +14,7 @@ import json
 import uuid
 from dataclasses import dataclass
 
-from oryx.core.ai_circuit_breaker import ai_circuit_breaker
+from oryx.core.ai_circuit_breaker import ai_circuit_breaker, ai_quality_tracker
 from oryx.core.logging import get_logger
 from oryx.services.claims.extractor import call_ai_provider
 from oryx.services.evidence.models import (
@@ -91,6 +91,9 @@ class EvidenceLinkerAI:
         )
         allowed_ids = {c.intake_item_id for c in candidates}
         parsed = _parse_results(result.text, allowed_ids=allowed_ids)
+        ai_quality_tracker.record_parse_outcome(
+            CIRCUIT_CALL_TYPE, ok=parsed is not None
+        )
         if parsed is None:
             logger.warning(
                 "evidence.linker_parse_failed",

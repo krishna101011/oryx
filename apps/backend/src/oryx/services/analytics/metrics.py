@@ -1,7 +1,7 @@
 """Metric-key maps — Phase 7 Wave A (frozen doc §3.3, ADR-047).
 
-Source A: EVENT_METRICS maps each of the 20 catalog bus events to its rollup
-metric key. Source B: ACTION_METRICS maps automation_log's REAL action_taken
+Source A: EVENT_METRICS maps each catalog bus event (the frozen 20 plus the
+post-freeze extensions noted below) to its rollup metric key. Source B: ACTION_METRICS maps automation_log's REAL action_taken
 values (services/activity/dispatcher.py ACTION_* constants — confirmed, not
 invented) to theirs; digests_sent counts digest_runs rows.
 
@@ -46,6 +46,11 @@ EVENT_METRICS: dict[str, str] = {
     "content.publish.failed": "publish_failures",
     "content.draft.scheduled": "drafts_scheduled",
     "content.calendar.cancelled": "calendar_cancellations",
+    # Post-freeze §3.3 extension (2026-07-22 ADR, the parse-failure-on-200
+    # visibility gap): one fact per AI parse failure across the four pipeline
+    # callers (payload callType distinguishes them). Observational only —
+    # this event is deliberately NOT in the dispatcher's notification catalog.
+    "verification.ai.parse_failed": "ai_parse_failures_total",
 }
 
 # automation_log.action_taken -> metric key (Source B).

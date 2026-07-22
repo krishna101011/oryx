@@ -43,6 +43,7 @@ from oryx.services.claims.repository import ClaimsRepository
 from oryx.services.queue.bus import DomainEvent
 from oryx.services.queue.drainer import PermanentDeliveryError
 from oryx.services.queue.outbox import enqueue_event
+from oryx.services.verification.events.constants import AI_PARSE_FAILED
 
 logger = get_logger(__name__)
 
@@ -171,6 +172,23 @@ class ClaimService:
                     "intake_item_id": str(intake_item_id),
                 },
             )
+            # Durable quality fact (2026-07-22 ADR): analytics-only, never a
+            # notification. The item-level outcome (zero claims, no failure of
+            # the delivery) is unchanged.
+            async with self._sm() as session:
+                await enqueue_event(
+                    session,
+                    name=AI_PARSE_FAILED,
+                    payload={
+                        "callType": "extractor",
+                        "workspaceId": str(workspace_id),
+                        "intakeItemId": str(intake_item_id),
+                    },
+                    workspace_id=workspace_id,
+                    correlation_id=correlation_id,
+                    causation_id=causation_event_id,
+                )
+                await session.commit()
             return []
         if not extraction.triples:
             return []  # zero claims is a valid outcome
@@ -306,6 +324,22 @@ class ClaimService:
                     correlation_id=correlation_id,
                     causation_id=causation_event_id,
                 )
+                if result.requires_analyst_review:
+                    # The classifier's ONLY review-flag path is a broken label
+                    # contract — same quality class as unparseable JSON
+                    # (2026-07-22 ADR). Same transaction as the typing above.
+                    await enqueue_event(
+                        session,
+                        name=AI_PARSE_FAILED,
+                        payload={
+                            "callType": "classifier",
+                            "workspaceId": str(workspace_id),
+                            "claimId": str(claim_id),
+                        },
+                        workspace_id=workspace_id,
+                        correlation_id=correlation_id,
+                        causation_id=causation_event_id,
+                    )
                 await session.commit()
 
 

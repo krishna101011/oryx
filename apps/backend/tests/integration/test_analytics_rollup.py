@@ -153,6 +153,28 @@ async def test_rollup_aggregates_raw_events_into_daily_value(sm) -> None:
     assert rollups[("drafts_published", date(2026, 7, 8))] == 1
 
 
+@pytest.mark.asyncio
+async def test_rollup_aggregates_parse_failure_facts(sm) -> None:
+    """The post-freeze verification.ai.parse_failed extension (2026-07-22 ADR)
+    round-trips through Source A into ai_parse_failures_total like any other
+    catalog event — this is the metric-side half of the aggregator's
+    parametrized fact-row coverage."""
+    ids = await _seed_workspace(sm)
+    when = datetime(2026, 7, 22, 9, 0, tzinfo=UTC)
+    for _ in range(2):
+        await _seed_raw_event(
+            sm,
+            workspace_id=ids["workspace"],
+            event_name="verification.ai.parse_failed",
+            occurred_at=when,
+        )
+
+    await _worker(sm).tick()
+
+    rollups = await _rollups(sm, ids["workspace"])
+    assert rollups[("ai_parse_failures_total", date(2026, 7, 22))] == 2
+
+
 # --- Mandatory scenario 4: Source B tables -> matching metric values ---
 
 

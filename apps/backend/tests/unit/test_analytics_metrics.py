@@ -13,7 +13,8 @@ Source B.
 from __future__ import annotations
 
 from oryx.services.activity import dispatcher
-from oryx.services.analytics.metrics import ACTION_METRICS
+from oryx.services.analytics.metrics import ACTION_METRICS, EVENT_METRICS
+from oryx.services.verification.events.constants import AI_PARSE_FAILED
 
 
 def _dispatcher_action_values() -> set[str]:
@@ -50,3 +51,22 @@ def test_action_metric_keys_are_unique() -> None:
     # into a single rollup series.
     values = list(ACTION_METRICS.values())
     assert len(values) == len(set(values))
+
+
+# --- verification.ai.parse_failed (post-freeze §3.3 extension, 2026-07-22) ---
+
+
+def test_parse_failed_event_maps_to_its_metric() -> None:
+    assert EVENT_METRICS[AI_PARSE_FAILED] == "ai_parse_failures_total"
+    # Same silent-drop guard as Source B: an unmapped event's facts vanish
+    # from rollups with no error anywhere.
+    values = list(EVENT_METRICS.values())
+    assert len(values) == len(set(values))
+
+
+def test_parse_failed_event_never_routes_to_the_dispatcher() -> None:
+    """MANDATORY constraint of the 2026-07-22 ADR: the parse-failure event is
+    observational only. Verified against the dispatcher's REAL catalog and
+    subscription tuple — not assumed."""
+    assert AI_PARSE_FAILED not in dispatcher.CATALOG
+    assert AI_PARSE_FAILED not in dispatcher.SUBSCRIBED_EVENTS

@@ -57,7 +57,7 @@ class EpistemicClassifierAI:
             f"Context (start of source document):\n{context[:CONTEXT_CHARS]}"
         )
         # Wave B retrofit: same call, now behind the shared circuit breaker.
-        from oryx.core.ai_circuit_breaker import ai_circuit_breaker
+        from oryx.core.ai_circuit_breaker import ai_circuit_breaker, ai_quality_tracker
 
         result = await ai_circuit_breaker.call(
             "classifier",
@@ -69,6 +69,9 @@ class EpistemicClassifierAI:
             ),
         )
         label = result.text.strip().lower()
+        # A bad label is the same contract-violation class as unparseable JSON
+        # (2026-07-22 ADR) — the classifier's contract is one allowed word.
+        ai_quality_tracker.record_parse_outcome("classifier", ok=label in ALLOWED_TYPES)
         if label not in ALLOWED_TYPES:
             logger.warning(
                 "claims.classifier_bad_label",

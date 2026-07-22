@@ -104,7 +104,7 @@ class ClaimExtractorAI:
 
     async def extract(self, body_text: str) -> ExtractionResult:
         # Wave B retrofit: same call, now behind the shared circuit breaker.
-        from oryx.core.ai_circuit_breaker import ai_circuit_breaker
+        from oryx.core.ai_circuit_breaker import ai_circuit_breaker, ai_quality_tracker
 
         result = await ai_circuit_breaker.call(
             "extractor",
@@ -116,6 +116,7 @@ class ClaimExtractorAI:
             ),
         )
         triples = _parse_triples(result.text)
+        ai_quality_tracker.record_parse_outcome("extractor", ok=triples is not None)
         if triples is None:
             # Malformed model output is not a delivery failure: log, flag,
             # and move on with zero claims (spec: do not fail the event).

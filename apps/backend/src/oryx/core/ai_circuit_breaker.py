@@ -112,3 +112,57 @@ class AICircuitBreaker:
 
 # Module-level singleton — one breaker per process.
 ai_circuit_breaker = AICircuitBreaker()
+
+
+PARSE_FAILURE_STREAK_THRESHOLD = 5
+
+
+class AIQualityTracker:
+    """Consecutive parse-failure streaks per call_type — the quality-signal
+    counterpart of the breaker (2026-07-22 ADR closing the
+    parse-failure-on-200 visibility gap).
+
+    Deliberately SEPARATE state from AICircuitBreaker, and never consulted by
+    it: a parse failure is a per-item quality outcome on a delivery that
+    SUCCEEDED, so it must never open a circuit, trigger a retry, or change
+    delivery semantics in any way. The signal is observational: N consecutive
+    failures for one call_type is a misconfiguration pattern (e.g. a
+    reasoning-mode model truncating inside pipeline budgets — every call 200s,
+    every output unparseable), surfaced as the structured
+    `ai_quality.parse_failure_streak` log line exactly when a streak reaches
+    the threshold (once per streak; a success starts a new streak).
+
+    Streaks are count-based, not time-windowed, on purpose: a misconfigured
+    model fails every call and any success resets the streak, so wall-clock
+    gaps carry no information — which is why there is no clock here despite
+    the breaker having one. In-process state like the breaker: a restart
+    cold-starts every streak at zero.
+    """
+
+    def __init__(self) -> None:
+        self._streaks: dict[str, int] = defaultdict(int)
+
+    def streak(self, call_type: str) -> int:
+        return self._streaks[call_type]
+
+    def record_parse_outcome(self, call_type: str, ok: bool) -> None:
+        if ok:
+            self._streaks[call_type] = 0
+            return
+        self._streaks[call_type] += 1
+        if self._streaks[call_type] == PARSE_FAILURE_STREAK_THRESHOLD:
+            logger.warning(
+                "ai_quality.parse_failure_streak",
+                extra={
+                    "call_type": call_type,
+                    "consecutive_failures": self._streaks[call_type],
+                },
+            )
+
+    def reset(self) -> None:
+        """Test hook — the module singleton below is shared process state."""
+        self._streaks.clear()
+
+
+# Module-level singleton — one tracker per process, mirroring the breaker.
+ai_quality_tracker = AIQualityTracker()

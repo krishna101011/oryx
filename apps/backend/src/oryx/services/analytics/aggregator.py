@@ -11,7 +11,8 @@ Idempotency under the bus's at-least-once contract: `source_event_id` is the
 envelope's own id (== the outbox row's id, queue/outbox.py), unique in the
 table — a redelivered event's insert conflicts and is silently dropped.
 
-Catalog scope: the 20 metric-bearing events of the frozen doc's §3.3. The two
+Catalog scope: the 20 metric-bearing events of the frozen doc's §3.3, plus
+the post-freeze verification.ai.parse_failed extension (2026-07-22 ADR). The two
 `workspace.deletion.*` cascade lifecycle events (intake/workspace_cascade.py)
 are deliberately NOT subscribed: they are published with workspace_id=None
 (the workspace row is mid-deletion), so there is no workspace to attribute a
@@ -55,13 +56,18 @@ from oryx.services.publishing.events.constants import (
     CONTENT_PUBLISHED,
 )
 from oryx.services.research.events.constants import PACKET_READY
-from oryx.services.verification.events.constants import CLAIM_FAILED, CLAIM_VERIFIED
+from oryx.services.verification.events.constants import (
+    AI_PARSE_FAILED,
+    CLAIM_FAILED,
+    CLAIM_VERIFIED,
+)
 
 from .metrics import EVENT_METRICS
 
 logger = get_logger(__name__)
 
-# The full 20-event metric catalog (frozen doc §3.3). Kept as an explicit
+# The full metric catalog: the frozen doc's §3.3 twenty events plus the
+# post-freeze AI_PARSE_FAILED extension (2026-07-22 ADR). Kept as an explicit
 # tuple — build_bus() loops over it the same way it does the dispatcher's
 # SUBSCRIBED_EVENTS.
 ANALYTICS_EVENTS: tuple[str, ...] = (
@@ -85,6 +91,7 @@ ANALYTICS_EVENTS: tuple[str, ...] = (
     CONTENT_PUBLISH_FAILED,
     CALENDAR_ENTRY_SCHEDULED,
     CALENDAR_ENTRY_CANCELLED,
+    AI_PARSE_FAILED,
 )
 
 # Every subscribed event must map to a metric; a mismatch is a wiring bug

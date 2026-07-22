@@ -40,6 +40,7 @@ from oryx.services.conflicts.resolver import evaluate_auto_resolve
 from oryx.services.queue.bus import DomainEvent
 from oryx.services.queue.drainer import PermanentDeliveryError
 from oryx.services.queue.outbox import enqueue_event
+from oryx.services.verification.events.constants import AI_PARSE_FAILED
 
 logger = get_logger(__name__)
 
@@ -197,11 +198,27 @@ class ConflictService:
             )
             return None
 
-        if detection.tokens_used:
+        if detection.tokens_used or detection.parse_failed:
             async with self._sm() as session:
-                await ClaimsRepository(session).add_tokens_used(
-                    workspace_id, detection.tokens_used
-                )
+                if detection.tokens_used:
+                    await ClaimsRepository(session).add_tokens_used(
+                        workspace_id, detection.tokens_used
+                    )
+                if detection.parse_failed:
+                    # Durable quality fact (2026-07-22 ADR): without this, an
+                    # unparseable detector response is byte-for-byte identical
+                    # to a genuine "no conflict" downstream. Analytics-only.
+                    await enqueue_event(
+                        session,
+                        name=AI_PARSE_FAILED,
+                        payload={
+                            "callType": "conflict_detector",
+                            "workspaceId": str(workspace_id),
+                            "claimAId": str(a.id),
+                            "claimBId": str(b.id),
+                        },
+                        workspace_id=workspace_id,
+                    )
                 await session.commit()
 
         if not detection.result.is_conflict:

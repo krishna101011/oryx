@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from oryx.core.ai_circuit_breaker import ai_circuit_breaker
+from oryx.core.ai_circuit_breaker import ai_circuit_breaker, ai_quality_tracker
 from oryx.core.logging import get_logger
 from oryx.services.claims.extractor import call_ai_provider
 from oryx.services.conflicts.models import (
@@ -63,6 +63,10 @@ Output format (exactly this shape):
 class DetectionResult:
     result: ConflictResult
     tokens_used: int
+    # True when the model output was unparseable and NO_CONFLICT is a fallback,
+    # not a judgment — the caller emits the observational parse-failed event.
+    # The "no conflict" outcome itself is unchanged (safety posture above).
+    parse_failed: bool = False
 
 
 class ConflictDetectorAI:
@@ -92,12 +96,17 @@ class ConflictDetectorAI:
             ),
         )
         parsed = _parse(ai.text)
+        ai_quality_tracker.record_parse_outcome(
+            CIRCUIT_CALL_TYPE, ok=parsed is not None
+        )
         if parsed is None:
             logger.warning(
                 "conflicts.detector_parse_failed",
                 extra={"output_prefix": ai.text[:120]},
             )
-            return DetectionResult(result=NO_CONFLICT, tokens_used=ai.total_tokens)
+            return DetectionResult(
+                result=NO_CONFLICT, tokens_used=ai.total_tokens, parse_failed=True
+            )
         return DetectionResult(result=parsed, tokens_used=ai.total_tokens)
 
 

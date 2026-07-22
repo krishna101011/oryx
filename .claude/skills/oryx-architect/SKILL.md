@@ -587,10 +587,21 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   only — the four *_SYSTEM_PROMPT constants and the Anthropic/Ollama paths
   are untouched (pinned by tests in test_ai_provider_openai_compat.py).
   Diagnostic signature to remember: "tokens billed > 0 but parse_failed=True
-  on every item, circuits closed" = reasoning mode, not a code bug. Related
-  open design question (NOT bundled into the fix, needs a Chat/ADR decision):
-  the breaker cannot see parse-failures-on-200, so a systematically
-  misconfigured model burns budget forever with circuits closed.
+  on every item, circuits closed" = reasoning mode, not a code bug.
+  RESOLVED (2026-07-22 ADR, two-layer fix): parse-failures-on-200 are now
+  visible WITHOUT touching breaker semantics. Layer 1: every parse failure at
+  the four callers (incl. the classifier's bad-label case — same contract-
+  violation class) emits verification.ai.parse_failed (payload callType),
+  a post-freeze §3.3 catalog extension mapped to ai_parse_failures_total —
+  analytics-only, deliberately ABSENT from the dispatcher's notification
+  CATALOG (regression-tested). Layer 2: AIQualityTracker (ai_circuit_breaker
+  .py, singleton beside the breaker, same call_type keying, SEPARATE state —
+  it can never open a circuit) counts consecutive parse failures per
+  call_type and logs `ai_quality.parse_failure_streak` exactly once per
+  streak at 5. Count-based on purpose (no clock): a misconfigured model fails
+  every call, so wall-clock windows add nothing. When adding a fifth AI
+  caller, wire BOTH layers: record_parse_outcome(call_type, ok) at the parse
+  site + an AI_PARSE_FAILED emission in the service layer's session.
 
 ## What This Skill Deliberately Does NOT Contain
 
