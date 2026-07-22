@@ -78,17 +78,19 @@ export interface Kpi {
 }
 
 /**
- * The four headline KPIs — one per pipeline stage, so the row answers "is the
+ * The headline KPIs — one per pipeline stage, so the row answers "is the
  * whole machine running" at a glance: intake (is anything coming in) →
  * verification (is the engine producing verified intelligence — the
  * platform's core value) → publishing (is real output leaving the building) →
- * automation (is the system talking to the user).
+ * automation (is the system talking to the user — notifications, and since
+ * the 2026-07-22 trends wave, the email channel that actually delivers them).
  */
 export const KPI_DEFS: { key: string; label: string }[] = [
   { key: 'intake_items_received', label: 'Items ingested' },
   { key: 'claims_verified', label: 'Claims verified' },
   { key: 'drafts_published', label: 'Drafts published' },
   { key: 'notifications_created', label: 'Notifications' },
+  { key: 'emails_sent', label: 'Emails sent' },
 ];
 
 export const KPI_WINDOW_DAYS = 7;
@@ -120,9 +122,19 @@ export type TrendDirection = 'up' | 'down' | 'flat';
  * prior period to compare against yet. Distinct from a REAL zero prior sum
  * (points exist before the window but the prior week was quiet), same
  * absent ≠ zero discipline as sumWindow.
+ *
+ * 'dormant' (2026-07-22 trends wave): the metric's ENTIRE observed history
+ * is one distinct day and the current window is quiet. One observation never
+ * demonstrated recurrence, so any week-over-week claim about it is a
+ * fabricated rate — as that lone point drifts through the windows it would
+ * otherwise read "▼ 100%" (point in the prior week) and then "no change"
+ * (point older than both windows) forever. Two or more observed days DO
+ * demonstrate recurrence, so a quiet current window against multi-day
+ * history stays a real computed decline — dormant never masks that.
  */
 export type Trend =
   | { kind: 'insufficient' }
+  | { kind: 'dormant' }
   | {
       kind: 'trend';
       direction: TrendDirection;
@@ -150,6 +162,12 @@ export function computeTrend(
       .filter((p) => p.date >= from && p.date <= to)
       .reduce((acc, p) => acc + p.value, 0);
   const current = sum(currentFrom, today);
+  // Single-observed-day guard (see the Trend doc): deliberately independent
+  // of WHERE the lone day sits relative to the prior window, so the state is
+  // stable as the point ages instead of decaying ▼100% → "no change".
+  if (current === 0 && new Set(points.map((p) => p.date)).size === 1) {
+    return { kind: 'dormant' };
+  }
   const prior = sum(dayBefore(today, 2 * days - 1), dayBefore(today, days));
   const direction: TrendDirection =
     current > prior ? 'up' : current < prior ? 'down' : 'flat';
@@ -170,6 +188,9 @@ export function formatTrend(trend: Trend | null): TrendDisplay | null {
   if (trend === null) return null;
   if (trend.kind === 'insufficient') {
     return { text: 'not enough history yet', tone: 'neutral' };
+  }
+  if (trend.kind === 'dormant') {
+    return { text: 'no recent activity', tone: 'neutral' };
   }
   const vs = `vs prior ${KPI_WINDOW_DAYS} days`;
   if (trend.direction === 'flat') return { text: `no change ${vs}`, tone: 'neutral' };

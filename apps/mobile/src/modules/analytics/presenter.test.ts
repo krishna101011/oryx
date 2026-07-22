@@ -46,7 +46,7 @@ test('a completely empty series map renders as the gathering state, not a crash'
   const empty: Series = {};
   assert.equal(hasAnyData(empty), false);
   const kpis = buildKpis(empty, TODAY);
-  assert.equal(kpis.length, 4);
+  assert.equal(kpis.length, 5);
   // Absent metric => null (an em dash on screen), NEVER a confusing hard 0.
   assert.ok(kpis.every((k) => k.value === null));
   // Sparklines still get dense zero data — no NaN, no broken chart.
@@ -86,11 +86,17 @@ test('dayBefore does UTC calendar math across month boundaries', () => {
 
 // -------------------- KPIs --------------------
 
-test('buildKpis reports the four pipeline-stage headlines', () => {
+test('buildKpis reports the five pipeline-stage headlines', () => {
   const kpis = buildKpis(richSeries, TODAY);
   assert.deepEqual(
     kpis.map((k) => k.key),
-    ['intake_items_received', 'claims_verified', 'drafts_published', 'notifications_created'],
+    [
+      'intake_items_received',
+      'claims_verified',
+      'drafts_published',
+      'notifications_created',
+      'emails_sent',
+    ],
   );
   const verified = kpis.find((k) => k.key === 'claims_verified');
   assert.equal(verified?.value, 8);
@@ -236,7 +242,15 @@ test('grew-from-quiet prior renders as "new" (no fake percentage), quiet-both as
   });
   assert.deepEqual(formatTrend(trend), { text: '▲ new vs prior 7 days', tone: 'positive' });
 
-  const quietBoth: Series = { m: [{ date: '2026-06-10', value: 2 }] };
+  // Quiet-both with MULTI-day history is still a genuine flat "no change" —
+  // recurrence was demonstrated, the quiet is real. (The single-stale-point
+  // variant of this case is now 'dormant'; see the trends-wave tests below.)
+  const quietBoth: Series = {
+    m: [
+      { date: '2026-06-08', value: 1 },
+      { date: '2026-06-10', value: 2 },
+    ],
+  };
   assert.deepEqual(formatTrend(computeTrend(quietBoth, 'm', TODAY, 7)), {
     text: 'no change vs prior 7 days',
     tone: 'neutral',
@@ -260,10 +274,11 @@ test('buildKpis carries a trend per card, consistent with its own series', () =>
   assert.deepEqual(kpis.find((k) => k.key === 'claims_verified')?.trend, {
     kind: 'insufficient',
   });
-  // intake_items_received has real pre-window history (06-01) and zero
-  // activity in both windows -> a true flat, not "insufficient".
+  // intake_items_received's whole observed life is ONE stale day (06-01)
+  // with a quiet current window -> dormant since the 2026-07-22 trends wave
+  // (previously a misleading "no change" flat).
   assert.deepEqual(kpis.find((k) => k.key === 'intake_items_received')?.trend, {
-    kind: 'trend', direction: 'flat', current: 0, prior: 0, pctChange: 0,
+    kind: 'dormant',
   });
   // Absent metrics carry no trend at all.
   assert.equal(kpis.find((k) => k.key === 'drafts_published')?.trend, null);
@@ -293,6 +308,92 @@ test('trend derives only from the series passed in — cross-workspace isolation
   assert.deepEqual(second, {
     kind: 'trend', direction: 'up', current: 6, prior: 2, pctChange: 200,
   });
+});
+
+// -------------------- trends wave (2026-07-22): emails_sent + dormant --------------------
+
+test('emails_sent is a trended KPI card and its trend computes from real-shaped history', () => {
+  // Mirrors the real rollup shape for this metric on 2026-07-22 (7 sparse
+  // days spanning both windows), rebased onto the test's TODAY.
+  const series: Series = {
+    emails_sent: [
+      { date: '2026-06-27', value: 276 }, // prior window
+      { date: '2026-06-28', value: 84 }, //  prior window -> prior = 360
+      { date: '2026-07-02', value: 301 }, // current window
+      { date: '2026-07-07', value: 673 }, // current window
+      { date: '2026-07-08', value: 905 }, // current window -> current = 1879
+    ],
+  };
+  const card = buildKpis(series, TODAY).find((k) => k.key === 'emails_sent');
+  assert.ok(card, 'emails_sent card missing from KPI_DEFS');
+  assert.equal(card.label, 'Emails sent');
+  assert.equal(card.value, 1879);
+  assert.deepEqual(card.trend, {
+    kind: 'trend',
+    direction: 'up',
+    current: 1879,
+    prior: 360,
+    pctChange: ((1879 - 360) / 360) * 100,
+  });
+  assert.equal(formatTrend(card.trend)?.text, '▲ 422% vs prior 7 days');
+});
+
+test('a single stale observation renders dormant, not a fake 100% decline', () => {
+  // The lone point sits in the PRIOR window: pre-fix this computed
+  // {direction:'down', pctChange:-100} — a rate-of-change claim about a
+  // metric that never recurred (the research_packets_ready shape).
+  const inPrior: Series = { m: [{ date: '2026-06-28', value: 2 }] };
+  assert.deepEqual(computeTrend(inPrior, 'm', TODAY, 7), { kind: 'dormant' });
+  // ...and once the point ages past both windows the state STAYS dormant
+  // (pre-fix it decayed into a misleading flat "no change").
+  const olderThanBoth: Series = { m: [{ date: '2026-06-10', value: 2 }] };
+  assert.deepEqual(computeTrend(olderThanBoth, 'm', TODAY, 7), { kind: 'dormant' });
+  assert.deepEqual(formatTrend({ kind: 'dormant' }), {
+    text: 'no recent activity',
+    tone: 'neutral',
+  });
+});
+
+test('dormant never suppresses a genuine decline backed by recurring history', () => {
+  // TWO observed days before the window -> recurrence demonstrated; a quiet
+  // current week is a real 100% decline and must still say so.
+  const realDecline: Series = {
+    m: [
+      { date: '2026-06-26', value: 4 }, // prior window
+      { date: '2026-06-30', value: 6 }, // prior window -> prior = 10
+    ],
+  };
+  const trend = computeTrend(realDecline, 'm', TODAY, 7);
+  assert.deepEqual(trend, {
+    kind: 'trend', direction: 'down', current: 0, prior: 10, pctChange: -100,
+  });
+  assert.deepEqual(formatTrend(trend), { text: '▼ 100% vs prior 7 days', tone: 'danger' });
+});
+
+test('dormant rule regression: "new", insufficient, and active single-day cases unaffected', () => {
+  // Single observed day INSIDE the current window: still 'insufficient'
+  // (nothing observed before the window), never dormant.
+  const young: Series = { m: [{ date: '2026-07-05', value: 12 }] };
+  assert.deepEqual(computeTrend(young, 'm', TODAY, 7), { kind: 'insufficient' });
+  // Multi-day history with a quiet prior window: still the 'new' rendering.
+  const fromNothing: Series = {
+    m: [
+      { date: '2026-06-10', value: 2 },
+      { date: '2026-07-06', value: 5 },
+    ],
+  };
+  assert.equal(formatTrend(computeTrend(fromNothing, 'm', TODAY, 7))?.text, '▲ new vs prior 7 days');
+  // Single stale day but a NON-quiet current window cannot exist for one
+  // observed day (the day would be in the window) — the nearest real case,
+  // one stale + one current day, is a genuine 'new'/trend, not dormant.
+  const staleThenActive: Series = {
+    m: [
+      { date: '2026-06-10', value: 2 },
+      { date: '2026-07-03', value: 7 },
+    ],
+  };
+  const trend = computeTrend(staleThenActive, 'm', TODAY, 7);
+  assert.ok(trend?.kind === 'trend' && trend.direction === 'up');
 });
 
 // -------------------- Funnel drops + summary (AN-3, design-foundation wave) --------------------
