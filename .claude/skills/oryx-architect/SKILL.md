@@ -603,6 +603,58 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   caller, wire BOTH layers: record_parse_outcome(call_type, ok) at the parse
   site + an AI_PARSE_FAILED emission in the service layer's session.
 
+- "TRUSTED SOURCES" AND "INTAKE SOURCES" ARE TWO UNRELATED ENTITIES DESPITE
+  BOTH SOUNDING LIKE "the sources list" (found building source-governance
+  tiers, 2026-07-22). TrustedSourcesScreen shows `source_catalog` +
+  `workspace_sources` (a pure per-workspace on/off toggle, PK
+  (workspace_id, source_key) where source_key is a source_catalog.key
+  STRING) — confirmed via grep that `WorkspaceSource` is NEVER read anywhere
+  under `services/intake`, so this toggle has ZERO effect on what actually
+  gets ingested (matches the existing `ff_intake_*` "client-surface-only"
+  gotcha above). The REAL, credibility-bearing entity is `intake_sources`
+  (workspace-scoped, real UUID `id`, the thing `source_credibility_records.
+  source_id` actually joins against) — a real intake connector (RSS/Gmail/
+  webhook/etc.), managed on a completely different screen
+  (SourceManagementScreen/SourceCard, reached via IntakeHomeScreen). The two
+  are NOT 1:1: a catalog key like `the_block` and a same-named custom RSS
+  `intake_sources` row for "The Block" can coexist with zero code link
+  between them (`origin_catalog_key` is the only possible bridge, and is
+  NULL on every real intake_sources row observed to date — nobody has used
+  the catalog-provisions-a-real-connector flow yet). Any feature keyed on
+  "real per-source activity/credibility/accuracy" (tiers, conflict counts,
+  accuracy history) belongs on the intake_sources side; never fabricate a
+  name-based match to bridge them (duplicate names exist for real, e.g. two
+  real rows both literally named "NSE India"/"NSE India1").
+- THE MOBILE WEB SHELL HAS NO URL FOR MOST NON-SETTINGS-HOME SCREENS
+  (found same wave). `navigation/linking.ts`'s Settings sub-tree only listed
+  8 of the many real Settings-stack screens (ProfileEdit/ChangePassword/
+  ActiveSessions/AlertsSettings/TrustedSources/AutomationHub/Analytics)
+  before this wave — IntakeHome/IntakeSourceManagement/IntakeSourceDetail/
+  SourceCredibility (and likely others, e.g. verification/intelligence
+  detail screens) had NO web URL at all, unreachable except by an in-app tap
+  chain that itself often starts from a sidebar item not yet wired for web
+  (dimmed nav items, e.g. "Intake Engine", are genuinely inert on click, not
+  just visually deemphasized). When a wave needs to verify a screen live and
+  the sidebar can't reach it, check `linking.ts` first — a missing URL
+  entry is a one-line, safe, mechanical fix (register the EXISTING screen,
+  same pattern as every sibling entry), not a sign the screen is broken.
+- A SEPARATELY-MANAGED LOCAL uvicorn --reload PROCESS CAN SERVE STALE CODE
+  FOR ONE ROUTE WHILE HEALTH-CHECKING FINE (found same wave, unresolved
+  root cause). Adding a new response field once showed up correctly via a
+  direct in-process ASGI call (`AsyncClient(transport=ASGITransport(app=
+  create_app()))`, the same mechanism the integration test suite uses) and
+  via a bare `python -c` call into the repository/router functions, but was
+  MISSING from the live HTTP response of a manually-started `uv run uvicorn
+  --reload` background process — even immediately after a full kill+
+  restart, confirmed via `Get-CimInstance Win32_Process`. `Get-NetTCPConnection`
+  also intermittently reported an already-dead PID as still owning port 8000
+  (confirmed dead via `Get-Process -Id <pid>` erroring) — a stale OS listener-
+  table entry, not a real process. When a manually-run dev server disagrees
+  with a direct in-process/pytest check for the SAME code, trust the
+  in-process check and treat the standalone process as suspect; don't
+  conclude the code is wrong from the standalone server alone. Root cause
+  not fully diagnosed — flagged here rather than guessed at.
+
 ## What This Skill Deliberately Does NOT Contain
 
 Current phase/wave status, current commit hashes, current test counts.
