@@ -53,6 +53,9 @@ export interface SourceCredibility {
   verifiedClaimCount: number;
   contestedClaimCount: number;
   totalClaimCount: number;
+  /** Real join, computed only on the single-source read; absent (not 0) on
+   * the list endpoint (source-governance wave, 2026-07-22). */
+  conflictCount: number | null;
   lastEvaluatedAt: Timestamp | null;
   updatedAt: Timestamp;
 }

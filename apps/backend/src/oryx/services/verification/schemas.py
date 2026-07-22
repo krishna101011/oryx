@@ -61,5 +61,10 @@ class SourceCredibilityResponse(BaseModel):
     verified_claim_count: int = Field(alias="verifiedClaimCount")
     contested_claim_count: int = Field(alias="contestedClaimCount")
     total_claim_count: int = Field(alias="totalClaimCount")
+    # Real join (claims -> intake_items -> conflict_records), computed only on
+    # the single-source read (source-governance wave, 2026-07-22) — absent on
+    # the list endpoint rather than paying an N-source join per list render.
+    # None means "not computed for this response", never a claim of zero.
+    conflict_count: int | None = Field(default=None, alias="conflictCount")
     last_evaluated_at: datetime | None = Field(default=None, alias="lastEvaluatedAt")
     updated_at: datetime = Field(alias="updatedAt")

@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, TextInput } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Button, Card, Screen, Spacer, Text, useTheme } from '@oryx/design-system';
 import { useMe } from '../../../hooks/useMe';
 import { isApiError } from '../../../lib/errors';
+import { useCredibilityList } from '../../verification/hooks/useSourceCredibility';
 import { intakeApi } from '../api/intake';
 import { SourceCard } from '../components/SourceCard';
 import { useCreateSource, useIntakeSources } from '../hooks/useIntakeSources';
@@ -14,9 +16,15 @@ import { useCreateSource, useIntakeSources } from '../hooks/useIntakeSources';
  */
 export const SourceManagementScreen: React.FC = () => {
   const t = useTheme();
+  const navigation = useNavigation();
   const me = useMe();
   const sources = useIntakeSources();
   const create = useCreateSource();
+  const credibility = useCredibilityList();
+  const credibilityBySourceId = useMemo(
+    () => new Map((credibility.data ?? []).map((c) => [c.sourceId, c])),
+    [credibility.data],
+  );
 
   const [feedName, setFeedName] = useState('');
   const [feedUrl, setFeedUrl] = useState('');
@@ -156,7 +164,14 @@ export const SourceManagementScreen: React.FC = () => {
         <Spacer size={2} />
         {(sources.data ?? []).map((s) => (
           <React.Fragment key={s.id}>
-            <SourceCard source={s} />
+            <SourceCard
+              source={s}
+              credibility={credibilityBySourceId.get(s.id)}
+              onPress={() =>
+                // @ts-expect-error param-carrying navigate; typed via SettingsStackParamList
+                navigation.navigate('IntakeSourceDetail', { sourceId: s.id })
+              }
+            />
             <Spacer size={2} />
           </React.Fragment>
         ))}

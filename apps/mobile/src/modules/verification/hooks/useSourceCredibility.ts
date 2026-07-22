@@ -21,3 +21,16 @@ export function useSourceCredibility(sourceId: string) {
     },
   });
 }
+
+/**
+ * Workspace-wide credibility list (source-governance wave, 2026-07-22) — one
+ * record per intake source that has ever produced a claim. Sources with no
+ * record are simply absent from this array; callers must treat "no entry"
+ * as "not yet rated", never as a zero accuracy_rate.
+ */
+export function useCredibilityList() {
+  return useQuery<Verification.SourceCredibility[]>({
+    queryKey: ['verification', 'credibility'],
+    queryFn: async () => (await verificationApi.listCredibility()).data,
+  });
+}

@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Card, Icon, Pressable, Spacer, Text, type IconName } from '@oryx/design-system';
-import type { IntakeSource } from '@oryx/shared-types';
+import type { IntakeSource, Verification } from '@oryx/shared-types';
 import { SourceHealthPill } from './SourceHealthPill';
+import { SourceTierPill } from './SourceTierPill';
 
 const KIND_ICONS: Record<IntakeSource['kind'], IconName> = {
   gmail: 'Mail',
@@ -34,7 +35,11 @@ function lastSyncLabel(lastSyncedAt: string | null): string {
 export const SourceCard: React.FC<{
   source: IntakeSource;
   onPress?: () => void;
-}> = ({ source, onPress }) => {
+  /** Source-governance tier (2026-07-22 wave). Omit entirely on screens that
+   * don't have the credibility list loaded — SourceTierPill itself renders
+   * nothing when undefined, so this is purely additive. */
+  credibility?: Verification.SourceCredibility;
+}> = ({ source, onPress, credibility }) => {
   const content = (
     <Card variant="default">
       <View style={styles.row}>
@@ -45,6 +50,12 @@ export const SourceCard: React.FC<{
           <Text variant="caption" color="tertiary">
             {KIND_LABELS[source.kind]} · {lastSyncLabel(source.lastSyncedAt)}
           </Text>
+          {credibility ? (
+            <>
+              <Spacer size={1} />
+              <SourceTierPill credibility={credibility} />
+            </>
+          ) : null}
         </View>
         <SourceHealthPill health={source.health} />
       </View>

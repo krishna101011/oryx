@@ -5,12 +5,13 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oryx.core.models import (
     Claim,
+    ConflictRecord,
     IntakeItem,
     SourceCredibilityRecord,
     VerificationAuditLog,
@@ -145,6 +146,34 @@ class VerificationRepository:
             )
         )
         return result.scalar_one_or_none()
+
+    async def count_conflicts_for_source(
+        self, *, workspace_id: uuid.UUID, source_id: uuid.UUID
+    ) -> int:
+        """Real join proven in the source-governance recon: claims trace back
+        to their intake source via intake_item_id, and a conflict counts for
+        this source if EITHER side of the pair is one of its claims. Computed
+        at read time — no new tracking table, mirroring how accuracy_rate is
+        the only thing actually stored (ADR-031)."""
+        source_claim_ids = (
+            select(Claim.id)
+            .join(IntakeItem, IntakeItem.id == Claim.intake_item_id)
+            .where(
+                Claim.workspace_id == workspace_id,
+                IntakeItem.intake_source_id == source_id,
+            )
+            .scalar_subquery()
+        )
+        result = await self.db.execute(
+            select(func.count(func.distinct(ConflictRecord.id))).where(
+                ConflictRecord.workspace_id == workspace_id,
+                or_(
+                    ConflictRecord.claim_a_id.in_(source_claim_ids),
+                    ConflictRecord.claim_b_id.in_(source_claim_ids),
+                ),
+            )
+        )
+        return int(result.scalar_one())
 
     async def apply_credibility_outcome(
         self,

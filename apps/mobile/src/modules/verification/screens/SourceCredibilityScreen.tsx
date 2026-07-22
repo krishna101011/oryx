@@ -72,6 +72,13 @@ export const SourceCredibilityScreen: React.FC = () => {
           <Divider />
           <Row label="Contested claims" value={String(c.contestedClaimCount)} />
           <Divider />
+          {/* Real join (claims -> intake_items -> conflict_records), computed
+              on this single-source read — never fabricated as 0 when absent. */}
+          <Row
+            label="Conflicts"
+            value={c.conflictCount === null ? '—' : String(c.conflictCount)}
+          />
+          <Divider />
           <Row label="Total claims" value={String(c.totalClaimCount)} />
           <Divider />
           <Row

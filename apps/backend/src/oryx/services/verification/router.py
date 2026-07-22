@@ -58,7 +58,9 @@ def _run_dict(row: VerificationRun) -> dict[str, Any]:
     ).model_dump(by_alias=True)
 
 
-def _credibility_dict(row: SourceCredibilityRecord) -> dict[str, Any]:
+def _credibility_dict(
+    row: SourceCredibilityRecord, *, conflict_count: int | None = None
+) -> dict[str, Any]:
     return SourceCredibilityResponse(
         workspace_id=str(row.workspace_id),
         source_id=str(row.source_id),
@@ -66,6 +68,7 @@ def _credibility_dict(row: SourceCredibilityRecord) -> dict[str, Any]:
         verified_claim_count=row.verified_claim_count,
         contested_claim_count=row.contested_claim_count,
         total_claim_count=row.total_claim_count,
+        conflict_count=conflict_count,
         last_evaluated_at=row.last_evaluated_at,
         updated_at=row.updated_at,
     ).model_dump(by_alias=True)
@@ -132,9 +135,16 @@ async def get_credibility(
     ws: ActiveWorkspaceContext = Depends(get_active_workspace),
     db: AsyncSession = Depends(db_session),
 ) -> dict[str, Any]:
-    row = await VerificationRepository(db).get_credibility(
+    repo = VerificationRepository(db)
+    row = await repo.get_credibility(
         workspace_id=ws.workspace_id, source_id=source_id
     )
     if row is None:
         raise NotFoundError("Source credibility record not found")
-    return envelope(_credibility_dict(row), request_id=get_request_id(request))
+    conflict_count = await repo.count_conflicts_for_source(
+        workspace_id=ws.workspace_id, source_id=source_id
+    )
+    return envelope(
+        _credibility_dict(row, conflict_count=conflict_count),
+        request_id=get_request_id(request),
+    )

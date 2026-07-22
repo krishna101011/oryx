@@ -1,8 +1,10 @@
 import React from 'react';
 import { ScrollView, View, StyleSheet } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
-import { Button, Card, Divider, Screen, Skeleton, Spacer, Text } from '@oryx/design-system';
+import { Button, Card, Divider, Screen, Skeleton, Spacer, Text, useTheme } from '@oryx/design-system';
 import type { SettingsStackParamList } from '../../../navigation/types';
+import { useSourceCredibility } from '../../verification/hooks/useSourceCredibility';
+import { needsReviewRecommendation } from '../../verification/sourceTier';
 import { SourceHealthPill } from '../components/SourceHealthPill';
 import {
   useDeleteSource,
@@ -15,9 +17,11 @@ import {
 export const SourceDetailScreen: React.FC = () => {
   const route = useRoute<RouteProp<SettingsStackParamList, 'IntakeSourceDetail'>>();
   const navigation = useNavigation();
+  const t = useTheme();
   const { sourceId } = route.params;
 
   const source = useIntakeSource(sourceId);
+  const credibility = useSourceCredibility(sourceId);
   const patch = usePatchSource(sourceId);
   const remove = useDeleteSource(sourceId);
   const sync = useTriggerSync(sourceId);
@@ -31,6 +35,8 @@ export const SourceDetailScreen: React.FC = () => {
     );
   }
   const s = source.data;
+  const flaggedForReview =
+    !!credibility.data && needsReviewRecommendation(credibility.data, s.enabled);
 
   return (
     <Screen background="primary">
@@ -40,6 +46,24 @@ export const SourceDetailScreen: React.FC = () => {
         <Spacer size={3} />
         <SourceHealthPill health={s.health} />
         <Spacer size={6} />
+
+        {flaggedForReview ? (
+          <>
+            <Card variant="default" style={{ borderColor: t.colors.semantic.danger, borderWidth: 1 }}>
+              <Text variant="bodySm" style={{ color: t.colors.semantic.danger }}>
+                Needs review
+              </Text>
+              <Spacer size={1} />
+              <Text variant="caption" color="secondary">
+                This source&apos;s verified claims have been outweighed by
+                contested ones ({Math.round(credibility.data!.accuracyRate * 100)}%
+                accuracy over {credibility.data!.totalClaimCount} claims). Consider
+                disabling it below — nothing happens automatically.
+              </Text>
+            </Card>
+            <Spacer size={4} />
+          </>
+        ) : null}
 
         <Card variant="elevated">
           <Row label="Kind" value={s.kind} />
