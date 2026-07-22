@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from oryx.core.logging import get_logger
-from oryx.services.claims.extractor import call_anthropic
+from oryx.services.claims.extractor import call_ai_provider
 
 logger = get_logger(__name__)
 
@@ -61,7 +61,7 @@ class EpistemicClassifierAI:
 
         result = await ai_circuit_breaker.call(
             "classifier",
-            lambda: call_anthropic(
+            lambda: call_ai_provider(
                 system=CLASSIFIER_SYSTEM_PROMPT,
                 user_content=user_content,
                 max_tokens=CLASSIFIER_MAX_TOKENS,

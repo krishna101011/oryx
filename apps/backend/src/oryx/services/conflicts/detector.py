@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 from oryx.core.ai_circuit_breaker import ai_circuit_breaker
 from oryx.core.logging import get_logger
-from oryx.services.claims.extractor import call_anthropic
+from oryx.services.claims.extractor import call_ai_provider
 from oryx.services.conflicts.models import (
     CONFLICT_TYPES,
     DEFAULT_CONFLICT_TYPE,
@@ -84,7 +84,7 @@ class ConflictDetectorAI:
         )
         ai = await ai_circuit_breaker.call(
             CIRCUIT_CALL_TYPE,
-            lambda: call_anthropic(
+            lambda: call_ai_provider(
                 system=DETECTOR_SYSTEM_PROMPT,
                 user_content=user_content,
                 max_tokens=DETECTOR_MAX_TOKENS,

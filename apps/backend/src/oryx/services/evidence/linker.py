@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 from oryx.core.ai_circuit_breaker import ai_circuit_breaker
 from oryx.core.logging import get_logger
-from oryx.services.claims.extractor import call_anthropic
+from oryx.services.claims.extractor import call_ai_provider
 from oryx.services.evidence.models import (
     EVIDENCE_TYPES,
     TYPE_TO_RELATIONSHIP,
@@ -82,7 +82,7 @@ class EvidenceLinkerAI:
         user_content = _build_user_content(claim_text, candidates)
         result = await ai_circuit_breaker.call(
             CIRCUIT_CALL_TYPE,
-            lambda: call_anthropic(
+            lambda: call_ai_provider(
                 system=LINKER_SYSTEM_PROMPT,
                 user_content=user_content,
                 max_tokens=LINKER_MAX_TOKENS,

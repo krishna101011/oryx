@@ -9,6 +9,18 @@ push_suppressed_quiet_hours landed with the post-freeze Phase 6 §3.3
 extension (2026-07-08): the dispatcher now records a decision row for each
 quiet-hour skip, and this metric aggregates them. Rows from before that date
 don't exist, so historical days simply have no value (sparse zero).
+
+The email family (emails_sent/emails_failed/emails_suppressed_quiet_hours)
+was added 2026-07-21: the dispatcher's email channel shipped its ACTION_EMAIL_*
+constants after this map froze, and unmapped actions are silently skipped by
+the rollup filter — real email_sent history existed with zero analytics
+representation. Metric names pluralize the noun like notifications_*/digests_*
+(push_* is the grandfathered §3.3 exception). Because the RollupWorker
+RECOMPUTES full automation_log history every tick, mapping an action here
+inherently backfills its entire history on the next tick — that is Source B's
+documented contract, not a side effect. tests/unit/test_analytics_metrics.py
+asserts this map covers every dispatcher ACTION_* constant so the same drift
+cannot recur silently.
 """
 from __future__ import annotations
 
@@ -43,6 +55,9 @@ ACTION_METRICS: dict[str, str] = {
     "push_sent": "push_sent",
     "push_failed": "push_failed",
     "push_suppressed_quiet_hours": "push_suppressed_quiet_hours",
+    "email_sent": "emails_sent",
+    "email_failed": "emails_failed",
+    "email_suppressed_quiet_hours": "emails_suppressed_quiet_hours",
 }
 
 # digest_runs rows -> this metric (Source B; account->workspace via members).

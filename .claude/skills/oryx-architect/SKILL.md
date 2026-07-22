@@ -572,6 +572,26 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   so any new useMe field read needs a deep optional chain
   (`query.data?.preferences?.themeMode`) or every seeded-cache test crashes.
 
+- REASONING-MODE OPENAI-COMPAT MODELS RETURN 200 WITH EMPTY CONTENT INSIDE
+  PIPELINE BUDGETS (diagnosed live 2026-07-22 on NVIDIA NIM Nemotron
+  llama-3.3-nemotron-super-49b-v1.5). Such models spend ~900-1000 output
+  tokens "thinking" before any content; the pipeline budgets (extractor 800 /
+  classifier 50 / detector 200 / linker 150) truncate mid-reasoning, so
+  message.content arrives EMPTY on a successful HTTP 200 — all four callers
+  parse-fail, the conflict detector silently returns NO_CONFLICT for real
+  conflicts, and the circuit breakers count every call as a SUCCESS (parse
+  failures are not ProviderErrors). Fix shipped: settings field
+  openai_compat_disable_reasoning (env OPENAI_COMPAT_DISABLE_REASONING=1,
+  keep it ON for Nemotron/Qwen-class vendors) makes OpenAICompatProvider
+  prepend NO_THINK_TOKEN ("/no_think") to the system message ON THE WIRE
+  only — the four *_SYSTEM_PROMPT constants and the Anthropic/Ollama paths
+  are untouched (pinned by tests in test_ai_provider_openai_compat.py).
+  Diagnostic signature to remember: "tokens billed > 0 but parse_failed=True
+  on every item, circuits closed" = reasoning mode, not a code bug. Related
+  open design question (NOT bundled into the fix, needs a Chat/ADR decision):
+  the breaker cannot see parse-failures-on-200, so a systematically
+  misconfigured model burns budget forever with circuits closed.
+
 ## What This Skill Deliberately Does NOT Contain
 
 Current phase/wave status, current commit hashes, current test counts.

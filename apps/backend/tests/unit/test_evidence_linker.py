@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from oryx.services.claims.extractor import AnthropicResult
+from oryx.services.claims.extractor import AIProviderResult
 from oryx.services.evidence import linker as linker_module
 from oryx.services.evidence.linker import LINKER_VERSION, EvidenceLinkerAI
 from oryx.services.evidence.models import CandidateItem
@@ -39,7 +39,7 @@ def _fake_call(text: str, capture: dict | None = None):
     async def fake(**kwargs):
         if capture is not None:
             capture.update(kwargs)
-        return AnthropicResult(text=text, input_tokens=200, output_tokens=40)
+        return AIProviderResult(text=text, input_tokens=200, output_tokens=40)
 
     return fake
 
@@ -60,9 +60,9 @@ async def test_single_batched_call_contains_every_candidate(
     async def fake(**kwargs):
         calls["n"] += 1
         captured.update(kwargs)
-        return AnthropicResult(text="[]", input_tokens=10, output_tokens=1)
+        return AIProviderResult(text="[]", input_tokens=10, output_tokens=1)
 
-    monkeypatch.setattr(linker_module, "call_anthropic", fake)
+    monkeypatch.setattr(linker_module, "call_ai_provider", fake)
     await EvidenceLinkerAI().link("Some claim.", candidates)
     assert calls["n"] == 1  # one call per claim, never per candidate
     for c in candidates:
@@ -73,7 +73,7 @@ async def test_single_batched_call_contains_every_candidate(
 async def test_valid_results_pass_through(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _candidate()
     monkeypatch.setattr(
-        linker_module, "call_anthropic",
+        linker_module, "call_ai_provider",
         _fake_call(json.dumps([_entry(c.intake_item_id)])),
     )
     result = await EvidenceLinkerAI().link("Some claim.", [c])
@@ -104,7 +104,7 @@ async def test_type_to_relationship_mapping_enforced_in_code(
 ) -> None:
     c = _candidate()
     monkeypatch.setattr(
-        linker_module, "call_anthropic",
+        linker_module, "call_ai_provider",
         _fake_call(json.dumps(
             [_entry(c.intake_item_id, evidence_type=etype, relationship=wrong_rel)]
         )),
@@ -119,7 +119,7 @@ async def test_invalid_evidence_type_skips_candidate(
 ) -> None:
     good, bad = _candidate(), _candidate()
     monkeypatch.setattr(
-        linker_module, "call_anthropic",
+        linker_module, "call_ai_provider",
         _fake_call(json.dumps([
             _entry(bad.intake_item_id, evidence_type="hearsay"),
             _entry(good.intake_item_id),
@@ -133,7 +133,7 @@ async def test_invalid_evidence_type_skips_candidate(
 async def test_hallucinated_id_is_discarded(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _candidate()
     monkeypatch.setattr(
-        linker_module, "call_anthropic",
+        linker_module, "call_ai_provider",
         _fake_call(json.dumps([
             _entry(uuid.uuid4()),          # id not in the candidate set
             _entry(c.intake_item_id),
@@ -150,7 +150,7 @@ async def test_strength_is_clamped(
 ) -> None:
     c = _candidate()
     monkeypatch.setattr(
-        linker_module, "call_anthropic",
+        linker_module, "call_ai_provider",
         _fake_call(json.dumps([_entry(c.intake_item_id, strength=raw)])),
     )
     result = await EvidenceLinkerAI().link("Some claim.", [c])
@@ -161,7 +161,7 @@ async def test_strength_is_clamped(
 async def test_include_false_is_preserved(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _candidate()
     monkeypatch.setattr(
-        linker_module, "call_anthropic",
+        linker_module, "call_ai_provider",
         _fake_call(json.dumps([_entry(c.intake_item_id, include=False)])),
     )
     result = await EvidenceLinkerAI().link("Some claim.", [c])
@@ -173,7 +173,7 @@ async def test_prose_output_flags_parse_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        linker_module, "call_anthropic", _fake_call("These look relevant to me.")
+        linker_module, "call_ai_provider", _fake_call("These look relevant to me.")
     )
     result = await EvidenceLinkerAI().link("Some claim.", [_candidate()])
     assert result.parse_failed
@@ -185,7 +185,7 @@ async def test_prose_output_flags_parse_failure(
 async def test_fenced_json_is_salvaged(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _candidate()
     fenced = f"```json\n{json.dumps([_entry(c.intake_item_id)])}\n```"
-    monkeypatch.setattr(linker_module, "call_anthropic", _fake_call(fenced))
+    monkeypatch.setattr(linker_module, "call_ai_provider", _fake_call(fenced))
     result = await EvidenceLinkerAI().link("Some claim.", [c])
     assert not result.parse_failed
     assert len(result.results) == 1

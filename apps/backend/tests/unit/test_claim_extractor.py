@@ -12,7 +12,7 @@ from oryx.services.claims import extractor as extractor_module
 from oryx.services.claims.extractor import (
     EXTRACTOR_VERSION,
     MAX_CLAIMS_PER_ITEM,
-    AnthropicResult,
+    AIProviderResult,
     ClaimExtractorAI,
     _parse_triples,
 )
@@ -27,7 +27,7 @@ VALID_ENTRY = {
 
 def _fake_call(text: str, tokens: tuple[int, int] = (100, 50)):
     async def fake(**kwargs):
-        return AnthropicResult(
+        return AIProviderResult(
             text=text, input_tokens=tokens[0], output_tokens=tokens[1]
         )
 
@@ -89,7 +89,7 @@ async def test_extract_returns_triples_and_token_count(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        extractor_module, "call_anthropic", _fake_call(json.dumps([VALID_ENTRY]))
+        extractor_module, "call_ai_provider", _fake_call(json.dumps([VALID_ENTRY]))
     )
     result = await ClaimExtractorAI().extract("Some body text")
     assert not result.parse_failed
@@ -103,7 +103,7 @@ async def test_extract_caps_at_max_claims(monkeypatch: pytest.MonkeyPatch) -> No
         {**VALID_ENTRY, "text": f"{VALID_ENTRY['text']} variant {i}"}
         for i in range(MAX_CLAIMS_PER_ITEM + 5)
     ]
-    monkeypatch.setattr(extractor_module, "call_anthropic", _fake_call(json.dumps(many)))
+    monkeypatch.setattr(extractor_module, "call_ai_provider", _fake_call(json.dumps(many)))
     result = await ClaimExtractorAI().extract("body")
     assert len(result.triples) == MAX_CLAIMS_PER_ITEM
 
@@ -113,7 +113,7 @@ async def test_extract_flags_unparseable_output_without_raising(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        extractor_module, "call_anthropic", _fake_call("I think the claims are...")
+        extractor_module, "call_ai_provider", _fake_call("I think the claims are...")
     )
     result = await ClaimExtractorAI().extract("body")
     assert result.parse_failed
@@ -124,7 +124,7 @@ async def test_extract_flags_unparseable_output_without_raising(
 @pytest.mark.asyncio
 async def test_fenced_json_output_is_salvaged(monkeypatch: pytest.MonkeyPatch) -> None:
     fenced = f"```json\n{json.dumps([VALID_ENTRY])}\n```"
-    monkeypatch.setattr(extractor_module, "call_anthropic", _fake_call(fenced))
+    monkeypatch.setattr(extractor_module, "call_ai_provider", _fake_call(fenced))
     result = await ClaimExtractorAI().extract("body")
     assert not result.parse_failed
     assert len(result.triples) == 1
@@ -140,8 +140,8 @@ async def test_oversized_input_is_truncated_before_the_call(
 
     async def fake(**kwargs):
         captured.update(kwargs)
-        return AnthropicResult(text="[]", input_tokens=10, output_tokens=1)
+        return AIProviderResult(text="[]", input_tokens=10, output_tokens=1)
 
-    monkeypatch.setattr(extractor_module, "call_anthropic", fake)
+    monkeypatch.setattr(extractor_module, "call_ai_provider", fake)
     await ClaimExtractorAI().extract("z" * (EXTRACTOR_INPUT_MAX_CHARS * 2))
     assert len(captured["user_content"]) == EXTRACTOR_INPUT_MAX_CHARS

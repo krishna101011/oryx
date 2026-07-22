@@ -13,6 +13,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["dev", "staging", "prod"]
 LogLevel = Literal["DEBUG", "INFO", "WARN", "ERROR"]
+# Every valid AI_PROVIDER value. A Literal (not plain str) so a typo'd or
+# unknown value fails at startup with a pydantic validation error instead of
+# silently falling through to the factory's Anthropic default branch.
+AIProviderName = Literal["anthropic", "ollama", "openai_compatible"]
 
 
 class Settings(BaseSettings):
@@ -105,12 +109,35 @@ class Settings(BaseSettings):
     # ProviderError(AUTH) and deliveries dead-letter after the retry budget.
     anthropic_api_key: str | None = None
 
-    # AI provider selection — "anthropic" (default) or "ollama" (free local).
-    # Switch by setting AI_PROVIDER=ollama in the environment or .env file.
+    # AI provider selection — "anthropic" (default), "ollama" (free local),
+    # or "openai_compatible" (any /chat/completions vendor: NVIDIA NIM, vLLM,
+    # LM Studio, ...). Switch by setting AI_PROVIDER in the environment or
+    # .env file. Typed as AIProviderName so an unrecognized value is a
+    # STARTUP failure, never a silent fall-through to Anthropic.
     # See core/ai_provider.py for quality trade-offs.
-    ai_provider: str = "anthropic"
+    ai_provider: AIProviderName = "anthropic"
     ollama_model: str = "qwen2.5:7b-instruct"
     ollama_base_url: str = "http://localhost:11434"
+    # Generic OpenAI-compatible provider settings (used when
+    # AI_PROVIDER=openai_compatible). BASE_URL is the vendor's API root, e.g.
+    # https://integrate.api.nvidia.com/v1 for NVIDIA NIM. BASE_URL and MODEL
+    # have no universal default across vendors, so both are required when
+    # this provider is selected — complete() raises ProviderError(PERMANENT)
+    # if either is unset. API_KEY stays optional at runtime: local servers
+    # (vLLM, LM Studio) accept unauthenticated requests, and auth-requiring
+    # vendors answer 401 which maps to ProviderError(AUTH) like any other
+    # rejected credential.
+    openai_compat_base_url: str | None = None
+    openai_compat_model: str | None = None
+    openai_compat_api_key: str | None = None
+    # Reasoning-capable OpenAI-compatible models (NVIDIA Nemotron, Qwen, ...)
+    # spend ~1000 output tokens "thinking" before any content; the pipeline's
+    # 50-800-token budgets then truncate mid-reasoning and a 200 response
+    # arrives with EMPTY message.content — every caller parse-fails while the
+    # circuit breaker counts a success. When true, OpenAICompatProvider
+    # prepends the "/no_think" control token to the system message on the
+    # wire; caller prompts and the Anthropic/Ollama paths are untouched.
+    openai_compat_disable_reasoning: bool = False
 
     # --- Phase 6 Wave C: push delivery ---
     # Push provider selection, same shape as AI_PROVIDER above: "log_only"

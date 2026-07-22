@@ -1,7 +1,7 @@
 ﻿"""ClaimExtractorAI — extracts atomic claims from normalized item text.
 
 Calls the Anthropic Messages API directly over httpx (no SDK dependency —
-pyproject ships httpx only). The shared `call_anthropic` helper here is
+pyproject ships httpx only). The shared `call_ai_provider` helper here is
 also used by classifier.py.
 
 Budget gate: callers check the workspace ledger BEFORE invoking extract();
@@ -59,7 +59,7 @@ Output format (exactly this shape):
 
 
 @dataclass(frozen=True)
-class AnthropicResult:
+class AIProviderResult:
     text: str
     input_tokens: int
     output_tokens: int
@@ -69,13 +69,13 @@ class AnthropicResult:
         return self.input_tokens + self.output_tokens
 
 
-async def call_anthropic(
+async def call_ai_provider(
     *,
     system: str,
     user_content: str,
     max_tokens: int,
     temperature: float,
-) -> AnthropicResult:
+) -> AIProviderResult:
     """Provider-agnostic AI call. Routes to AnthropicProvider or OllamaProvider
     based on AI_PROVIDER setting. Vendor errors map onto the existing
     ProviderError taxonomy so the drainer's retry policy applies unchanged."""
@@ -87,7 +87,7 @@ async def call_anthropic(
         max_tokens=max_tokens,
         temperature=temperature,
     )
-    return AnthropicResult(text=text, input_tokens=0, output_tokens=total_tokens)
+    return AIProviderResult(text=text, input_tokens=0, output_tokens=total_tokens)
 
 
 @dataclass(frozen=True)
@@ -108,7 +108,7 @@ class ClaimExtractorAI:
 
         result = await ai_circuit_breaker.call(
             "extractor",
-            lambda: call_anthropic(
+            lambda: call_ai_provider(
                 system=EXTRACTOR_SYSTEM_PROMPT,
                 user_content=body_text[:EXTRACTOR_INPUT_MAX_CHARS],
                 max_tokens=EXTRACTOR_MAX_TOKENS,

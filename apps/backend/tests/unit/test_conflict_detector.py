@@ -1,9 +1,11 @@
 ﻿"""ConflictDetectorAI parsing + safety posture (Wave D). No network."""
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
-from oryx.services.claims.extractor import AnthropicResult
+from oryx.services.claims.extractor import AIProviderResult
 from oryx.services.conflicts.detector import (
     NO_CONFLICT,
     ConflictDetectorAI,
@@ -80,6 +82,48 @@ def test_parse_non_dict_entry_is_none() -> None:
     assert _parse("42") is None
 
 
+# --------------------------------------------------------------------------- #
+# Reasoning-mode regression (2026-07-22). Under Nemotron with reasoning ON,
+# this exact genuinely-conflicting pair came back as EMPTY content within the
+# 200-token budget, parse-failed, and silently returned NO_CONFLICT — the
+# worst failure mode (a real conflict swallowed, breaker seeing success).
+# The payload below is the REAL raw Nemotron output for this pair captured
+# live with OPENAI_COMPAT_DISABLE_REASONING on; pinned so detect() must keep
+# turning it into a detected conflict, never the silent fallback.
+# --------------------------------------------------------------------------- #
+REAL_NEMOTRON_CONFLICT_OUTPUT = """\
+{
+  "is_conflict": true,
+  "conflict_type": "direct_contradiction",
+  "severity": 1.0,
+  "reasoning": "A company cannot report two different revenue figures for the same period."
+}"""
+
+
+@pytest.mark.asyncio
+async def test_detect_real_nemotron_output_for_conflicting_revenue_pair() -> None:
+    async def fake_provider(**kw) -> AIProviderResult:
+        return AIProviderResult(
+            text=REAL_NEMOTRON_CONFLICT_OUTPUT, input_tokens=0, output_tokens=296
+        )
+
+    with patch(
+        "oryx.services.conflicts.detector.call_ai_provider", fake_provider
+    ):
+        out = await ConflictDetectorAI().detect(
+            subject="Apple Inc",
+            a_predicate="reported revenue of",
+            a_object="$94.9 billion",
+            b_predicate="reported revenue of",
+            b_object="$81.2 billion",
+        )
+    assert out.result is not NO_CONFLICT
+    assert out.result.is_conflict is True
+    assert out.result.conflict_type == "direct_contradiction"
+    assert out.result.severity == 1.0
+    assert out.result.reasoning  # non-empty — a real verdict, not the fallback
+
+
 def test_parse_severity_string_defaulted() -> None:
     out = _parse(
         '{"is_conflict": true, "conflict_type": "scope_difference", "severity": "high"}'
@@ -95,7 +139,7 @@ def test_parse_missing_is_conflict_defaults_false() -> None:
 @pytest.mark.asyncio
 async def test_detect_happy_path(monkeypatch) -> None:
     async def fake_call(**kwargs):
-        return AnthropicResult(
+        return AIProviderResult(
             text='{"is_conflict": true, "conflict_type": "temporal_inconsistency", '
             '"severity": 0.6, "reasoning": "dates clash"}',
             input_tokens=10,
@@ -103,7 +147,7 @@ async def test_detect_happy_path(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(
-        "oryx.services.conflicts.detector.call_anthropic", fake_call
+        "oryx.services.conflicts.detector.call_ai_provider", fake_call
     )
     result = await ConflictDetectorAI().detect(
         subject="Acme", a_predicate="rose", a_object="10%",
@@ -117,10 +161,10 @@ async def test_detect_happy_path(monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_detect_parse_failure_is_no_conflict(monkeypatch) -> None:
     async def fake_call(**kwargs):
-        return AnthropicResult(text="garbage", input_tokens=3, output_tokens=2)
+        return AIProviderResult(text="garbage", input_tokens=3, output_tokens=2)
 
     monkeypatch.setattr(
-        "oryx.services.conflicts.detector.call_anthropic", fake_call
+        "oryx.services.conflicts.detector.call_ai_provider", fake_call
     )
     result = await ConflictDetectorAI().detect(
         subject="Acme", a_predicate="rose", a_object=None,
