@@ -35,6 +35,7 @@ from oryx.core.models import (
     IntakeItem,
     IntakeItemNormalized,
     IntakeSource,
+    SourceCatalog,
 )
 from oryx.core.pagination import decode_cursor, encode_cursor
 
@@ -125,11 +126,35 @@ async def create_source(
     if body.origin_kind not in {"catalog", "custom"}:
         raise ValidationError(details={"reason": "invalid_origin_kind"})
 
+    name = body.name
+    kind = body.kind
+    config = body.config
+
+    # Catalog activation (source-governance follow-up wave): the ONLY real
+    # path today that turns a source_catalog entry into a real intake
+    # source — this was previously accepted by the request schema but never
+    # actually exercised in production. `name`/`kind`/`config.feed_url` are
+    # NOT trusted from the client here: the server derives them from the
+    # real catalog row so a caller can't claim origin_catalog_key="coindesk"
+    # while pointing feed_url at something else. Cadence overrides
+    # (fetch_interval_minutes etc.) in the request config still pass
+    # through — catalog-backed sources "inherit feed_url and only edit
+    # polling cadence" per providers/rss/config_schema.py's own doc comment.
+    if body.origin_kind == "catalog":
+        if not body.origin_catalog_key:
+            raise ValidationError(details={"reason": "missing_origin_catalog_key"})
+        catalog_row = await db.get(SourceCatalog, body.origin_catalog_key)
+        if catalog_row is None:
+            raise NotFoundError("Catalog source not found")
+        name = catalog_row.name
+        kind = "rss"
+        config = {**body.config, "feed_url": catalog_row.url}
+
     # Light per-kind validation; full vendor validation done by the provider
     # at sync time (Batch 2 Wave A only wires RSS here).
-    if body.kind == "rss":
+    if kind == "rss":
         from oryx.services.intake.providers.rss import RssProvider
-        validation = await RssProvider().validate_config(body.config)
+        validation = await RssProvider().validate_config(config)
         if validation.status.value != "ok":
             raise ValidationError(
                 details={"reason": "invalid_rss_config", "message": validation.message}
@@ -138,10 +163,10 @@ async def create_source(
     src = IntakeSource(
         id=uuid.uuid4(),
         workspace_id=ws.workspace_id,
-        kind=body.kind,
-        name=body.name,
+        kind=kind,
+        name=name,
         enabled=True,
-        config=body.config,
+        config=config,
         origin_kind=body.origin_kind,
         origin_catalog_key=body.origin_catalog_key,
         origin_custom_id=uuid.UUID(body.origin_custom_id) if body.origin_custom_id else None,

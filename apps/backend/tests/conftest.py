@@ -23,13 +23,21 @@ import pytest
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Auto-skip db-bound tests when ORYX_TEST_DB isn't set."""
-    if os.environ.get("ORYX_TEST_DB"):
-        return
+    """Auto-skip db-bound tests when ORYX_TEST_DB isn't set, and real-network
+    tests unless explicitly opted into — same shape, same reason: keep the
+    default run portable (no DB, no live third-party dependency) while still
+    letting a real verification pass opt in explicitly."""
     skip_db = pytest.mark.skip(reason="ORYX_TEST_DB not set; skipping DB-bound test")
+    skip_network = pytest.mark.skip(
+        reason="ORYX_ALLOW_NETWORK_TESTS not set; skipping live-network test"
+    )
+    has_db = bool(os.environ.get("ORYX_TEST_DB"))
+    allow_network = os.environ.get("ORYX_ALLOW_NETWORK_TESTS") == "1"
     for item in items:
-        if "requires_db" in item.keywords:
+        if "requires_db" in item.keywords and not has_db:
             item.add_marker(skip_db)
+        if "requires_network" in item.keywords and not allow_network:
+            item.add_marker(skip_network)
 
 
 @pytest.fixture(scope="session")
