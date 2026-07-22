@@ -655,6 +655,54 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   conclude the code is wrong from the standalone server alone. Root cause
   not fully diagnosed — flagged here rather than guessed at.
 
+- source_catalog ROWS HAVE REAL FK DEPENDENTS ACROSS THE OWNER'S OWN REAL DEV
+  ACCOUNTS — CHECK BEFORE ANY DELETE (found building the RSS catalog
+  activation path, 2026-07-22). `workspace_sources.source_key` FKs to
+  `source_catalog.key` with NO `ON DELETE` clause (RESTRICT by default), and
+  every account the owner actually uses for verification — "Live Verify's
+  Workspace", "Oryx's Workspace", "krishna mishra's"/"aman mishra's"/"Yash
+  Mishra's Workspace" — had toggled on both the four homepage-only "majors"
+  (bloomberg/ft/reuters/wsj) AND, more surprisingly, the `cat-XXXXX` test-
+  fixture pollution rows (23 dependents) — the latter because
+  FocusAndSourcesScreen's onboarding step shows the ENTIRE real
+  `source_catalog` filtered only by `focus`, so test junk that leaked into
+  the catalog table got tapped through onboarding right alongside real
+  entries, indistinguishable in the UI. A catalog-row DELETE that looks like
+  pure cleanup can silently fail (FK violation) or, if cascaded, quietly
+  remove real accounts' real toggle choices — confirm dependents with a real
+  query (`SELECT w.name, ws.source_key FROM workspace_sources ws JOIN
+  workspaces w ON w.id=ws.workspace_id WHERE ws.source_key IN (...)`) and
+  get explicit confirmation before cascading, every time, even when the
+  catalog row itself is confirmed test pollution.
+- source_catalog.url NOW MEANS "the real feed URL", NOT a vendor homepage
+  (same wave). Migration 0001's original seed used homepage links
+  (bloomberg.com, ft.com, etc.) for every entry — none were ever activatable,
+  since providers/rss/config_schema.py's `feed_url` needs an actual feed
+  endpoint. Migration 0026 repoints `url` to real, confirmed, live-checked
+  RSS endpoints for the entries meant to be real (coindesk, decrypt,
+  cointelegraph, yahoo_finance) and removes the ones with no confirmed feed
+  (bloomberg/ft/reuters/wsj) rather than leaving `url` semantically split
+  between "homepage" and "feed" across different rows. `the_block` is the
+  one remaining exception — still homepage-only, deliberately left that way
+  pending a confirmed feed URL, not fabricated. Any future catalog entry
+  must have a real, live-checked feed URL in `url` before being added — a
+  `pytest.mark.requires_network` test (opt-in via
+  `ORYX_ALLOW_NETWORK_TESTS=1`, mirroring `requires_db`) now exists in
+  `test_catalog_source_activation.py` to keep proving this as entries change.
+- POST /intake/sources' origin_kind='catalog' PATH IS NOW REAL — IT WAS
+  PURE UNEXERCISED SCHEMA SURFACE BEFORE (same wave). The request body
+  accepted `origin_kind`/`origin_catalog_key` since Phase 3, but recon
+  confirmed zero real intake_sources rows anywhere trace an
+  `origin_catalog_key` back to a real (non-test-fixture) catalog key — the
+  only prior exerciser was `test_credibility_bootstrap.py`'s isolated
+  fixture. The endpoint now derives `kind`/`config.feed_url` from the real
+  `SourceCatalog` row server-side for this path (never trusting a
+  client-supplied feed_url alongside a claimed `origin_catalog_key` — a real
+  integrity gap that existed simply because nobody had used the path for
+  real yet), while cadence overrides in the request config still pass
+  through. The `origin_kind='custom'` path is untouched byte-for-byte
+  (regression-tested).
+
 ## What This Skill Deliberately Does NOT Contain
 
 Current phase/wave status, current commit hashes, current test counts.
