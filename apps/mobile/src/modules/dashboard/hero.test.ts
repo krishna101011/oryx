@@ -114,6 +114,9 @@ test('the Today card is wired through CardHeader + HairlineRowList with a leadin
     source.includes('gx.chip') && source.includes('gx.chipIndigo'),
     'each row leads with the reference tag chip (command-center.jsx:84 anatomy)',
   );
+  // theming Phase B: gx comes from the theme-tracking hook, not the retired static sheet
+  assert.ok(source.includes('useGx()'), 'gx resolves through useGx() (theme-aware)');
+  assert.ok(!/import\s*\{[^}]*\bgx\b[^}]*\}/.test(source), 'no static gx import remains');
   assert.ok(source.includes('{row.tag}'), 'the chip text is the real provider tag');
 });
 

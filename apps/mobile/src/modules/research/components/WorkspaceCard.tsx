@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Icon, Pressable, Spacer, Text, gx } from '@oryx/design-system';
+import { Icon, Pressable, Spacer, Text, useGx } from '@oryx/design-system';
 import type { ResearchWorkspace } from '@oryx/shared-types';
 import { statusChip, workspaceMeta, workspaceRowId } from '../list';
 
@@ -16,6 +16,7 @@ export const WorkspaceCard: React.FC<{
   workspace: ResearchWorkspace;
   onPress?: () => void;
 }> = ({ workspace, onPress }) => {
+  const gx = useGx();
   const chip = statusChip(workspace.status);
   const meta = workspaceMeta(workspace);
   return (

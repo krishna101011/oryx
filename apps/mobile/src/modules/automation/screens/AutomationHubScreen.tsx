@@ -4,13 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Card,
   CardHeader,
+  type Gx,
   HairlineRowList,
   Icon,
   Pressable,
   Screen,
   Spacer,
   Text,
-  gx,
+  useGx,
   useTheme,
 } from '@oryx/design-system';
 import type { AlertPreference, Automation } from '@oryx/shared-types';
@@ -221,7 +222,9 @@ const RuleRow: React.FC<{
   description: string;
   frequency: string;
   active: boolean;
-}> = ({ category, label, description, frequency, active }) => (
+}> = ({ category, label, description, frequency, active }) => {
+  const gx = useGx();
+  return (
   <View style={styles.row}>
     <View style={[gx.chip, styles.trigChip]}>
       <Text variant="caption" style={gx.chipText}>
@@ -241,7 +244,8 @@ const RuleRow: React.FC<{
       </Text>
     </View>
   </View>
-);
+  );
+};
 
 // -------------------- Log (AH-3) --------------------
 
@@ -273,7 +277,7 @@ const LogTab: React.FC<{
 };
 
 /** Outcome tone → gx chip wash, exhaustive on FeedTone (DraftCard precedent). */
-function chipToneStyle(tone: FeedTone): {
+function chipToneStyle(tone: FeedTone, gx: Gx): {
   chip: ViewStyle | undefined;
   text: TextStyle;
 } {
@@ -297,8 +301,9 @@ function chipToneStyle(tone: FeedTone): {
  */
 const LogRow: React.FC<{ row: FeedRow }> = ({ row }) => {
   const t = useTheme();
+  const gx = useGx();
   const [expanded, setExpanded] = useState(false);
-  const tone = chipToneStyle(row.tone);
+  const tone = chipToneStyle(row.tone, gx);
   const ts = logTimestamp(row.createdAt);
   return (
     <Pressable

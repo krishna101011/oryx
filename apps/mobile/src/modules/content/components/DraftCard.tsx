@@ -1,12 +1,13 @@
 import React from 'react';
 import { StyleSheet, type TextStyle, View, type ViewStyle } from 'react-native';
-import { Icon, Pressable, Spacer, Text, gx } from '@oryx/design-system';
+import { type Gx, Icon, Pressable, Spacer, Text, useGx } from '@oryx/design-system';
 import type { ContentDraft } from '@oryx/shared-types';
 import { draftMeta, draftStatusChip, draftUpdatedDate } from '../home';
 
 /** Status tone → gx chip wash, exhaustive on draftStatusChip's tone union. */
 function chipToneStyle(
   tone: ReturnType<typeof draftStatusChip>['tone'],
+  gx: Gx,
 ): { chip: ViewStyle | undefined; text: TextStyle } {
   switch (tone) {
     case 'positive':
@@ -33,8 +34,9 @@ export const DraftCard: React.FC<{
   draft: ContentDraft;
   onPress: () => void;
 }> = ({ draft, onPress }) => {
+  const gx = useGx();
   const chip = draftStatusChip(draft.status);
-  const tone = chipToneStyle(chip.tone);
+  const tone = chipToneStyle(chip.tone, gx);
   const updated = draftUpdatedDate(draft);
   return (
     <Pressable

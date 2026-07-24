@@ -38,7 +38,7 @@ test('sidebar is expanded at the breakpoint and above, collapsed strictly below 
 });
 
 test('the breakpoint is derived from real layout constants, not a guessed number', () => {
-  // Sidebar: gx.sidebar width 232 (genspark.ts:105). Content floor: Command
+  // Sidebar: the gx `sidebar` key's width 232 (genspark.ts). Content floor: Command
   // Center's 2-up KPI wrap point — two 150px-floor tiles + the 12px gap
   // (DashboardScreen.tsx) inside Screen's 16px-per-side canonical padding.
   assert.equal(SIDEBAR_WIDTH, 232);

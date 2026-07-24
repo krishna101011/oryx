@@ -9,7 +9,7 @@ import {
   Screen,
   Spacer,
   Text,
-  gx,
+  useGx,
 } from '@oryx/design-system';
 import { useMe } from '../../../hooks/useMe';
 import { navigateSettingsScreen } from '../../../navigation/navigationRef';
@@ -58,6 +58,7 @@ const KpiTile: React.FC<{ label: string; value: string }> = ({ label, value }) =
  * tab owns notification rows.
  */
 export const DashboardScreen: React.FC = () => {
+  const gx = useGx();
   const me = useMe();
   const intakeStatus = useIntakeStatus();
   const recentItems = useRecentIntakeItems();

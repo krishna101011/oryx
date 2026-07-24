@@ -82,6 +82,9 @@ test('workspace rows render through CardHeader + HairlineRowList with the mono-i
   const row = read('./components/WorkspaceCard.tsx');
   assert.ok(row.includes('workspaceRowId'), 'row leads with the real mono id');
   assert.ok(row.includes('gx.chip') && row.includes('gx.chipTeal'), 'status chip anatomy');
+  // theming Phase B: gx comes from the theme-tracking hook, not the retired static sheet
+  assert.ok(row.includes('useGx()'), 'gx resolves through useGx() (theme-aware)');
+  assert.ok(!/import\s*\{[^}]*\bgx\b[^}]*\}/.test(row), 'no static gx import remains');
   assert.ok(row.includes('workspaceMeta'), 'mono meta from real timestamps');
   // No invented fields: nothing claims/owner-shaped renders.
   assert.ok(!/claims?Count|ownerName/i.test(row), 'no invented claim/owner fields');

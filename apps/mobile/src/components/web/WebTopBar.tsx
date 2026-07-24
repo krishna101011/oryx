@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { GensparkIcon, Text, gx, useTheme } from '@oryx/design-system';
+import { GensparkIcon, Text, useGx, useTheme } from '@oryx/design-system';
 import type { MeResponse } from '@oryx/shared-types';
 import { type WebNavItem, findNavItem, navCounts } from './webNav';
 
@@ -30,6 +30,7 @@ export const WebTopBar: React.FC<{
   onOpenNav?: () => void;
 }> = ({ crumbs, me, onNavigate, onOpenSearch, onOpenNav }) => {
   const t = useTheme();
+  const gx = useGx();
   const activityUnread = navCounts(me).activityUnread;
   return (
     <View style={gx.topbar}>

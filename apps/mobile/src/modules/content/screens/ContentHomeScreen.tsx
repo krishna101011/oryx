@@ -10,7 +10,7 @@ import {
   Skeleton,
   Spacer,
   Text,
-  gx,
+  useGx,
 } from '@oryx/design-system';
 import { useDraftList } from '../hooks/useDrafts';
 import { DraftCard } from '../components/DraftCard';
@@ -26,6 +26,7 @@ import { CONTENT_ACTIONS, draftCountSub } from '../home';
  * CONTENT_ACTIONS (see ../home.ts); action parity is tested against that list.
  */
 export const ContentHomeScreen: React.FC = () => {
+  const gx = useGx();
   const navigation = useNavigation();
   const drafts = useDraftList();
 

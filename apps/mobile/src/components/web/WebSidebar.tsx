@@ -6,7 +6,7 @@ import {
   GensparkIcon,
   HornMark,
   Text,
-  gx,
+  useGx,
   useTheme,
 } from '@oryx/design-system';
 import type { MeResponse } from '@oryx/shared-types';
@@ -42,6 +42,7 @@ export const WebSidebar: React.FC<{
   onNavigate: (item: WebNavItem) => void;
 }> = ({ me, activeId, onNavigate }) => {
   const t = useTheme();
+  const gx = useGx();
   const dispatch = useAppDispatch();
   const [menuOpen, setMenuOpen] = useState(false);
 

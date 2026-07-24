@@ -5,7 +5,7 @@ import type { WebNavItem } from './webNav';
  * extraction convention).
  *
  * Live-observed problem (2026-07-13): the sidebar is a FIXED 232px column
- * (design-system genspark.ts:105, a 1:1 port of the reference .sidebar) with
+ * (design-system genspark.ts `sidebar`, a 1:1 port of the reference .sidebar) with
  * no collapse logic anywhere, so at narrow window widths it eats the content
  * area — a 390px window leaves ~268px of content. The Genspark reference has
  * no responsive pattern to port, and native has no drawer to reuse (it
@@ -13,7 +13,7 @@ import type { WebNavItem } from './webNav';
  * screen's minimum usable content width rather than copied or guessed.
  */
 
-/** The sidebar's real fixed width — gx.sidebar (genspark.ts:105). */
+/** The sidebar's real fixed width — the gx `sidebar` key (genspark.ts). */
 export const SIDEBAR_WIDTH = 232;
 
 /**
