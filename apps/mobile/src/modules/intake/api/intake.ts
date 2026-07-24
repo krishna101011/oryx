@@ -13,6 +13,7 @@ import type {
   ManualIngestRequest,
   ManualIngestResponse,
   RecentIntakeItem,
+  SourceCatalogEntry,
 } from '@oryx/shared-types';
 import { apiClient } from '../../../lib/api/client';
 
@@ -34,6 +35,9 @@ export interface PatchSourceBody {
 export const intakeApi = {
   listSources: (): Promise<ApiResponse<IntakeSource[]>> =>
     apiClient().getEnvelope<IntakeSource[]>('/intake/sources'),
+
+  getCatalog: (): Promise<SourceCatalogEntry[]> =>
+    apiClient().get<SourceCatalogEntry[]>('/sources/catalog'),
 
   getSource: (id: string): Promise<IntakeSource> =>
     apiClient().get<IntakeSource>(`/intake/sources/${id}`),

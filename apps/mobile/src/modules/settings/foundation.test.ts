@@ -90,13 +90,31 @@ test('deferred honestly: Appearance, Alerts-preferences, and Trusted Sources kee
   // screen outside Settings. So these three ChoiceTile-based sections keep
   // their current (already Card + real-typography + token-color-compliant)
   // anatomy rather than a forced CardHeader/HairlineRowList retrofit.
+  //
+  // TrustedSourcesScreen no longer inlines ChoiceTile directly (source-catalog
+  // picker rebuild, 2026-07-23): it composes the shared
+  // modules/intake/components/CatalogSourcePicker, which itself renders every
+  // tile via ChoiceTile — so the anatomy check follows the real render chain
+  // instead of a literal string match on the screen file.
   const home = read('./screens/SettingsHomeScreen.tsx');
   assert.ok(home.includes('ChoiceTile'), 'Appearance still renders via ChoiceTile');
-  for (const rel of ['./screens/AlertsSettingsScreen.tsx', './screens/TrustedSourcesScreen.tsx']) {
-    const source = read(rel);
-    assert.ok(source.includes('ChoiceTile'), `${rel}: still renders via ChoiceTile`);
-    assert.ok(!source.includes('HairlineRowList'), `${rel}: not force-migrated this wave`);
-  }
+
+  const alerts = read('./screens/AlertsSettingsScreen.tsx');
+  assert.ok(alerts.includes('ChoiceTile'), 'Alerts-preferences still renders via ChoiceTile');
+  assert.ok(!alerts.includes('HairlineRowList'), 'Alerts-preferences: not force-migrated this wave');
+
+  const trustedSources = read('./screens/TrustedSourcesScreen.tsx');
+  assert.ok(
+    trustedSources.includes('CatalogSourcePicker'),
+    'Trusted Sources renders through the shared catalog picker',
+  );
+  assert.ok(
+    !trustedSources.includes('HairlineRowList'),
+    'Trusted Sources: not force-migrated this wave',
+  );
+  const picker = read('../intake/components/CatalogSourcePicker.tsx');
+  assert.ok(picker.includes('ChoiceTile'), 'the shared picker still renders tiles via ChoiceTile');
+  assert.ok(!picker.includes('HairlineRowList'), 'the shared picker is not force-migrated this wave');
 });
 
 test('deferred honestly: ProfileEdit and ChangePassword stay plain forms — no row/list anatomy exists to migrate', () => {

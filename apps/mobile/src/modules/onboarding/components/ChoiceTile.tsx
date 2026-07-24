@@ -17,7 +17,7 @@ export const ChoiceTile: React.FC<ChoiceTileProps> = ({
 }) => {
   const t = useTheme();
   return (
-    <Pressable onPress={onPress}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
       <Card variant="default" style={selected ? styles.selectedCard(t) : undefined}>
         <View style={styles.row}>
           <View style={{ flex: 1 }}>

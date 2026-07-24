@@ -1,52 +1,73 @@
-import React, { useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
 import { Spacer, Text } from '@oryx/design-system';
-import type {
-  Focus,
-  OnboardingStepRequest,
-  SourceCatalogEntry,
-} from '@oryx/shared-types';
+import type { Focus, OnboardingStepRequest } from '@oryx/shared-types';
 import { OnboardingShell } from '../components/OnboardingShell';
 import { ChoiceTile } from '../components/ChoiceTile';
 import { apiClient } from '../../../lib/api/client';
+import {
+  useIntakeSources,
+  useSourceCatalog,
+  useToggleCatalogSource,
+} from '../../intake/hooks/useIntakeSources';
+import { CatalogSourcePicker } from '../../intake/components/CatalogSourcePicker';
+import {
+  buildCatalogActivationMap,
+  filterCatalogByFocus,
+  keysMissingActivation,
+  resolveToggleAction,
+} from '../../intake/catalogPicker';
 
 export const FocusAndSourcesScreen: React.FC = () => {
   const navigation = useNavigation();
   const [focus, setFocus] = useState<Focus>('both');
   const [loading, setLoading] = useState(false);
-  const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
 
-  const catalog = useQuery<SourceCatalogEntry[]>({
-    queryKey: ['sources', 'catalog'],
-    queryFn: () => apiClient().get<SourceCatalogEntry[]>('/sources/catalog'),
-  });
+  const catalog = useSourceCatalog();
+  const sources = useIntakeSources();
+  const toggle = useToggleCatalogSource();
 
-  const filtered = useMemo(() => {
-    const entries = catalog.data ?? [];
-    return entries.filter(
-      (s) => focus === 'both' || s.focus === 'both' || s.focus === focus,
-    );
-  }, [catalog.data, focus]);
+  const activationMap = useMemo(
+    () => buildCatalogActivationMap(sources.data ?? []),
+    [sources.data],
+  );
 
-  const toggleSource = (key: string) => {
-    setSelectedSources((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
+  const dataReady = catalog.data !== undefined && sources.data !== undefined;
+  const missingKeys = dataReady ? keysMissingActivation(catalog.data!, activationMap) : [];
+
+  // Fresh-signup default: every real catalog entry is pre-checked with a
+  // REAL intake_sources row, not just a visually-checked tile — same
+  // "toggle = real activation" contract as TrustedSourcesScreen. The
+  // provisioned ref guards against firing a second create for a key whose
+  // first create is still in flight (activationMap only reflects a key once
+  // its row lands and the query cache refetches); it does NOT re-enable a
+  // row the user already turned off, since it only ever targets keys with
+  // no existing row at all.
+  const provisioned = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!dataReady) return;
+    for (const key of missingKeys) {
+      if (provisioned.current.has(key)) continue;
+      provisioned.current.add(key);
+      toggle.mutate({ kind: 'create', catalogKey: key });
+    }
+  }, [dataReady, missingKeys.join(',')]);
+
+  const provisioning = !dataReady || missingKeys.length > 0;
+
+  const onToggle = (key: string) => {
+    setPendingKey(key);
+    toggle.mutate(resolveToggleAction(key, activationMap), {
+      onSettled: () => setPendingKey(null),
     });
   };
 
   const onContinue = async () => {
     setLoading(true);
     try {
-      const body: OnboardingStepRequest = {
-        step: 'focus_sources',
-        focus,
-        enabledSourceKeys: Array.from(selectedSources),
-      };
+      const body: OnboardingStepRequest = { step: 'focus_sources', focus };
       await apiClient().post('/onboarding/step', body);
       navigation.navigate('NotificationsAndPermissions' as never);
     } finally {
@@ -54,13 +75,15 @@ export const FocusAndSourcesScreen: React.FC = () => {
     }
   };
 
+  const visibleCatalog = filterCatalogByFocus(catalog.data ?? [], focus);
+
   return (
     <OnboardingShell
       stepIndex={1}
       title="What do you follow?"
       subtitle="Pick a focus and confirm your trusted sources."
       onContinue={onContinue}
-      loading={loading}
+      loading={loading || provisioning}
     >
       <ScrollView showsVerticalScrollIndicator={false}>
         <Text variant="caption" color="tertiary">
@@ -93,17 +116,12 @@ export const FocusAndSourcesScreen: React.FC = () => {
           TRUSTED SOURCES
         </Text>
         <Spacer size={2} />
-        {filtered.map((s) => (
-          <View key={s.key}>
-            <ChoiceTile
-              label={s.name}
-              description={`Editorial confidence: ${s.editorialConfidence}`}
-              selected={selectedSources.has(s.key)}
-              onPress={() => toggleSource(s.key)}
-            />
-            <Spacer size={2} />
-          </View>
-        ))}
+        <CatalogSourcePicker
+          catalog={visibleCatalog}
+          activationMap={activationMap}
+          onToggle={onToggle}
+          pendingKeys={pendingKey ? new Set([pendingKey]) : undefined}
+        />
       </ScrollView>
     </OnboardingShell>
   );

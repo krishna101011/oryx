@@ -702,6 +702,27 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   real yet), while cadence overrides in the request config still pass
   through. The `origin_kind='custom'` path is untouched byte-for-byte
   (regression-tested).
+- A "FRESH SIGNUP" SCREENSHOT CANNOT BE CAPTURED VIA BROWSER AUTOMATION —
+  EVER (found doing live visual proof for the source-catalog picker rebuild,
+  2026-07-23). The safety rules prohibit entering any password into any
+  browser field, with no exception for a throwaway test account's own
+  brand-new password — so both sign-up and sign-in are equally blocked, not
+  just re-authenticating an existing session (contrast the earlier "LIVE
+  BROWSER VERIFICATION NEEDS A PRE-EXISTING SIGNED-IN SESSION" entry above,
+  which is about session expiry, not this). Any future wave asking for a
+  "new signup" or "onboarding" browser screenshot must get that proof
+  another way: a real backend integration test driving `/v1/auth/signup` +
+  the real endpoints end-to-end (httpx against the ASGI app, no browser),
+  plus reusing whatever shared UI component the onboarding screen shares
+  with an already-reachable authenticated screen for the actual pixels.
+- ESLINT HAS NO `react-hooks/exhaustive-deps` RULE CONFIGURED IN THIS REPO.
+  Referencing it in an `// eslint-disable-next-line react-hooks/exhaustive-
+  deps` comment is itself a lint ERROR ("Definition for rule ... was not
+  found"), not a harmless no-op — found when a new onboarding effect's
+  disable comment turned a clean `pnpm lint` into 1 new error. If a
+  `useEffect` deps array looks incomplete to a future reviewer, just write
+  it correctly (or note the reason in a plain comment) rather than
+  suppressing a rule this project's eslint config doesn't run.
 
 ## What This Skill Deliberately Does NOT Contain
 

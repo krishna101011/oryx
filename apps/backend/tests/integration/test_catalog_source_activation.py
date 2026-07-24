@@ -163,6 +163,9 @@ REAL_CATALOG_FEED_URLS = {
     "cointelegraph": "https://cointelegraph.com/rss",
     "decrypt": "https://decrypt.co/feed",
     "yahoo_finance": "https://finance.yahoo.com/news/rssindex",
+    "investing_company_news": "https://www.investing.com/rss/news_356.rss",
+    "investing_stock_market_news": "https://www.investing.com/rss/news_25.rss",
+    "investing_earnings": "https://www.investing.com/rss/news_1063.rss",
 }
 
 
