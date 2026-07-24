@@ -15,6 +15,8 @@ from enum import Enum
 
 import httpx
 
+from oryx.core.security.ssrf import UnsafeUrlError
+from oryx.core.security.ssrf import assert_url_safe as _assert_url_safe
 from oryx.services.intake.providers.errors import (
     ProviderError,
     ProviderErrorKind,
@@ -40,6 +42,19 @@ class FetchResult:
     final_url: str | None  # set on REDIRECT_PERMANENT
 
 
+def _guard_url(url: str) -> None:
+    """SSRF guard, re-run on the initial URL AND on every redirect target —
+    a URL that resolved to a public IP the first time proves nothing about
+    where the next hop in a redirect chain points."""
+    try:
+        _assert_url_safe(url)
+    except UnsafeUrlError as e:
+        raise ProviderError(
+            kind=ProviderErrorKind.PERMANENT,
+            message=str(e),
+        ) from e
+
+
 async def fetch_feed(
     url: str,
     *,
@@ -53,6 +68,8 @@ async def fetch_feed(
     Translates HTTP failures into ProviderError(kind=...) per the typed
     taxonomy. The sync loop never sees a raw httpx exception.
     """
+    _guard_url(url)
+
     headers: dict[str, str] = {
         "Accept": "application/atom+xml, application/rss+xml, application/xml;q=0.9, */*;q=0.5",
         "User-Agent": user_agent,
@@ -91,13 +108,18 @@ async def fetch_feed(
                 kind=ProviderErrorKind.PERMANENT,
                 message="301 without Location header",
             )
+        final_url = str(httpx.URL(url).join(location))
+        # Not fetched in this call, but persisted upstream as the source's
+        # new URL — a hostile 301 must not be allowed to plant an unsafe
+        # target for the next sync tick to walk into unguarded.
+        _guard_url(final_url)
         return FetchResult(
             outcome=FetchOutcome.REDIRECT_PERMANENT,
             body=None,
             etag=None,
             last_modified=None,
             content_type=None,
-            final_url=str(httpx.URL(url).join(location)),
+            final_url=final_url,
         )
     if status == 302 or status == 303 or status == 307 or status == 308:
         location = response.headers.get("location")

@@ -200,6 +200,8 @@ async def _seed(sm, *, webhook_url: str, secret: str):
 
 @pytest.mark.asyncio
 async def test_full_pipeline_packet_to_published(sm) -> None:
+    from unittest.mock import patch
+
     from oryx.core.models import (
         DraftCitation,
         DraftVersion,
@@ -294,12 +296,20 @@ async def test_full_pipeline_packet_to_published(sm) -> None:
         assert d.status == "approved"
 
         # ---- Step 5: publish to the webhook target (REAL HTTP delivery) ------
-        results = await PublishingEngine(sm).publish_draft(
-            draft_id=draft_id,
-            target_ids=[target_id],
-            workspace_id=ws_id,
-            account_id=approver_id,
-        )
+        # 127.0.0.1 stands in for a real external endpoint we don't control in
+        # tests, so the SSRF guard (correctly) rejects it — bypass it here;
+        # it's proven for real against this same real-local-server pattern in
+        # test_ssrf_redirect_and_loopback.py.
+        with patch(
+            "oryx.services.publishing.channels.webhook._assert_url_safe",
+            lambda url: None,
+        ):
+            results = await PublishingEngine(sm).publish_draft(
+                draft_id=draft_id,
+                target_ids=[target_id],
+                workspace_id=ws_id,
+                account_id=approver_id,
+            )
         assert len(results) == 1
         assert results[0].status == "delivered"
         assert results[0].external_id == "whk_e2e_1"  # parsed from the real 200

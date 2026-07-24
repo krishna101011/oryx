@@ -301,6 +301,30 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   still returns seeded cache data when disabled, so FeatureGate opens without
   faking auth. Locate pressables via their accessibility contract and assert
   on JSON.stringify(tree.toJSON()) for rendered/absent copy.
+- SSRF GUARD LIVES AT oryx/core/security/ssrf.py (moved 2026-07-24, was
+  api_pull-scoped only). `assert_url_safe(url, *, hostname_allowlist=None)`
+  raises `UnsafeUrlError(ValueError)` — deliberately NOT tied to any one
+  caller's error taxonomy, since it now guards three call sites with three
+  different exception types: api_pull (`api_pull/safety.py` is a thin
+  adapter translating to `ProviderError(PERMANENT)` — kept for backward
+  compat with existing tests/imports), RSS (`rss/client.py` translates
+  inline to `ProviderError`), and publishing webhooks
+  (`webhook.py` translates to `PermanentChannelError`). ANY new code that
+  fetches a workspace-controlled URL must call this guard — do not write a
+  parallel check. Two traps found closing the RSS/webhook gap: (1) a
+  redirect-following fetcher (RSS does; webhook does not) must re-call the
+  guard on EVERY redirect hop, not just the entry URL — an entry URL that
+  resolves public proves nothing about where its 302 sends you next; the
+  cleanest way is a single guard call at the top of the function if redirect
+  handling recurses back into that same function. (2) the guard's DNS check
+  makes it IMPOSSIBLE for a hostname that actually resolves to 127.0.0.1 to
+  ever pass — so any test that hits a real local `http.server` as a stand-in
+  "external" webhook target (a pattern used in several real-e2e tests: HMAC
+  signing proof, citations payload shape, the Phase 5 flagship pipeline
+  test) now needs `patch("oryx.services.publishing.channels.webhook._assert_url_safe", lambda url: None)`
+  around just that publish call — the guard itself is proven for real
+  elsewhere (test_ssrf_redirect_and_loopback.py), so bypassing it in tests
+  that were never testing SSRF in the first place is correct, not a gap.
 
 - CHARTS ARE HAND-ROLLED react-native-svg, NO CHARTING LIBRARY (confirmed
   Phase 7 Wave B). The design system's Spark (sparkline) and Candles

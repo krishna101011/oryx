@@ -105,6 +105,8 @@ class _CapturingHandler(http.server.BaseHTTPRequestHandler):
 
 @pytest.mark.asyncio
 async def test_webhook_real_end_to_end_signed_delivery() -> None:
+    from unittest.mock import patch
+
     from oryx.services.publishing.channels.webhook import WebhookChannel
 
     _CapturingHandler.received = {}
@@ -115,12 +117,18 @@ async def test_webhook_real_end_to_end_signed_delivery() -> None:
     try:
         ch = WebhookChannel(backoff_base=0.0)
         secret = "shared-secret-xyz"
-        result = await ch.publish(
-            content="Hello world body",
-            draft_title="My Draft",
-            credentials={"secret": secret},
-            config={"url": f"http://127.0.0.1:{port}/hook"},
-        )
+        # This test is about HMAC signing + real delivery mechanics, not
+        # SSRF (127.0.0.1 stands in for a real external endpoint we don't
+        # control in tests). The guard itself is covered for real against
+        # this same real-local-server pattern in
+        # test_ssrf_redirect_and_loopback.py.
+        with patch("oryx.services.publishing.channels.webhook._assert_url_safe", lambda url: None):
+            result = await ch.publish(
+                content="Hello world body",
+                draft_title="My Draft",
+                credentials={"secret": secret},
+                config={"url": f"http://127.0.0.1:{port}/hook"},
+            )
     finally:
         thread.join(timeout=5)
         server.server_close()
@@ -155,6 +163,8 @@ async def test_webhook_missing_url_is_permanent() -> None:
 
 @pytest.mark.asyncio
 async def test_webhook_5xx_retries_then_transient() -> None:
+    import socket
+
     from oryx.services.publishing.channels.base import TransientChannelError
     from oryx.services.publishing.channels.webhook import WebhookChannel
 
@@ -166,10 +176,14 @@ async def test_webhook_5xx_retries_then_transient() -> None:
 
     from unittest.mock import patch
 
+    def fake_getaddrinfo(host, port, *a, **kw):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", port))]
+
     ch = WebhookChannel(backoff_base=0.0)
-    with patch("httpx.AsyncClient.post", fake_post):
-        with pytest.raises(TransientChannelError):
-            await ch.publish("c", "t", {"secret": "s"}, {"url": "http://x/y"})
+    with patch("socket.getaddrinfo", fake_getaddrinfo):
+        with patch("httpx.AsyncClient.post", fake_post):
+            with pytest.raises(TransientChannelError):
+                await ch.publish("c", "t", {"secret": "s"}, {"url": "http://x/y"})
     assert calls["n"] == 3  # 3 internal attempts before giving up
 
 

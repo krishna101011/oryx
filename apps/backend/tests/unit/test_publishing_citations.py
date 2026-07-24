@@ -148,6 +148,8 @@ class _CapturingHandler(http.server.BaseHTTPRequestHandler):
 async def _post_to_local_server(content: str, citations) -> dict:
     """Run WebhookChannel.publish against a real local server; return the parsed
     JSON body the server received."""
+    from unittest.mock import patch
+
     from oryx.services.publishing.channels.webhook import WebhookChannel
 
     _CapturingHandler.received = {}
@@ -157,13 +159,17 @@ async def _post_to_local_server(content: str, citations) -> dict:
     thread.start()
     try:
         ch = WebhookChannel(backoff_base=0.0)
-        result = await ch.publish(
-            content=content,
-            draft_title="My Draft",
-            credentials={"secret": "shared-secret"},
-            config={"url": f"http://127.0.0.1:{port}/hook"},
-            citations=citations,
-        )
+        # This test is about the citations payload shape, not SSRF (127.0.0.1
+        # stands in for a real external endpoint we don't control in tests).
+        # The guard itself is proven for real in test_ssrf_redirect_and_loopback.py.
+        with patch("oryx.services.publishing.channels.webhook._assert_url_safe", lambda url: None):
+            result = await ch.publish(
+                content=content,
+                draft_title="My Draft",
+                credentials={"secret": "shared-secret"},
+                config={"url": f"http://127.0.0.1:{port}/hook"},
+                citations=citations,
+            )
     finally:
         thread.join(timeout=5)
         server.server_close()
@@ -217,6 +223,8 @@ async def test_webhook_zero_citations_sends_empty_array() -> None:
 @pytest.mark.asyncio
 async def test_webhook_citations_default_none_is_backward_compatible() -> None:
     """Pre-patch call sites pass no citations → no citations key at all."""
+    from unittest.mock import patch
+
     from oryx.services.publishing.channels.webhook import WebhookChannel
 
     _CapturingHandler.received = {}
@@ -226,9 +234,10 @@ async def test_webhook_citations_default_none_is_backward_compatible() -> None:
     thread.start()
     try:
         ch = WebhookChannel(backoff_base=0.0)
-        result = await ch.publish(
-            "Body", "Title", {"secret": "s"}, {"url": f"http://127.0.0.1:{port}/h"}
-        )
+        with patch("oryx.services.publishing.channels.webhook._assert_url_safe", lambda url: None):
+            result = await ch.publish(
+                "Body", "Title", {"secret": "s"}, {"url": f"http://127.0.0.1:{port}/h"}
+            )
     finally:
         thread.join(timeout=5)
         server.server_close()

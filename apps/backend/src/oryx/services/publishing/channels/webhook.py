@@ -22,6 +22,8 @@ from typing import Any
 
 import httpx
 
+from oryx.core.security.ssrf import UnsafeUrlError
+from oryx.core.security.ssrf import assert_url_safe as _assert_url_safe
 from oryx.services.publishing.channels.base import (
     PermanentChannelError,
     PublishResult,
@@ -70,10 +72,18 @@ class WebhookChannel:
         secret = credentials.get("secret")
         if not url:
             raise PermanentChannelError(f"{self.channel_type}: config.url is required")
+        if not isinstance(url, str):
+            raise PermanentChannelError(f"{self.channel_type}: config.url must be a string")
         if not secret:
             raise PermanentChannelError(
                 f"{self.channel_type}: credentials.secret is required"
             )
+        # config.url has no pydantic schema behind it (unlike RSS's HttpUrl
+        # feed_url) — this guard is the only place scheme + SSRF are checked.
+        try:
+            _assert_url_safe(url)
+        except UnsafeUrlError as e:
+            raise PermanentChannelError(f"{self.channel_type}: {e}") from e
 
         payload: dict[str, Any] = {
             "title": draft_title,
