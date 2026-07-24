@@ -34,6 +34,7 @@ converges on identical values.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterator
 
 from sqlalchemy import Date, cast, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -53,6 +54,22 @@ from .metrics import ACTION_METRICS, EVENT_METRICS, METRIC_DIGESTS_SENT
 logger = get_logger(__name__)
 
 DEFAULT_TICK_SECONDS = 300.0
+
+# asyncpg rejects any single statement bound to more than 32767 parameters
+# (the PostgreSQL wire-protocol ceiling). AnalyticsRollupDaily binds 5 columns
+# per row (id, workspace_id, metric_key, date, value — id via its client-side
+# uuid4 default), so an unchunked INSERT starts failing once `rows` crosses
+# ~6553 entries in one tick. Because every tick recomputes the FULL history
+# across every workspace the shared test/dev DB has ever seen (deliberate —
+# see the module docstring), `rows` is unbounded by nothing but that
+# accumulated total, so chunking is required regardless of how disciplined
+# db hygiene stays elsewhere.
+_INSERT_CHUNK_SIZE = 1000
+
+
+def _chunked(items: list[dict], size: int) -> Iterator[list[dict]]:
+    for start in range(0, len(items), size):
+        yield items[start : start + size]
 
 
 def _utc_day(column):
@@ -80,8 +97,8 @@ class RollupWorker:
                 + await self._source_b_automation(session)
                 + await self._source_b_digests(session)
             )
-            if rows:
-                stmt = pg_insert(AnalyticsRollupDaily).values(rows)
+            for chunk in _chunked(rows, _INSERT_CHUNK_SIZE):
+                stmt = pg_insert(AnalyticsRollupDaily).values(chunk)
                 await session.execute(
                     stmt.on_conflict_do_update(
                         constraint="uq_analytics_rollups_ws_metric_date",

@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import insert, select
 
 pytestmark = pytest.mark.requires_db
 
@@ -365,3 +365,51 @@ async def test_source_b_backfills_history_but_source_a_never_invents_it(sm) -> N
     assert not any(
         metric in source_a_keys and day == past_day for metric, day in rollups
     )
+
+
+# --- Regression: the tick's INSERT must survive asyncpg's hard 32767-bind-
+# parameter ceiling, no matter how much analytics_rollups_daily has already
+# accumulated (the "standing oryx_test rule" above means it never shrinks). ---
+
+
+@pytest.mark.asyncio
+async def test_tick_chunks_inserts_past_the_asyncpg_parameter_ceiling(sm) -> None:
+    """AnalyticsRollupDaily binds 5 columns/row (id, workspace_id, metric_key,
+    date, value), so a single unchunked `pg_insert(...).values(rows)` starts
+    raising asyncpg's InterfaceError once `rows` crosses 32767 // 5 = 6553
+    entries — exactly what happened once the shared oryx_test DB's real
+    accumulation crossed that line. This test doesn't rely on ambient
+    accumulation (which varies run to run): it seeds 6,600 distinct
+    (workspace, metric, day) source rows on its own — already past the old
+    threshold by itself — so this proves the fix holds regardless of
+    whatever else has piled up in the table."""
+    ids = await _seed_workspace(sm)
+    n_days = 6600
+    base = date(2020, 1, 1)
+    rows = [
+        {
+            "id": uuid.uuid4(),
+            "workspace_id": ids["workspace"],
+            "source_event_id": uuid.uuid4(),
+            "event_name": "intake.item.received",
+            "occurred_at": datetime.combine(
+                base + timedelta(days=i), datetime.min.time(), tzinfo=UTC
+            ),
+        }
+        for i in range(n_days)
+    ]
+    async with sm() as session:
+        from oryx.core.models import AnalyticsEventRaw
+
+        # Executemany style (list of param dicts to execute), not
+        # pg_insert(...).values(rows) — the seed itself must not hit the
+        # same ceiling it's trying to prove the fix for.
+        await session.execute(insert(AnalyticsEventRaw), rows)
+        await session.commit()
+
+    upserted = await _worker(sm).tick()  # must not raise InterfaceError
+    assert upserted >= n_days
+
+    rollups = await _rollups(sm, ids["workspace"])
+    assert rollups[("intake_items_received", base)] == 1
+    assert rollups[("intake_items_received", base + timedelta(days=n_days - 1))] == 1
