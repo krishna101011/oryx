@@ -7,6 +7,7 @@ import {
   Icon,
   Pressable,
   Screen,
+  Skeleton,
   Spacer,
   Text,
   useGx,
@@ -97,6 +98,7 @@ export const DashboardScreen: React.FC = () => {
       </View>
 
       <Card header={<CardHeader title="Today" sub={todayCountSub(today)} />}>
+        {today.kind === 'loading' && <Skeleton height={100} />}
         {today.kind === 'empty' && (
           <Text variant="body" color="secondary">
             Nothing to surface yet. Connect a source to begin.

@@ -5,6 +5,7 @@ import {
   Card,
   Pressable,
   Screen,
+  Skeleton,
   Spacer,
   Spark,
   Text,
@@ -164,7 +165,7 @@ const GATHERING_BODY =
 
 const OverviewTab: React.FC = () => {
   const rollups = useRollups();
-  if (!rollups.data) return null;
+  if (rollups.isLoading || !rollups.data) return <Skeleton height={160} />;
 
   const series: Series = rollups.data.series;
   if (!hasAnyData(series)) {
@@ -250,7 +251,7 @@ const TrendLine: React.FC<{ trend: Trend | null }> = ({ trend }) => {
 const ResearchTab: React.FC = () => {
   const t = useTheme();
   const rollups = useRollups();
-  if (!rollups.data) return null;
+  if (rollups.isLoading || !rollups.data) return <Skeleton height={160} />;
 
   const stages = buildFunnel(rollups.data.series, todayUtc(), CHART_WINDOW_DAYS);
   const summary = funnelSummary(stages);
@@ -346,7 +347,7 @@ const PublishingTab: React.FC = () => {
     queryFn: () =>
       apiClient().get<Analytics.AnalyticsPublishingResponse>('/analytics/publishing'),
   });
-  if (!publishing.data) return null;
+  if (publishing.isLoading || !publishing.data) return <Skeleton height={160} />;
 
   const { success, timeToPublish } = publishing.data;
   const rate = formatSuccessRate(success);

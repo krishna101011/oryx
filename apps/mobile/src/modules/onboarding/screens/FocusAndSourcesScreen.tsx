@@ -121,6 +121,7 @@ export const FocusAndSourcesScreen: React.FC = () => {
           activationMap={activationMap}
           onToggle={onToggle}
           pendingKeys={pendingKey ? new Set([pendingKey]) : undefined}
+          isLoading={catalog.isLoading}
         />
       </ScrollView>
     </OnboardingShell>

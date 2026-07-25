@@ -24,9 +24,11 @@ module.exports = {
   Rect: host('Rect'),
   Text: host('SvgText'),
   Circle: host('Circle'),
+  Ellipse: host('Ellipse'),
   Path: host('Path'),
   Defs: host('Defs'),
   LinearGradient: host('LinearGradient'),
+  RadialGradient: host('RadialGradient'),
   Stop: host('Stop'),
   Polyline: host('Polyline'),
 };

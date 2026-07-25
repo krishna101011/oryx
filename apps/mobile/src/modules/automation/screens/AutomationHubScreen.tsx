@@ -9,6 +9,7 @@ import {
   Icon,
   Pressable,
   Screen,
+  Skeleton,
   Spacer,
   Text,
   useGx,
@@ -81,7 +82,7 @@ const HubContent: React.FC = () => {
         {tab === 'rules' ? (
           <RulesTab prefs={prefs.data} />
         ) : (
-          <LogTab entries={log.data?.entries} />
+          <LogTab entries={log.data?.entries} isLoading={log.isLoading} />
         )}
         <Spacer size={8} />
       </ScrollView>
@@ -251,7 +252,12 @@ const RuleRow: React.FC<{
 
 const LogTab: React.FC<{
   entries: Automation.AutomationLogEntry[] | undefined;
-}> = ({ entries }) => {
+  isLoading: boolean;
+}> = ({ entries, isLoading }) => {
+  if (isLoading) {
+    return <Skeleton height={100} />;
+  }
+
   const rows = toFeedRows(entries ?? []);
 
   if (rows.length === 0) {

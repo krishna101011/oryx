@@ -42,6 +42,7 @@ export const TrustedSourcesScreen: React.FC = () => {
           activationMap={activationMap}
           onToggle={onToggle}
           pendingKeys={pendingKey ? new Set([pendingKey]) : undefined}
+          isLoading={catalog.isLoading}
         />
         <Spacer size={8} />
       </ScrollView>

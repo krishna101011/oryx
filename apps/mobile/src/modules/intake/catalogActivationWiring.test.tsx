@@ -22,6 +22,7 @@ import type * as ReactNS from 'react';
 import type * as TestRendererNS from 'react-test-renderer';
 import type { ReactTestRenderer } from 'react-test-renderer';
 import type * as ReactQueryNS from '@tanstack/react-query';
+import type * as DesignSystemNS from '@oryx/design-system';
 import type * as ClientNS from '../../lib/api/client';
 import type * as TrustedScreenNS from '../settings/screens/TrustedSourcesScreen';
 import type { IntakeSource, SourceCatalogEntry } from '@oryx/shared-types';
@@ -187,6 +188,56 @@ function renderTrustedSources(initialSources: IntakeSource[] = []) {
   return { tree, act, pressByLabel, flush, rendered, backend, restore };
 }
 
+/**
+ * Same real TrustedSourcesScreen, but the catalog query is deliberately left
+ * unresolved (a fetch that never settles) so `useSourceCatalog().isLoading`
+ * stays true for the assertion — proving the real screen actually passes
+ * `isLoading` through to CatalogSourcePicker, not just that the component
+ * supports the prop in isolation (see CatalogSourcePicker.test.tsx for that).
+ */
+function renderTrustedSourcesLoading() {
+  const originalFetch = globalThis.fetch;
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = (() =>
+    new Promise<Response>(() => {})) as unknown as typeof fetch;
+
+  const { configureApiClient } = req('../../lib/api/client') as typeof ClientNS;
+  configureApiClient({
+    baseUrl: 'http://test.local/v1',
+    getAccessToken: () => 'test-token',
+    getWorkspaceId: () => 'ws-1',
+    refreshAccessToken: async () => null,
+  });
+
+  const React = req('react') as typeof ReactNS;
+  const { create, act } = req('react-test-renderer') as typeof TestRendererNS;
+  const { QueryClient, QueryClientProvider } = req(
+    '@tanstack/react-query',
+  ) as typeof ReactQueryNS;
+  const { TrustedSourcesScreen } = req(
+    '../settings/screens/TrustedSourcesScreen',
+  ) as typeof TrustedScreenNS;
+
+  // No qc.setQueryData(['sources', 'catalog'], ...) — deliberately unseeded.
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+  let tree!: ReactTestRenderer;
+  act(() => {
+    tree = create(
+      React.createElement(
+        QueryClientProvider,
+        { client: qc },
+        React.createElement(TrustedSourcesScreen),
+      ),
+    );
+  });
+
+  const restore = () => {
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+  };
+
+  return { tree, rendered: () => JSON.stringify(tree.toJSON()), restore };
+}
+
 test('renders both real sections (Crypto, Markets) with real names, including The Block', () => {
   const { tree, rendered, restore } = renderTrustedSources([]);
   const text = rendered();
@@ -268,6 +319,22 @@ test('pressing an already-activated tile calls the REAL PATCH endpoint to disabl
     0,
     'the dead WorkspaceSource toggle path was never called',
   );
+
+  tree.unmount();
+  restore();
+});
+
+test('while the real catalog query is loading, TrustedSourcesScreen shows a Skeleton, never a blank picker', () => {
+  const { tree, rendered, restore } = renderTrustedSourcesLoading();
+  const { Skeleton } = req('@oryx/design-system') as typeof DesignSystemNS;
+
+  assert.equal(
+    tree.root.findAllByType(Skeleton as never).length,
+    1,
+    'the real screen renders exactly one Skeleton while catalog.isLoading is true',
+  );
+  assert.ok(!rendered().includes('CRYPTO'), 'no section header renders yet');
+  assert.ok(!rendered().includes('CoinDesk'), 'no tile renders yet');
 
   tree.unmount();
   restore();
