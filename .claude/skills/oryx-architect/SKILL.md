@@ -353,6 +353,28 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   exhaustive Record<AutomationAction, ...>, so widening the union without
   adding copy entries there fails `pnpm type-check` (a feature: the compiler
   enforces what drift:check can't). Widen all three in the same commit.
+- ALEMBIC BATCHES ALL PENDING MIGRATIONS INTO ONE TRANSACTION (billing
+  foundation wave, 2026-07-25, migration 0029 found this the hard way).
+  alembic/env.py's do_run_migrations() wraps context.run_migrations() in a
+  SINGLE context.begin_transaction() — not one transaction per revision. So
+  `ALTER TYPE ... ADD VALUE` followed by anything that USES the new value
+  (an UPDATE/INSERT/CASE referencing it) fails with Postgres's "unsafe use
+  of new value of enum type", and — this is the non-obvious part — putting
+  the ADD VALUE in an earlier migration file does NOT fix it: if both
+  migrations are pending in the same `alembic upgrade head` invocation
+  (e.g. a fresh DB, or CI), they still land in that one shared transaction.
+  This only surfaces when a migration needs to USE a value it just widened
+  onto an enum (0014's activity_type widen never hit it because it only
+  ever added values, never wrote rows with them). The safe pattern: don't
+  ADD VALUE at all — rebuild the type. CREATE a new enum with every label
+  the column should end up with, `ALTER TABLE ... ALTER COLUMN ... TYPE
+  <new> USING (CASE ... END)::<new>` to cast existing rows across via an
+  explicit mapping, DROP the old type, then `ALTER TYPE <new> RENAME TO
+  <old_name>`. Values are usable immediately because they were present at
+  the type's CREATE, not added afterward, so the restriction never applies.
+  See 0029_billing_foundation.py for the full worked example (it also drops
+  retired labels outright this way, instead of 0014's additive approach of
+  leaving them stuck in the DB forever).
 - react-native-svg IS NOT a direct mobile dependency, but it's a (currently
   UNMET) peerDependency of lucide-react-native, which the shipped Icon component
   uses. The exact-for-RN-0.74 version (15.15.5) already sits in the pnpm store,
