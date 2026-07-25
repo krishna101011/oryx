@@ -170,6 +170,12 @@ CAPABILITIES: dict[str, list[str]] = {
     "admin": [
         "research.*", "settings.*", "integrations.*", "content.*", "activity.*",
         "verification.*",
+        # Team/Workspace Rev 2 §6's real trap: a new namespace must be
+        # DELIBERATELY added here or admins silently can't invite/manage
+        # members even though the routes exist. See
+        # tests/unit/test_capability_admin_coverage.py — it fails loudly
+        # if a future capability namespace is added without this happening.
+        "workspace.*",
     ],
     "editor": [
         "research.write", "research.read", "content.*", "activity.read",

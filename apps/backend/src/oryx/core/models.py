@@ -143,6 +143,16 @@ class Session(Base):
     account_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
     )
+    # Team/Workspace Rev 2: the workspace this session's access tokens are
+    # scoped to. Previously NOT stored anywhere — refresh() had no way to
+    # know which workspace the prior access token was scoped to and had to
+    # re-derive one from scratch via _primary_workspace_id's arbitrary
+    # .limit(1), silently reverting an explicit workspace switch on the very
+    # next token refresh. refresh() now inherits this column from the old
+    # session; switch_workspace() is the only place that changes it.
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
     refresh_token_hash: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     parent_session_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("sessions.id")
@@ -1610,4 +1620,44 @@ class PlanPrice(Base):
         UniqueConstraint(
             "tier", "cadence", "currency", name="uq_plan_prices_tier_cadence_currency"
         ),
+    )
+
+
+# ============================================================================
+# Team/Workspace Rev 2 — invite mechanism (docs/TEAM_WORKSPACE_ARCHITECTURE.md §3)
+# ============================================================================
+
+
+class WorkspaceInvite(Base):
+    """A pending (or resolved) invitation to join a workspace. token_hash is
+    the SHA-256 hex of a display-once random token — same shape as the
+    intake webhook secret convention (services/intake/providers/webhook/
+    secrets.py): the raw token is only ever in the invite email, never
+    persisted or logged.
+
+    Exactly one of accepted_at/revoked_at is ever set for a resolved invite;
+    both NULL means still pending. accept_invite's atomic UPDATE ... WHERE
+    accepted_at IS NULL is what makes a concurrent double-accept race safe —
+    see services/workspaces/repository.py."""
+
+    __tablename__ = "workspace_invites"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    invited_email: Mapped[str] = mapped_column(CITEXT(), nullable=False)
+    role: Mapped[str] = mapped_column(
+        Enum("owner", "admin", "editor", "reader", name="workspace_role", create_type=False),
+        nullable=False,
+    )
+    token_hash: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    invited_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )

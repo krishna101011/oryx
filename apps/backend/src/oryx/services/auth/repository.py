@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from oryx.core.models import Account
+from oryx.core.models import Account, WorkspaceMember
 from oryx.core.models import Session as SessionRow
 
 
@@ -82,6 +82,7 @@ class AuthRepository:
         self,
         *,
         account_id: uuid.UUID,
+        workspace_id: uuid.UUID,
         refresh_token_hash: str,
         device_id: str,
         device_label: str,
@@ -94,6 +95,7 @@ class AuthRepository:
         row = SessionRow(
             id=uuid.uuid4(),
             account_id=account_id,
+            workspace_id=workspace_id,
             refresh_token_hash=refresh_token_hash,
             parent_session_id=parent_session_id,
             device_id=device_id,
@@ -112,6 +114,22 @@ class AuthRepository:
     ) -> SessionRow | None:
         result = await self.db.execute(
             select(SessionRow).where(SessionRow.refresh_token_hash == refresh_hash)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_active_membership(
+        self, *, account_id: uuid.UUID, workspace_id: uuid.UUID
+    ) -> WorkspaceMember | None:
+        """Real membership check for workspace switching — mirrors
+        core/dependencies.py's get_active_workspace so switch_workspace()
+        can never mint a token for a workspace the account doesn't
+        genuinely (still) belong to."""
+        result = await self.db.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.account_id == account_id,
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.removed_at.is_(None),
+            )
         )
         return result.scalar_one_or_none()
 

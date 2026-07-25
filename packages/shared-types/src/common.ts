@@ -65,7 +65,11 @@ export type ErrorCode =
   | 'WORKSPACE_NOT_FOUND'
   | 'ONBOARDING_REQUIRED'
   // billing
-  | 'PAYMENT_PROVIDER_UNAVAILABLE';
+  | 'PAYMENT_PROVIDER_UNAVAILABLE'
+  // team/workspace (Rev 2)
+  | 'INVITE_NOT_FOUND'
+  | 'INVITE_INVALID'
+  | 'INVITE_EMAIL_MISMATCH';
 
 export interface HealthStatus {
   status: 'ok' | 'degraded' | 'down';

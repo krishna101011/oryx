@@ -1,6 +1,8 @@
 ﻿"""Auth router — /v1/auth/*"""
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,6 +39,7 @@ from oryx.shared.types import (
     SigninResponse,
     SignupRequest,
     SignupResponse,
+    SwitchWorkspaceRequest,
     TokenPair,
 )
 
@@ -133,6 +136,28 @@ async def refresh(
     svc = AuthService(db)
     tokens = await svc.refresh(
         refresh_token=body.refresh_token,
+        device_id=body.device_id,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    return envelope(
+        _tokens_to_pair(tokens).model_dump(by_alias=True),
+        request_id=get_request_id(request),
+    )
+
+
+@router.post("/switch-workspace")
+async def switch_workspace(
+    body: SwitchWorkspaceRequest, request: Request, db: AsyncSession = Depends(db_session)
+) -> dict:
+    """Team/Workspace Rev 2 §4 — reuses the refresh-token rotation mechanism
+    exactly like /refresh; the only difference is the new token pair is
+    explicitly scoped to body.workspace_id, and real membership in it is
+    re-verified server-side (see AuthService.switch_workspace)."""
+    svc = AuthService(db)
+    tokens = await svc.switch_workspace(
+        refresh_token=body.refresh_token,
+        target_workspace_id=uuid.UUID(body.workspace_id),
         device_id=body.device_id,
         ip_address=_client_ip(request),
         user_agent=request.headers.get("user-agent"),

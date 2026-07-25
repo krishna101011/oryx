@@ -34,6 +34,15 @@ export interface RefreshRequest {
   deviceId: string;
 }
 
+/** Team/Workspace Rev 2 §4 — switching reuses the refresh-token mechanism;
+ * real membership in workspaceId is re-verified server-side before a new
+ * token pair is minted. */
+export interface SwitchWorkspaceRequest {
+  refreshToken: string;
+  deviceId: string;
+  workspaceId: Id;
+}
+
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;

@@ -185,6 +185,29 @@ class PaymentProviderUnavailableError(AppError):
 
     code = "PAYMENT_PROVIDER_UNAVAILABLE"
     http_status = 503
+
+
+# --- team/workspace (Rev 2) ---
+class InviteNotFoundError(AppError):
+    code = "INVITE_NOT_FOUND"
+    http_status = 404
+    message = "Invite not found"
+
+
+class InviteInvalidError(AppError):
+    """Covers every "not currently acceptable" state in one bucket: expired,
+    revoked, or already accepted (the losing side of a real accept-invite
+    race lands here too — a clean, honest response, not a 500)."""
+
+    code = "INVITE_INVALID"
+    http_status = 410
+    message = "Invite is no longer valid"
+
+
+class InviteEmailMismatchError(AppError):
+    code = "INVITE_EMAIL_MISMATCH"
+    http_status = 403
+    message = "This invite was sent to a different email address"
     message = "Payments aren't configured yet"
 
 

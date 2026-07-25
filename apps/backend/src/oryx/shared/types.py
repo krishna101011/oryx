@@ -24,6 +24,7 @@ ErrorCode = Literal[
     "PERMISSION_DENIED", "FEATURE_DISABLED", "WORKSPACE_NOT_FOUND",
     "ONBOARDING_REQUIRED",
     "PAYMENT_PROVIDER_UNAVAILABLE",
+    "INVITE_NOT_FOUND", "INVITE_INVALID", "INVITE_EMAIL_MISMATCH",
 ]
 
 
@@ -153,6 +154,48 @@ class ActiveWorkspace(_Base):
 
 
 # ============================================================================
+# Team/Workspace Rev 2 (docs/TEAM_WORKSPACE_ARCHITECTURE.md) — invites,
+# switching, member listing. Backend foundation only — no screen consumes
+# these yet.
+# ============================================================================
+
+InviteRole = Literal["admin", "editor", "reader"]
+
+
+class WorkspacesListResponse(_Base):
+    workspaces: list[ActiveWorkspace]
+
+
+class WorkspaceMemberSummary(_Base):
+    account_id: str = Field(alias="accountId")
+    role: Role
+    joined_at: datetime = Field(alias="joinedAt")
+
+
+class CreateInviteRequest(_Base):
+    email: str
+    role: InviteRole
+
+
+class WorkspaceInvite(_Base):
+    id: str
+    workspace_id: str = Field(alias="workspaceId")
+    invited_email: str = Field(alias="invitedEmail")
+    role: InviteRole
+    invited_by: str = Field(alias="invitedBy")
+    expires_at: datetime = Field(alias="expiresAt")
+    accepted_at: datetime | None = Field(default=None, alias="acceptedAt")
+    revoked_at: datetime | None = Field(default=None, alias="revokedAt")
+    created_at: datetime = Field(alias="createdAt")
+
+
+class AcceptInviteResult(_Base):
+    workspace_id: str = Field(alias="workspaceId")
+    role: InviteRole
+    joined_at: datetime = Field(alias="joinedAt")
+
+
+# ============================================================================
 # Preferences
 # ============================================================================
 
@@ -265,6 +308,12 @@ class SigninRequest(_Base):
 class RefreshRequest(_Base):
     refresh_token: str = Field(alias="refreshToken")
     device_id: str = Field(alias="deviceId")
+
+
+class SwitchWorkspaceRequest(_Base):
+    refresh_token: str = Field(alias="refreshToken")
+    device_id: str = Field(alias="deviceId")
+    workspace_id: str = Field(alias="workspaceId")
 
 
 class ChangePasswordRequest(_Base):

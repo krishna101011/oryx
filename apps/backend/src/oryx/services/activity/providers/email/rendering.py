@@ -46,12 +46,33 @@ def _password_reset(variables: dict[str, str]) -> tuple[str, str]:
     return "ORYX password reset", "\n".join(lines)
 
 
+def _invite(variables: dict[str, str]) -> tuple[str, str]:
+    workspace_name = variables.get("workspace_name", "an ORYX workspace")
+    inviter = variables.get("inviter_display_name", "Someone")
+    role = variables.get("role", "member")
+    token = variables.get("invite_token", "")
+    lines = [
+        f"{inviter} invited you to join {workspace_name} on ORYX as a{'n' if role[:1] in 'aeiou' else ''} {role}.",
+        "",
+        "Use this code in the app to accept:",
+        "",
+        token,
+        "",
+        f"This invite expires in {variables.get('expires_days', '7')} days.",
+        "If you weren't expecting this, you can safely ignore this email —",
+        "nothing happens until the invite is accepted.",
+    ]
+    return f"You're invited to {workspace_name} on ORYX", "\n".join(lines)
+
+
 def render(message: EmailMessage) -> tuple[str, str]:
     """(subject, plain-text body) for a message. Never raises."""
     if message.template == "alert":
         return _alert(message.variables)
     if message.template == "password_reset":
         return _password_reset(message.variables)
+    if message.template == "invite":
+        return _invite(message.variables)
     # Unknown template — deliver something honest rather than fail.
     body = "\n".join(f"{k}: {v}" for k, v in sorted(message.variables.items()))
     return f"ORYX: {message.template}", body or message.template

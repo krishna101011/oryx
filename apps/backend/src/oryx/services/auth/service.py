@@ -26,6 +26,7 @@ from oryx.core.errors import (
     AuthInvalidCredentialsError,
     AuthRefreshInvalidError,
     AuthRefreshReuseDetectedError,
+    WorkspaceNotFoundError,
 )
 from oryx.core.models import (
     OnboardingState,
@@ -34,6 +35,7 @@ from oryx.core.models import (
     Workspace,
     WorkspaceMember,
 )
+from oryx.core.models import Session as SessionRow
 from oryx.core.security.jwt import issue_access_token, verify_password_reset_token
 from oryx.core.security.passwords import (
     generate_refresh_token,
@@ -242,6 +244,112 @@ class AuthService:
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> IssuedTokens:
+        session_row = await self._resolve_valid_session(
+            refresh_token=refresh_token,
+            device_id=device_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+        # Rotate: revoke old, mint new linked via parent_session_id. The new
+        # session INHERITS the old one's workspace_id — Team/Workspace Rev 2
+        # §5.1's fix. Previously this re-derived via _primary_workspace_id on
+        # every refresh, silently reverting an explicit workspace switch the
+        # very next time the access token expired.
+        await self.repo.revoke_session(session_row.id, reason="rotation")
+        tokens = await self._issue_session(
+            account_id=session_row.account_id,
+            workspace_id=session_row.workspace_id,
+            device_id=session_row.device_id,
+            device_label=session_row.device_label,
+            device_platform=session_row.device_platform,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            parent_session_id=session_row.id,
+        )
+        await record_auth_event(
+            self.db,
+            event="refresh",
+            account_id=session_row.account_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            data={
+                "old_session_id": str(session_row.id),
+                "new_session_id": str(tokens.session_id),
+            },
+        )
+        return tokens
+
+    # ------------------------------------------------------------------
+    # Workspace switching (Team/Workspace Rev 2 §4)
+    # ------------------------------------------------------------------
+    async def switch_workspace(
+        self,
+        *,
+        refresh_token: str,
+        target_workspace_id: uuid.UUID,
+        device_id: str,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> IssuedTokens:
+        """Reuses the exact refresh-token rotation machinery refresh() uses —
+        not a parallel mechanism, per the doc. The only difference: the new
+        session is explicitly scoped to target_workspace_id instead of
+        inheriting the old session's. Membership is re-verified here (real
+        WorkspaceMember row, removed_at IS NULL) BEFORE the old refresh token
+        is revoked, so an invalid target never burns a still-good session —
+        a failed switch attempt leaves the caller able to retry or fall back
+        to a plain refresh()."""
+        session_row = await self._resolve_valid_session(
+            refresh_token=refresh_token,
+            device_id=device_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        membership = await self.repo.get_active_membership(
+            account_id=session_row.account_id, workspace_id=target_workspace_id
+        )
+        if membership is None:
+            raise WorkspaceNotFoundError()
+
+        await self.repo.revoke_session(session_row.id, reason="workspace_switch")
+        tokens = await self._issue_session(
+            account_id=session_row.account_id,
+            workspace_id=target_workspace_id,
+            device_id=session_row.device_id,
+            device_label=session_row.device_label,
+            device_platform=session_row.device_platform,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            parent_session_id=session_row.id,
+        )
+        await record_auth_event(
+            self.db,
+            event="workspace_switch",
+            account_id=session_row.account_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            data={
+                "old_session_id": str(session_row.id),
+                "new_session_id": str(tokens.session_id),
+                "workspace_id": str(target_workspace_id),
+            },
+        )
+        return tokens
+
+    async def _resolve_valid_session(
+        self,
+        *,
+        refresh_token: str,
+        device_id: str,
+        ip_address: str | None,
+        user_agent: str | None,
+    ) -> SessionRow:
+        """Shared validate step for refresh() and switch_workspace() — both
+        mint a new token pair off an existing valid refresh token via the
+        exact same reuse-detection/expiry/device checks. Does NOT revoke the
+        session; callers decide when that happens (switch_workspace defers
+        it until after membership is confirmed)."""
         token_hash = hash_refresh_token(refresh_token)
         session_row = await self.repo.get_session_by_refresh_hash(token_hash)
         if session_row is None:
@@ -272,32 +380,7 @@ class AuthService:
         if session_row.device_id != device_id:
             raise AuthRefreshInvalidError("Device mismatch")
 
-        # Rotate: revoke old, mint new linked via parent_session_id.
-        await self.repo.revoke_session(session_row.id, reason="rotation")
-
-        workspace_id = await self._primary_workspace_id(session_row.account_id)
-        tokens = await self._issue_session(
-            account_id=session_row.account_id,
-            workspace_id=workspace_id,
-            device_id=session_row.device_id,
-            device_label=session_row.device_label,
-            device_platform=session_row.device_platform,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            parent_session_id=session_row.id,
-        )
-        await record_auth_event(
-            self.db,
-            event="refresh",
-            account_id=session_row.account_id,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            data={
-                "old_session_id": str(session_row.id),
-                "new_session_id": str(tokens.session_id),
-            },
-        )
-        return tokens
+        return session_row
 
     # ------------------------------------------------------------------
     # Signout
@@ -362,12 +445,19 @@ class AuthService:
     # Internals
     # ------------------------------------------------------------------
     async def _primary_workspace_id(self, account_id: uuid.UUID) -> uuid.UUID:
+        """The account's earliest-joined active membership — deterministic
+        (Team/Workspace Rev 2 §5.1's fix: the previous bare .limit(1) had no
+        ORDER BY, an arbitrary pick under Postgres). Only called where there's
+        no prior session to inherit a workspace from (signup, signin) —
+        refresh() and switch_workspace() never call this; they carry the
+        session's own workspace_id forward explicitly."""
         result = await self.db.execute(
             select(WorkspaceMember.workspace_id)
             .where(
                 WorkspaceMember.account_id == account_id,
                 WorkspaceMember.removed_at.is_(None),
             )
+            .order_by(WorkspaceMember.joined_at.asc())
             .limit(1)
         )
         wsp = result.scalar_one_or_none()
@@ -396,6 +486,7 @@ class AuthService:
 
         session_row = await self.repo.create_session(
             account_id=account_id,
+            workspace_id=workspace_id,
             refresh_token_hash=refresh_hash,
             device_id=device_id,
             device_label=device_label,
