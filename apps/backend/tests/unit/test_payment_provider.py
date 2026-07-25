@@ -8,6 +8,7 @@ import hashlib
 import hmac
 import json
 import time
+from decimal import Decimal
 
 import pytest
 
@@ -20,6 +21,7 @@ from oryx.core.payment_provider import (
     get_razorpay_provider,
     get_stripe_provider,
 )
+from oryx.services.billing.models import PlanPriceRef
 
 # ============================================================================
 # Stripe
@@ -243,3 +245,99 @@ def test_get_stripe_provider_and_get_razorpay_provider_read_settings() -> None:
     razorpay = get_razorpay_provider(_FakeSettings())
     assert stripe.name == "stripe"
     assert razorpay.name == "razorpay"
+
+
+# ============================================================================
+# create_subscription — plan_id resolution against the pricing catalog
+# ============================================================================
+
+_FOCUS_MONTHLY_USD = PlanPriceRef(
+    plan_id="focus_monthly_usd",
+    tier="focus",
+    cadence="monthly",
+    currency="USD",
+    amount=Decimal("19.99"),
+    stripe_price_id=None,
+    razorpay_plan_id=None,
+)
+
+
+async def test_stripe_create_subscription_rejects_unconfigured_api_key() -> None:
+    provider = StripeProvider(
+        api_key=None, webhook_secret=None, pricing={"focus_monthly_usd": _FOCUS_MONTHLY_USD}
+    )
+    with pytest.raises(PaymentProviderError) as exc:
+        await provider.create_subscription(customer_ref="cus_1", plan_id="focus_monthly_usd")
+    assert exc.value.kind == PaymentProviderErrorKind.PERMANENT
+    assert "STRIPE_API_KEY" in exc.value.message
+
+
+async def test_stripe_create_subscription_rejects_unknown_plan_id() -> None:
+    provider = StripeProvider(api_key="sk_test", webhook_secret=None, pricing={})
+    with pytest.raises(PaymentProviderError) as exc:
+        await provider.create_subscription(customer_ref="cus_1", plan_id="not_a_real_plan")
+    assert exc.value.kind == PaymentProviderErrorKind.PERMANENT
+    assert "Unknown plan_id" in exc.value.message
+
+
+async def test_stripe_create_subscription_resolves_real_amount_but_blocks_on_missing_vendor_price() -> None:
+    """The plan_id resolves to the real, correct amount/currency (19.99 USD)
+    — what's missing is only the vendor-side Stripe Price object, which
+    requires a real API call to provision (out of scope this wave)."""
+    provider = StripeProvider(
+        api_key="sk_test", webhook_secret=None, pricing={"focus_monthly_usd": _FOCUS_MONTHLY_USD}
+    )
+    assert provider._pricing["focus_monthly_usd"].amount == Decimal("19.99")
+    assert provider._pricing["focus_monthly_usd"].currency == "USD"
+    with pytest.raises(PaymentProviderError) as exc:
+        await provider.create_subscription(customer_ref="cus_1", plan_id="focus_monthly_usd")
+    assert exc.value.kind == PaymentProviderErrorKind.PERMANENT
+    assert "No Stripe price configured yet" in exc.value.message
+    assert "focus_monthly_usd" in exc.value.message
+
+
+async def test_razorpay_create_subscription_rejects_unconfigured_credentials() -> None:
+    provider = RazorpayProvider(
+        key_id=None,
+        key_secret=None,
+        webhook_secret=None,
+        pricing={"focus_monthly_usd": _FOCUS_MONTHLY_USD},
+    )
+    with pytest.raises(PaymentProviderError) as exc:
+        await provider.create_subscription(customer_ref="cust_1", plan_id="focus_monthly_usd")
+    assert exc.value.kind == PaymentProviderErrorKind.PERMANENT
+    assert "RAZORPAY_KEY_ID" in exc.value.message
+
+
+async def test_razorpay_create_subscription_rejects_unknown_plan_id() -> None:
+    provider = RazorpayProvider(
+        key_id="rzp_id", key_secret="rzp_secret", webhook_secret=None, pricing={}
+    )
+    with pytest.raises(PaymentProviderError) as exc:
+        await provider.create_subscription(customer_ref="cust_1", plan_id="not_a_real_plan")
+    assert exc.value.kind == PaymentProviderErrorKind.PERMANENT
+    assert "Unknown plan_id" in exc.value.message
+
+
+async def test_razorpay_create_subscription_resolves_real_amount_but_blocks_on_missing_vendor_plan() -> None:
+    provider = RazorpayProvider(
+        key_id="rzp_id",
+        key_secret="rzp_secret",
+        webhook_secret=None,
+        pricing={"focus_monthly_usd": _FOCUS_MONTHLY_USD},
+    )
+    with pytest.raises(PaymentProviderError) as exc:
+        await provider.create_subscription(customer_ref="cust_1", plan_id="focus_monthly_usd")
+    assert exc.value.kind == PaymentProviderErrorKind.PERMANENT
+    assert "No Razorpay plan configured yet" in exc.value.message
+    assert "focus_monthly_usd" in exc.value.message
+
+
+def test_create_subscription_defaults_to_empty_pricing_when_not_provided() -> None:
+    """get_stripe_provider/get_razorpay_provider callers who only need
+    verify_webhook/cancel_subscription (e.g. the webhook router) never have
+    to supply a pricing catalog."""
+    stripe = get_stripe_provider(_FakeSettings())
+    razorpay = get_razorpay_provider(_FakeSettings())
+    assert stripe._pricing == {}
+    assert razorpay._pricing == {}

@@ -19,6 +19,18 @@ verify_webhook has NO such gate: signature verification is real, live, and
 independently testable against a synthetic secret with no vendor credentials
 required — it must run before any other webhook handling (non-negotiable;
 see services/billing/webhook_router.py).
+
+PRICING WAVE: create_subscription takes plan_id — OUR internal identifier
+(services/billing/models.py's PlanPriceRef.plan_id, e.g. "focus_monthly_usd"),
+never a raw vendor price/plan id or an ad-hoc amount. StripeProvider/
+RazorpayProvider each resolve plan_id against an injected `pricing` mapping
+(plan_id -> PlanPriceRef, loaded from the real plan_prices table via
+services/billing/repository.py's PlanPriceRepository) to get the real
+amount/currency, then look for that plan's vendor-specific reference
+(stripe_price_id / razorpay_plan_id). Both are NULL for every row until a
+future wave provisions the actual vendor Price/Plan objects via a live API
+call — until then create_subscription resolves correctly but raises
+PERMANENT, same shape as the missing-API-key guard above.
 """
 from __future__ import annotations
 
@@ -32,6 +44,8 @@ from enum import Enum
 from typing import Any, Protocol, runtime_checkable
 
 import httpx
+
+from oryx.services.billing.models import PlanPriceRef
 
 _STRIPE_API_URL = "https://api.stripe.com/v1"
 _RAZORPAY_API_URL = "https://api.razorpay.com/v1"
@@ -98,8 +112,14 @@ class PaymentProvider(Protocol):
     name: str
 
     async def create_subscription(
-        self, *, customer_ref: str, plan_ref: str
-    ) -> SubscriptionHandle: ...
+        self, *, customer_ref: str, plan_id: str
+    ) -> SubscriptionHandle:
+        """plan_id is OUR internal identifier (e.g. "focus_monthly_usd",
+        services/billing/models.py's PlanPriceRef.plan_id) — never a raw
+        vendor price/plan id passed ad hoc. Each implementation resolves it
+        against its injected pricing catalog to get the real amount/currency,
+        then maps that onto whatever reference its own vendor API needs."""
+        ...
 
     def verify_webhook(
         self, *, headers: Mapping[str, str], body: bytes
@@ -128,13 +148,15 @@ class StripeProvider:
         api_key: str | None,
         webhook_secret: str | None,
         timeout: float = 30.0,
+        pricing: Mapping[str, PlanPriceRef] | None = None,
     ) -> None:
         self._api_key = api_key
         self._webhook_secret = webhook_secret
         self._timeout = timeout
+        self._pricing = pricing or {}
 
     async def create_subscription(
-        self, *, customer_ref: str, plan_ref: str
+        self, *, customer_ref: str, plan_id: str
     ) -> SubscriptionHandle:
         if not self._api_key:
             raise PaymentProviderError(
@@ -142,12 +164,29 @@ class StripeProvider:
                 message="STRIPE_API_KEY is not configured",
                 provider=self.name,
             )
+        price = self._pricing.get(plan_id)
+        if price is None:
+            raise PaymentProviderError(
+                kind=PaymentProviderErrorKind.PERMANENT,
+                message=f"Unknown plan_id {plan_id!r} — not in the loaded pricing catalog",
+                provider=self.name,
+            )
+        if not price.stripe_price_id:
+            # Real amount/currency resolved (price.amount, price.currency);
+            # what's still missing is the vendor-side Price object, which
+            # requires a real Stripe API call to create — out of scope until
+            # checkout goes live (see PlanPriceRef's docstring).
+            raise PaymentProviderError(
+                kind=PaymentProviderErrorKind.PERMANENT,
+                message=f"No Stripe price configured yet for plan_id {plan_id!r}",
+                provider=self.name,
+            )
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 resp = await client.post(
                     f"{_STRIPE_API_URL}/subscriptions",
                     headers={"authorization": f"Bearer {self._api_key}"},
-                    data={"customer": customer_ref, "items[0][price]": plan_ref},
+                    data={"customer": customer_ref, "items[0][price]": price.stripe_price_id},
                 )
         except httpx.HTTPError as exc:
             raise PaymentProviderError(
@@ -301,19 +340,38 @@ class RazorpayProvider:
         key_secret: str | None,
         webhook_secret: str | None,
         timeout: float = 30.0,
+        pricing: Mapping[str, PlanPriceRef] | None = None,
     ) -> None:
         self._key_id = key_id
         self._key_secret = key_secret
         self._webhook_secret = webhook_secret
         self._timeout = timeout
+        self._pricing = pricing or {}
 
     async def create_subscription(
-        self, *, customer_ref: str, plan_ref: str
+        self, *, customer_ref: str, plan_id: str
     ) -> SubscriptionHandle:
         if not (self._key_id and self._key_secret):
             raise PaymentProviderError(
                 kind=PaymentProviderErrorKind.PERMANENT,
                 message="RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET are not configured",
+                provider=self.name,
+            )
+        price = self._pricing.get(plan_id)
+        if price is None:
+            raise PaymentProviderError(
+                kind=PaymentProviderErrorKind.PERMANENT,
+                message=f"Unknown plan_id {plan_id!r} — not in the loaded pricing catalog",
+                provider=self.name,
+            )
+        if not price.razorpay_plan_id:
+            # Razorpay's Subscriptions API requires a pre-created Plan
+            # object (amount/currency/period live on that object, not
+            # inline at subscription-creation) — creating one needs a real
+            # API call, out of scope until checkout goes live.
+            raise PaymentProviderError(
+                kind=PaymentProviderErrorKind.PERMANENT,
+                message=f"No Razorpay plan configured yet for plan_id {plan_id!r}",
                 provider=self.name,
             )
         try:
@@ -323,7 +381,7 @@ class RazorpayProvider:
                 resp = await client.post(
                     f"{_RAZORPAY_API_URL}/subscriptions",
                     json={
-                        "plan_id": plan_ref,
+                        "plan_id": price.razorpay_plan_id,
                         "customer_notify": 0,
                         "total_count": 120,
                         "notes": {"customer_ref": customer_ref},
@@ -434,22 +492,35 @@ class RazorpayProvider:
             )
 
 
-def get_stripe_provider(settings) -> StripeProvider:
+def get_stripe_provider(
+    settings, *, pricing: Mapping[str, PlanPriceRef] | None = None
+) -> StripeProvider:
+    """pricing is optional: verify_webhook/cancel_subscription callers (e.g.
+    the webhook router) never need it. Only pass it when the caller intends
+    to call create_subscription — load it via
+    services/billing/repository.py's PlanPriceRepository.load_all()."""
     return StripeProvider(
         api_key=getattr(settings, "stripe_api_key", None),
         webhook_secret=getattr(settings, "stripe_webhook_secret", None),
+        pricing=pricing,
     )
 
 
-def get_razorpay_provider(settings) -> RazorpayProvider:
+def get_razorpay_provider(
+    settings, *, pricing: Mapping[str, PlanPriceRef] | None = None
+) -> RazorpayProvider:
+    """See get_stripe_provider's docstring — same optional-pricing shape."""
     return RazorpayProvider(
         key_id=getattr(settings, "razorpay_key_id", None),
         key_secret=getattr(settings, "razorpay_key_secret", None),
         webhook_secret=getattr(settings, "razorpay_webhook_secret", None),
+        pricing=pricing,
     )
 
 
-def get_payment_provider(settings, *, currency: str) -> PaymentProvider:
+def get_payment_provider(
+    settings, *, currency: str, pricing: Mapping[str, PlanPriceRef] | None = None
+) -> PaymentProvider:
     """Factory keyed on workspace currency. currency="INR" -> RazorpayProvider
     (India's e-mandate-aligned recurring rail); everything else -> StripeProvider.
     See module docstring for the routing rationale.
@@ -460,5 +531,5 @@ def get_payment_provider(settings, *, currency: str) -> PaymentProvider:
     directly.
     """
     if currency.upper() == "INR":
-        return get_razorpay_provider(settings)
-    return get_stripe_provider(settings)
+        return get_razorpay_provider(settings, pricing=pricing)
+    return get_stripe_provider(settings, pricing=pricing)

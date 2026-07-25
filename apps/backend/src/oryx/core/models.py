@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
@@ -22,6 +23,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     LargeBinary,
+    Numeric,
     Text,
     UniqueConstraint,
     func,
@@ -1566,3 +1568,46 @@ class WorkspaceSubscription(Base):
     )
     # uq_workspace_subscriptions_provider_ref + ix_workspace_subscriptions_workspace
     # live in migration 0029.
+
+
+class PlanPrice(Base):
+    """The real, decided price catalog: tier x cadence x currency -> amount.
+    plan_id is a stable internal identifier (e.g. "focus_monthly_usd") —
+    PaymentProvider.create_subscription takes this, not a raw vendor price
+    id or an ad-hoc amount (services/billing/models.py's PlanPriceRef is the
+    DB-agnostic snapshot providers resolve it against).
+
+    stripe_price_id/razorpay_plan_id are nullable and NULL for every row as
+    of migration 0030 — populating them requires a real vendor API call
+    (creating a Stripe Price / Razorpay Plan object), which is out of scope
+    until checkout actually goes live. Until then, create_subscription
+    resolves the real amount/currency correctly but raises PERMANENT for any
+    plan_id whose vendor reference isn't provisioned yet.
+
+    Glimpse has no row here — it's the free tier."""
+
+    __tablename__ = "plan_prices"
+
+    plan_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    tier: Mapped[str] = mapped_column(
+        Enum("glimpse", "focus", "clarity", "vision", name="workspace_plan", create_type=False),
+        nullable=False,
+    )
+    cadence: Mapped[str] = mapped_column(
+        Enum("monthly", "quarterly", "yearly", name="billing_cadence"), nullable=False
+    )
+    currency: Mapped[str] = mapped_column(
+        Enum("USD", "INR", name="billing_currency"), nullable=False
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    stripe_price_id: Mapped[str | None] = mapped_column(Text)
+    razorpay_plan_id: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tier", "cadence", "currency", name="uq_plan_prices_tier_cadence_currency"
+        ),
+    )

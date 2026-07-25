@@ -375,6 +375,28 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   See 0029_billing_foundation.py for the full worked example (it also drops
   retired labels outright this way, instead of 0014's additive approach of
   leaving them stuck in the DB forever).
+- sa.table() REFLECTION DEFAULTS ENUM COLUMNS TO THE WRONG BIND TYPE (billing
+  foundation wave, 2026-07-26, migration 0030 — the SECOND time this exact
+  class of bug has appeared; migration 0029 hit an adjacent enum issue in
+  the same wave). When a migration builds a `sa.table("x", sa.column("tier",
+  sa.Text()), ...)` reflection to run `op.bulk_insert()` or `op.execute()`
+  against a column that's actually a real Postgres enum (not text), SQLAlchemy
+  binds that column's values with an explicit `::VARCHAR` cast — and Postgres
+  has no implicit VARCHAR->enum cast for parameterized INSERT or UPDATE, so it
+  fails: `column "tier" is of type workspace_plan but expression is of type
+  character varying`. This is NOT the same restriction as the ADD VALUE entry
+  above (that one is about transaction timing; this one is about SQLAlchemy
+  picking the wrong bind type for a reflected column) — but both surface from
+  the same underlying habit: reaching for `sa.Text()` as the default type in a
+  quick `sa.table()` reflection without checking what the real column type is.
+  The fix: declare the reflected column with the SAME `postgresql.ENUM(...,
+  create_type=False)` object the table's real DDL uses (not sa.Text()), so
+  SQLAlchemy emits the matching bind type. Before writing any migration that
+  bulk_inserts, updates, or otherwise reflects a table via sa.table()/
+  sa.column(), check whether each touched column is a Postgres enum first —
+  see 0029_billing_foundation.py's UPDATE statements (worked around by using
+  plain string literals instead of bound params) and 0030_plan_prices.py's
+  bulk_insert (worked around by binding the real ENUM type) for both fixes.
 - react-native-svg IS NOT a direct mobile dependency, but it's a (currently
   UNMET) peerDependency of lucide-react-native, which the shipped Icon component
   uses. The exact-for-RN-0.74 version (15.15.5) already sits in the pnpm store,

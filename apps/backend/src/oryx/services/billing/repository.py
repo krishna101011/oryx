@@ -1,4 +1,4 @@
-"""workspace_subscriptions persistence."""
+"""workspace_subscriptions + plan_prices persistence."""
 from __future__ import annotations
 
 import uuid
@@ -7,7 +7,8 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from oryx.core.models import WorkspaceSubscription
+from oryx.core.models import PlanPrice, WorkspaceSubscription
+from oryx.services.billing.models import PlanPriceRef
 
 
 class WorkspaceSubscriptionRepository:
@@ -51,3 +52,38 @@ class WorkspaceSubscriptionRepository:
         row.status = status
         row.updated_at = datetime.now(UTC)
         await self.db.flush()
+
+
+def _to_ref(row: PlanPrice) -> PlanPriceRef:
+    return PlanPriceRef(
+        plan_id=row.plan_id,
+        tier=row.tier,
+        cadence=row.cadence,
+        currency=row.currency,
+        amount=row.amount,
+        stripe_price_id=row.stripe_price_id,
+        razorpay_plan_id=row.razorpay_plan_id,
+    )
+
+
+class PlanPriceRepository:
+    """Reads the real plan_prices catalog and converts rows into the
+    DB-agnostic PlanPriceRef dataclass core/payment_provider.py resolves
+    plan_id against — core/ never queries the DB directly."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def get(self, plan_id: str) -> PlanPriceRef | None:
+        result = await self.db.execute(
+            select(PlanPrice).where(PlanPrice.plan_id == plan_id)
+        )
+        row = result.scalar_one_or_none()
+        return _to_ref(row) if row is not None else None
+
+    async def load_all(self) -> dict[str, PlanPriceRef]:
+        """The full catalog as a plan_id -> PlanPriceRef mapping — the shape
+        StripeProvider/RazorpayProvider accept as their `pricing` constructor
+        argument."""
+        result = await self.db.execute(select(PlanPrice))
+        return {row.plan_id: _to_ref(row) for row in result.scalars().all()}
