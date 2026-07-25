@@ -20,6 +20,7 @@ export type SettingsStackParamList = {
   ChangePassword: undefined;
   ActiveSessions: undefined;
   AlertsSettings: undefined;
+  PlanBilling: undefined;
   TrustedSources: undefined;
   // Phase 3 intake module — entered via Settings → Sources (§15.4)
   IntakeHome: undefined;

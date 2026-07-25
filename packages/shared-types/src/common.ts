@@ -63,7 +63,9 @@ export type ErrorCode =
   | 'PERMISSION_DENIED'
   | 'FEATURE_DISABLED'
   | 'WORKSPACE_NOT_FOUND'
-  | 'ONBOARDING_REQUIRED';
+  | 'ONBOARDING_REQUIRED'
+  // billing
+  | 'PAYMENT_PROVIDER_UNAVAILABLE';
 
 export interface HealthStatus {
   status: 'ok' | 'degraded' | 'down';

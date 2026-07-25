@@ -100,6 +100,19 @@ export const SettingsHomeScreen: React.FC = () => {
         </Card>
 
         <Spacer size={6} />
+        <Card header={<CardHeader title="Plan" />}>
+          <HairlineRowList>
+            <SettingsRow
+              label="Plan & billing"
+              description="Current tier, pricing, subscription status"
+              icon="CreditCard"
+              accent="slateBlue"
+              onPress={() => navigation.navigate('PlanBilling' as never)}
+            />
+          </HairlineRowList>
+        </Card>
+
+        <Spacer size={6} />
         {/* APPEARANCE stays on the ChoiceTile anatomy deliberately (see the
             module-level note above ChoiceTile usage): each tile is already a
             Card with real typography + token colors, and ChoiceTile is a

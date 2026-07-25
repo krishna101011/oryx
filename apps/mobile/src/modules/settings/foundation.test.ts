@@ -60,12 +60,13 @@ test('the fixed icon wells route through the real radius token (radius.xl, the p
 
 test('SettingsHomeScreen groups every navigation-row section under CardHeader + HairlineRowList', () => {
   const screen = read('./screens/SettingsHomeScreen.tsx');
-  for (const title of ['Profile', 'Security', 'Alerts', 'Automation', 'Sources', 'Verification']) {
+  for (const title of ['Profile', 'Plan', 'Security', 'Alerts', 'Automation', 'Sources', 'Verification']) {
     assert.ok(screen.includes(`<CardHeader title="${title}"`), `real CardHeader for ${title}`);
   }
-  // 6 sections migrated to the row/list anatomy = 6 HairlineRowList groups.
+  // 7 sections migrated to the row/list anatomy = 7 HairlineRowList groups
+  // (billing wave, 2026-07-26, added the Plan section right after Profile).
   const hairlineCount = (screen.match(/<HairlineRowList>/g) ?? []).length;
-  assert.equal(hairlineCount, 6, 'one HairlineRowList per migrated section');
+  assert.equal(hairlineCount, 7, 'one HairlineRowList per migrated section');
 });
 
 test('SettingsRow no longer wraps itself in its own Card — it is a bare row for a parent HairlineRowList', () => {

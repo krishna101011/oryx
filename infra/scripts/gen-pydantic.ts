@@ -44,7 +44,7 @@ const SOURCES = [
   'verification.ts', 'claims.ts', 'evidence.ts', 'scoring.ts', 'conflicts.ts',
   'intelligence.ts', 'research.ts', 'drafts.ts',
   'content.ts', 'publishing.ts', 'automation.ts', 'analytics.ts', 'training.ts',
-  'templates.ts', 'review.ts', 'calendar.ts',
+  'templates.ts', 'review.ts', 'calendar.ts', 'billing.ts',
 ];
 
 // index.ts is a barrel re-export; it declares no types of its own.

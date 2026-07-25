@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oryx.core.models import PlanPrice, WorkspaceSubscription
@@ -52,6 +52,21 @@ class WorkspaceSubscriptionRepository:
         row.status = status
         row.updated_at = datetime.now(UTC)
         await self.db.flush()
+
+    async def get_latest_for_workspace(
+        self, workspace_id: uuid.UUID
+    ) -> WorkspaceSubscription | None:
+        """Most recently updated row for this workspace — a workspace could
+        in principle have more than one across its history (a lapsed
+        subscription, a provider switch); the latest is what GET
+        /billing/subscription reports."""
+        result = await self.db.execute(
+            select(WorkspaceSubscription)
+            .where(WorkspaceSubscription.workspace_id == workspace_id)
+            .order_by(desc(WorkspaceSubscription.updated_at))
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
 
 
 def _to_ref(row: PlanPrice) -> PlanPriceRef:

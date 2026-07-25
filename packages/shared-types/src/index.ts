@@ -6,6 +6,7 @@ export * from './accounts';
 export * from './profiles';
 export * from './workspaces';
 export * from './preferences';
+export * from './billing';
 export * from './sources';
 export * from './sessions';
 export * from './auth';

@@ -23,6 +23,7 @@ ErrorCode = Literal[
     "AUTH_MFA_REQUIRED", "AUTH_MFA_INVALID",
     "PERMISSION_DENIED", "FEATURE_DISABLED", "WORKSPACE_NOT_FOUND",
     "ONBOARDING_REQUIRED",
+    "PAYMENT_PROVIDER_UNAVAILABLE",
 ]
 
 
@@ -1251,3 +1252,47 @@ class ScheduleDraftRequest(_Base):
     draft_id: str = Field(alias="draftId")
     target_id: str = Field(alias="targetId")
     scheduled_at: str = Field(alias="scheduledAt")
+
+
+# ============================================================================
+# Billing — first frontend-facing surface over the billing foundation
+# ============================================================================
+
+BillingCadence = Literal["monthly", "quarterly", "yearly"]
+BillingCurrency = Literal["USD", "INR"]
+PaymentProviderName = Literal["stripe", "razorpay"]
+SubscriptionStatus = Literal["pending", "active", "past_due", "canceled"]
+
+
+class PlanPrice(_Base):
+    plan_id: str = Field(alias="planId")
+    tier: WorkspacePlan
+    cadence: BillingCadence
+    currency: BillingCurrency
+    amount: float
+
+
+class PlansResponse(_Base):
+    plans: list[PlanPrice]
+
+
+class ActiveSubscription(_Base):
+    provider: PaymentProviderName
+    plan: WorkspacePlan | None
+    status: SubscriptionStatus
+    currency: BillingCurrency
+
+
+class SubscriptionSummary(_Base):
+    current_plan: WorkspacePlan = Field(alias="currentPlan")
+    subscription: ActiveSubscription | None
+
+
+class SubscribeRequest(_Base):
+    plan_id: str = Field(alias="planId")
+    currency: BillingCurrency
+
+
+class SubscribeResult(_Base):
+    provider_subscription_id: str = Field(alias="providerSubscriptionId")
+    status: SubscriptionStatus

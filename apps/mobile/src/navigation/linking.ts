@@ -34,6 +34,7 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
               ChangePassword: 'settings/password',
               ActiveSessions: 'settings/sessions',
               AlertsSettings: 'settings/alerts',
+              PlanBilling: 'settings/plan',
               TrustedSources: 'settings/sources',
               AutomationHub: 'settings/automation',
               Analytics: 'settings/analytics',

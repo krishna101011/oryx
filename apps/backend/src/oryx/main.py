@@ -47,6 +47,7 @@ from oryx.services.analytics.router import router as analytics_router
 from oryx.services.auth.me import router as auth_me_router
 from oryx.services.auth.router import router as auth_router
 from oryx.services.automation.router import router as automation_router
+from oryx.services.billing.router import router as billing_router
 from oryx.services.billing.webhook_router import router as billing_webhooks_router
 from oryx.services.claims.router import router as claims_router
 from oryx.services.conflicts.router import router as conflicts_router
@@ -201,6 +202,8 @@ def create_app() -> FastAPI:
     app.include_router(intake_webhooks_router, prefix=p)
     # Billing foundation wave: Stripe/Razorpay subscription webhooks.
     app.include_router(billing_webhooks_router, prefix=p)
+    # First frontend-facing billing surface: plans, subscription, subscribe.
+    app.include_router(billing_router, prefix=p)
     app.include_router(verification_router, prefix=p)
     app.include_router(research_router, prefix=p)
     # Phase 5 Wave A: content drafts (replaces the /content ping stub).

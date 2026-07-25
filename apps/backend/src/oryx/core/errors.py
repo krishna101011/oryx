@@ -177,6 +177,17 @@ class OnboardingRequiredError(AppError):
     message = "Onboarding not complete"
 
 
+# --- billing ---
+class PaymentProviderUnavailableError(AppError):
+    """The real, honest response for PaymentProviderError today: no live
+    Stripe/Razorpay credentials or vendor Price/Plan object is configured
+    yet. 503 (not 500) — this is a known, expected state, not a crash."""
+
+    code = "PAYMENT_PROVIDER_UNAVAILABLE"
+    http_status = 503
+    message = "Payments aren't configured yet"
+
+
 # --- envelope helpers ---
 def _envelope(
     code: str, message: str, request_id: str, details: dict[str, Any] | None = None
