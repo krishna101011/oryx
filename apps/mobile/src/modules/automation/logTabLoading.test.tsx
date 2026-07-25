@@ -114,9 +114,11 @@ function renderHubWithLog(log: Automation.AutomationLogResponse) {
   return { tree, act, rendered: () => JSON.stringify(tree.toJSON()) };
 }
 
-/** Deliberately leaves `['automation','log']` unseeded, with a fetch that
- * never resolves, so `log.isLoading` stays true for the assertion. */
-function renderHubLoading() {
+/** Deliberately leaves `['automation','log']` (and, when `seedPrefs` is
+ * false, `['alerts','preferences']` too) unseeded, with a fetch that never
+ * resolves, so the relevant query stays `isLoading: true` for the
+ * assertion. */
+function renderHubLoading(seedPrefs = true) {
   const originalFetch = globalThis.fetch;
   (globalThis as unknown as { fetch: typeof fetch }).fetch = (() =>
     new Promise<Response>(() => {})) as unknown as typeof fetch;
@@ -142,8 +144,9 @@ function renderHubLoading() {
 
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   qc.setQueryData(['me'], ME);
-  qc.setQueryData(['alerts', 'preferences'], PREFS);
-  // ['automation', 'log'] deliberately unseeded.
+  if (seedPrefs) qc.setQueryData(['alerts', 'preferences'], PREFS);
+  // ['automation', 'log'] (and ['alerts', 'preferences'] when seedPrefs is
+  // false) deliberately unseeded.
 
   let tree!: ReactTestRenderer;
   act(() => {
@@ -167,16 +170,49 @@ function renderHubLoading() {
   return { tree, act, rendered: () => JSON.stringify(tree.toJSON()), restore };
 }
 
-test('Log tab while loading shows a Skeleton, never the "Nothing in the log yet" empty copy', () => {
+test('Log tab while loading shows 3 shaped SkeletonRows (stacked time/date + title + outcome chip), never the "Nothing in the log yet" empty copy', () => {
   const { tree, act, rendered, restore } = renderHubLoading();
-  const { Skeleton } = req('@oryx/design-system') as typeof DesignSystemNS;
+  const { SkeletonRow } = req('@oryx/design-system') as typeof DesignSystemNS;
 
   pressByLabel(tree, act, 'Log');
 
-  assert.equal(tree.root.findAllByType(Skeleton as never).length, 1, 'exactly one Skeleton renders');
+  assert.equal(
+    tree.root.findAllByType(SkeletonRow as never).length,
+    3,
+    'one shaped SkeletonRow per real LogRow anatomy',
+  );
   assert.ok(
     !rendered().includes('Nothing in the log yet'),
     'the empty-state copy must not appear while still loading',
+  );
+
+  act(() => tree.unmount());
+  restore();
+});
+
+test('KPI row while loading (prefs or log in flight) shows 3 shaped SkeletonTiles, never the real "—" fallback', () => {
+  const { tree, act, restore } = renderHubLoading();
+  const { SkeletonTile } = req('@oryx/design-system') as typeof DesignSystemNS;
+
+  assert.equal(
+    tree.root.findAllByType(SkeletonTile as never).length,
+    3,
+    'one shaped SkeletonTile per real KPI (Active rules / Decisions·24h / Failures·24h)',
+  );
+
+  act(() => tree.unmount());
+  restore();
+});
+
+test('Rules tab while loading shows 3 shaped, flanked SkeletonRows (category chip + cadence chip), not the real "—" cadence fallback', () => {
+  const { tree, act, restore } = renderHubLoading(false);
+  const { SkeletonRow } = req('@oryx/design-system') as typeof DesignSystemNS;
+
+  // Rules is the default tab — no press needed.
+  assert.equal(
+    tree.root.findAllByType(SkeletonRow as never).length,
+    3,
+    'one shaped SkeletonRow per real RuleRow anatomy',
   );
 
   act(() => tree.unmount());

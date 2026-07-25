@@ -171,37 +171,49 @@ function renderAnalyticsLoading() {
   return { tree, act, rendered: () => JSON.stringify(tree.toJSON()), restore };
 }
 
-test('Overview tab while loading shows a Skeleton, never a blank body', () => {
+test('Overview tab while loading shows 3 shaped SkeletonTiles (label+value+trend+sparkline), never a blank body', () => {
   const { tree, act, rendered, restore } = renderAnalyticsLoading();
-  const { Skeleton } = req('@oryx/design-system') as typeof DesignSystemNS;
+  const { SkeletonTile } = req('@oryx/design-system') as typeof DesignSystemNS;
 
-  assert.equal(tree.root.findAllByType(Skeleton as never).length, 1);
+  assert.equal(
+    tree.root.findAllByType(SkeletonTile as never).length,
+    3,
+    'one shaped SkeletonTile per real KPI card (Items ingested / Claims verified / Drafts published)',
+  );
   assert.ok(!rendered().includes('Still gathering data'));
 
   act(() => tree.unmount());
   restore();
 });
 
-test('Research tab while loading shows a Skeleton, never a blank body', () => {
+test('Research tab while loading shows the real funnel-card shell with 4 shaped funnel rows, never a blank body', () => {
   const { tree, act, rendered, restore } = renderAnalyticsLoading();
-  const { Skeleton } = req('@oryx/design-system') as typeof DesignSystemNS;
+  const { Card, Skeleton } = req('@oryx/design-system') as typeof DesignSystemNS;
 
   pressByLabel(tree, act, 'Research');
 
-  assert.equal(tree.root.findAllByType(Skeleton as never).length, 1);
+  assert.equal(tree.root.findAllByType(Card as never).length, 1, 'the real funnel Card shell renders');
+  // Bespoke SkeletonFunnelRow isn't exported (single consumer) — verify its
+  // real composition instead: 2 title/caption bars + 4 rows x (2 head bars +
+  // 1 exact-height track bar) = 14 Skeleton primitives.
+  assert.equal(tree.root.findAllByType(Skeleton as never).length, 14);
   assert.ok(!rendered().includes('No research activity yet'));
 
   act(() => tree.unmount());
   restore();
 });
 
-test('Publishing tab while loading shows a Skeleton, never a blank body', () => {
+test('Publishing tab while loading shows 2 shaped SkeletonTiles (label+value+detail line), never a blank body', () => {
   const { tree, act, rendered, restore } = renderAnalyticsLoading();
-  const { Skeleton } = req('@oryx/design-system') as typeof DesignSystemNS;
+  const { SkeletonTile } = req('@oryx/design-system') as typeof DesignSystemNS;
 
   pressByLabel(tree, act, 'Publishing');
 
-  assert.equal(tree.root.findAllByType(Skeleton as never).length, 1);
+  assert.equal(
+    tree.root.findAllByType(SkeletonTile as never).length,
+    2,
+    'one shaped SkeletonTile per real card (Delivery success / Time to publish)',
+  );
   assert.ok(!rendered().includes('Nothing published yet'));
 
   act(() => tree.unmount());

@@ -324,14 +324,14 @@ test('pressing an already-activated tile calls the REAL PATCH endpoint to disabl
   restore();
 });
 
-test('while the real catalog query is loading, TrustedSourcesScreen shows a Skeleton, never a blank picker', () => {
+test('while the real catalog query is loading, TrustedSourcesScreen shows 3 shaped ChoiceTile skeletons, never a blank picker', () => {
   const { tree, rendered, restore } = renderTrustedSourcesLoading();
-  const { Skeleton } = req('@oryx/design-system') as typeof DesignSystemNS;
+  const { Card } = req('@oryx/design-system') as typeof DesignSystemNS;
 
   assert.equal(
-    tree.root.findAllByType(Skeleton as never).length,
-    1,
-    'the real screen renders exactly one Skeleton while catalog.isLoading is true',
+    tree.root.findAllByType(Card as never).length,
+    3,
+    'the real screen renders 3 bordered Cards — one per shaped ChoiceTile skeleton — while catalog.isLoading is true',
   );
   assert.ok(!rendered().includes('CRYPTO'), 'no section header renders yet');
   assert.ok(!rendered().includes('CoinDesk'), 'no tile renders yet');

@@ -7,7 +7,8 @@ import {
   Icon,
   Pressable,
   Screen,
-  Skeleton,
+  SkeletonRow,
+  SkeletonTile,
   Spacer,
   Text,
   useGx,
@@ -64,6 +65,7 @@ export const DashboardScreen: React.FC = () => {
   const intakeStatus = useIntakeStatus();
   const recentItems = useRecentIntakeItems();
   const today = todayPanelState(recentItems.data);
+  const kpiLoading = intakeStatus.isLoading || me.isLoading;
   return (
     <Screen background="primary">
       <View style={styles.hero}>
@@ -90,15 +92,34 @@ export const DashboardScreen: React.FC = () => {
         <Spacer size={5} />
 
         <View style={styles.kpiRow}>
-          <KpiTile label="SOURCES" value={sourcesStatValue(intakeStatus.data)} />
-          <KpiTile label="VERIFIED" value={verifiedStatValue(me.data)} />
-          <KpiTile label="DRAFTS" value={draftsStatValue(me.data)} />
+          {kpiLoading ? (
+            <>
+              <SkeletonTile style={styles.kpiTile} />
+              <SkeletonTile style={styles.kpiTile} />
+              <SkeletonTile style={styles.kpiTile} />
+            </>
+          ) : (
+            <>
+              <KpiTile label="SOURCES" value={sourcesStatValue(intakeStatus.data)} />
+              <KpiTile label="VERIFIED" value={verifiedStatValue(me.data)} />
+              <KpiTile label="DRAFTS" value={draftsStatValue(me.data)} />
+            </>
+          )}
         </View>
         <Spacer size={4} />
       </View>
 
       <Card header={<CardHeader title="Today" sub={todayCountSub(today)} />}>
-        {today.kind === 'loading' && <Skeleton height={100} />}
+        {today.kind === 'loading' && (
+          <HairlineRowList>
+            {/* Today row anatomy: a single leading tag chip (~56px, the
+                reference's min-width) as the whole head line, 2-line
+                headline, source/time meta, chevron gap. */}
+            <SkeletonRow leadingWidth={56} titleWidth="85%" />
+            <SkeletonRow leadingWidth={56} titleWidth="85%" />
+            <SkeletonRow leadingWidth={56} titleWidth="85%" />
+          </HairlineRowList>
+        )}
         {today.kind === 'empty' && (
           <Text variant="body" color="secondary">
             Nothing to surface yet. Connect a source to begin.

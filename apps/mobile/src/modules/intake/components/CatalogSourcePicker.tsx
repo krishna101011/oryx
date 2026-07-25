@@ -1,6 +1,6 @@
 import React from 'react';
-import { View } from 'react-native';
-import { Skeleton, Spacer, Text } from '@oryx/design-system';
+import { StyleSheet, View } from 'react-native';
+import { Card, Skeleton, Spacer, Text } from '@oryx/design-system';
 import type { SourceCatalogEntry } from '@oryx/shared-types';
 import { ChoiceTile } from '../../onboarding/components/ChoiceTile';
 import {
@@ -38,7 +38,15 @@ export const CatalogSourcePicker: React.FC<CatalogSourcePickerProps> = ({
   isLoading = false,
 }) => {
   if (isLoading) {
-    return <Skeleton height={100} />;
+    return (
+      <View>
+        <SkeletonChoiceTile />
+        <Spacer size={2} />
+        <SkeletonChoiceTile />
+        <Spacer size={2} />
+        <SkeletonChoiceTile />
+      </View>
+    );
   }
 
   const sections = groupCatalogBySection(catalog);
@@ -77,3 +85,28 @@ export const CatalogSourcePicker: React.FC<CatalogSourcePickerProps> = ({
     </View>
   );
 };
+
+/**
+ * Bespoke — single consumer. Mirrors the real ChoiceTile shape (recon
+ * confirmed it doesn't fit the chevron-row family at all): a bordered
+ * `Card variant="default"` with a title bar + description bar on the left,
+ * and a trailing circular dot matching ChoiceTile's real 18×18 selection
+ * indicator exactly.
+ */
+const SkeletonChoiceTile: React.FC = () => (
+  <Card variant="default">
+    <View style={styles.row}>
+      <View style={{ flex: 1 }}>
+        <Skeleton width="55%" height={14} radius={2} />
+        <Spacer size={1} />
+        <Skeleton width="80%" height={9} radius={2} />
+      </View>
+      <Skeleton width={18} height={18} radius={9} style={styles.dot} />
+    </View>
+  </Card>
+);
+
+const styles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center' },
+  dot: { marginLeft: 12 },
+});

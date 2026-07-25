@@ -105,9 +105,11 @@ function renderDashboard(recentItems: RecentIntakeItem[] | undefined) {
   return { tree, act, rendered: () => JSON.stringify(tree.toJSON()) };
 }
 
-/** Deliberately leaves the recent-items query unseeded, with a fetch that
- * never resolves, so `recentItems.isLoading` stays true for the assertion. */
-function renderDashboardLoading() {
+/** Deliberately leaves the recent-items query (and, when `seedKpiData` is
+ * false, `me`/`intake status` too) unseeded, with a fetch that never
+ * resolves, so the relevant query stays `isLoading: true` for the
+ * assertion. */
+function renderDashboardLoading(seedKpiData = true) {
   const originalFetch = globalThis.fetch;
   (globalThis as unknown as { fetch: typeof fetch }).fetch = (() =>
     new Promise<Response>(() => {})) as unknown as typeof fetch;
@@ -132,9 +134,12 @@ function renderDashboardLoading() {
   setAuthenticated(store);
 
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  qc.setQueryData(['me'], ME);
-  qc.setQueryData(['intake', 'status'], STATUS);
-  // ['intake', 'recent-items', 10] deliberately unseeded.
+  if (seedKpiData) {
+    qc.setQueryData(['me'], ME);
+    qc.setQueryData(['intake', 'status'], STATUS);
+  }
+  // ['intake', 'recent-items', 10] (and ['me']/['intake','status'] when
+  // seedKpiData is false) deliberately unseeded.
 
   let tree!: ReactTestRenderer;
   act(() => {
@@ -158,14 +163,32 @@ function renderDashboardLoading() {
   return { tree, act, rendered: () => JSON.stringify(tree.toJSON()), restore };
 }
 
-test('Today card while loading shows a Skeleton, never a blank card body', () => {
+test('Today card while loading shows 3 shaped SkeletonRows (tag chip + 2-line headline + meta), never a blank card body', () => {
   const { tree, act, rendered, restore } = renderDashboardLoading();
-  const { Skeleton } = req('@oryx/design-system') as typeof DesignSystemNS;
+  const { SkeletonRow } = req('@oryx/design-system') as typeof DesignSystemNS;
 
-  assert.equal(tree.root.findAllByType(Skeleton as never).length, 1, 'exactly one Skeleton renders');
+  assert.equal(
+    tree.root.findAllByType(SkeletonRow as never).length,
+    3,
+    'one shaped SkeletonRow per real Today row anatomy',
+  );
   assert.ok(
     !rendered().includes('Nothing to surface yet'),
     'the empty-state copy must not appear while still loading',
+  );
+
+  act(() => tree.unmount());
+  restore();
+});
+
+test('KPI row while loading (intake status or /me in flight) shows 3 shaped SkeletonTiles, never the real "—" fallback', () => {
+  const { tree, act, restore } = renderDashboardLoading(false);
+  const { SkeletonTile } = req('@oryx/design-system') as typeof DesignSystemNS;
+
+  assert.equal(
+    tree.root.findAllByType(SkeletonTile as never).length,
+    3,
+    'one shaped SkeletonTile per real KPI (SOURCES / VERIFIED / DRAFTS)',
   );
 
   act(() => tree.unmount());

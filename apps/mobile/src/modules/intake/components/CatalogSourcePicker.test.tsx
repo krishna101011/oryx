@@ -1,12 +1,13 @@
 /**
- * CatalogSourcePicker loading-vs-empty conflation fix (2026-07-25).
- *
- * Both real callers (TrustedSourcesScreen, FocusAndSourcesScreen) pass
- * `catalog={query.data ?? []}` — before this fix, an in-flight catalog fetch
- * and a (never-real-in-practice) empty catalog rendered IDENTICALLY: nothing
- * at all. `isLoading` now gates a generic Skeleton so loading is visually
- * distinguishable from empty. Pure prop-level render — no query client or
- * navigation needed, this component only ever reads its own props.
+ * CatalogSourcePicker loading-vs-empty conflation fix (2026-07-25), now with
+ * the real shaped skeleton (2026-07-26 wave). Both real callers pass
+ * `catalog={query.data ?? []}` — before the first fix, an in-flight catalog
+ * fetch and a (never-real-in-practice) empty catalog rendered IDENTICALLY:
+ * nothing at all. `isLoading` now renders 3 bespoke ChoiceTile-shaped
+ * skeletons (bordered card + title/description bars + trailing circular
+ * dot, mirroring the real ChoiceTile exactly) instead of a generic block.
+ * Pure prop-level render — no query client or navigation needed, this
+ * component only ever reads its own props.
  */
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -52,11 +53,20 @@ function findSkeleton(tree: ReactTestRenderer) {
   return tree.root.findAllByType(Skeleton as never);
 }
 
-test('isLoading: true renders a Skeleton, not a blank view — even with a real catalog available', () => {
+test('isLoading: true renders 3 shaped ChoiceTile skeletons (bordered card + title/description bars + trailing dot), not a blank view — even with a real catalog available', () => {
   const { tree, act } = render({ catalog: CATALOG, isLoading: true });
+  const { Card } = req('@oryx/design-system') as typeof DesignSystemNS;
 
-  assert.equal(findSkeleton(tree).length, 1, 'exactly one Skeleton renders');
-  assert.ok(!JSON.stringify(tree.toJSON()).includes('CoinDesk'), 'no tile renders while loading');
+  assert.equal(
+    tree.root.findAllByType(Card as never).length,
+    3,
+    'one bordered Card per shaped ChoiceTile skeleton',
+  );
+  // Bespoke SkeletonChoiceTile isn't exported (single consumer) — verify its
+  // real composition instead: each tile is 3 Skeleton bars (title,
+  // description, trailing dot) x 3 tiles = 9.
+  assert.equal(findSkeleton(tree).length, 9);
+  assert.ok(!JSON.stringify(tree.toJSON()).includes('CoinDesk'), 'no real tile renders while loading');
 
   act(() => tree.unmount());
 });

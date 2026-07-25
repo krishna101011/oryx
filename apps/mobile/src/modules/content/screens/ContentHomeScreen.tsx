@@ -7,7 +7,7 @@ import {
   HairlineRowList,
   Pressable,
   Screen,
-  Skeleton,
+  SkeletonRow,
   Spacer,
   Text,
   useGx,
@@ -68,7 +68,15 @@ export const ContentHomeScreen: React.FC = () => {
 
         <Spacer size={6} />
         {drafts.isLoading ? (
-          <Skeleton height={100} />
+          <Card header={<CardHeader title="Drafts" />}>
+            <HairlineRowList>
+              {/* DraftCard anatomy: fixed 80px date column + status chip on
+                  the head line, title, mono meta line, chevron gap. */}
+              <SkeletonRow leadingWidth={80} hasTrailingChip />
+              <SkeletonRow leadingWidth={80} hasTrailingChip />
+              <SkeletonRow leadingWidth={80} hasTrailingChip />
+            </HairlineRowList>
+          </Card>
         ) : (drafts.data ?? []).length === 0 ? (
           <EmptyState
             icon="horn"

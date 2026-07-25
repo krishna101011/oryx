@@ -14,6 +14,8 @@ export { Spacer, type SpacerProps } from './Spacer';
 export { Pressable, type PressableProps } from './Pressable';
 export { Icon, type IconProps, type IconName } from './Icon';
 export { Skeleton, type SkeletonProps } from './Skeleton';
+export { SkeletonRow, type SkeletonRowProps } from './SkeletonRow';
+export { SkeletonTile, type SkeletonTileProps } from './SkeletonTile';
 export { HornMark } from './HornMark';
 export { Spark } from './Spark';
 export { Candles, type Candle } from './Candles';

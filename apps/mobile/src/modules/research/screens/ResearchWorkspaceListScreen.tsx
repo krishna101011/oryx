@@ -7,7 +7,7 @@ import {
   CardHeader,
   HairlineRowList,
   Screen,
-  Skeleton,
+  SkeletonRow,
   Spacer,
   Text,
   useTheme,
@@ -81,7 +81,15 @@ export const ResearchWorkspaceListScreen: React.FC = () => {
 
         <Spacer size={6} />
         {workspaces.isLoading ? (
-          <Skeleton height={100} />
+          <Card header={<CardHeader title="Workspaces" />}>
+            <HairlineRowList>
+              {/* WorkspaceCard anatomy: RWS-XXXXXXXX mono-id (~72px) + status
+                  chip on the head line, title, meta line, chevron gap. */}
+              <SkeletonRow leadingWidth={72} hasTrailingChip />
+              <SkeletonRow leadingWidth={72} hasTrailingChip />
+              <SkeletonRow leadingWidth={72} hasTrailingChip />
+            </HairlineRowList>
+          </Card>
         ) : (workspaces.data ?? []).length === 0 ? (
           <EmptyState
             icon="horn"

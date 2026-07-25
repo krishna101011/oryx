@@ -6,6 +6,7 @@ import {
   Pressable,
   Screen,
   Skeleton,
+  SkeletonTile,
   Spacer,
   Spark,
   Text,
@@ -165,7 +166,30 @@ const GATHERING_BODY =
 
 const OverviewTab: React.FC = () => {
   const rollups = useRollups();
-  if (rollups.isLoading || !rollups.data) return <Skeleton height={160} />;
+  if (rollups.isLoading || !rollups.data) {
+    return (
+      <>
+        <View style={styles.kpiGrid}>
+          {/* Real KPI tile anatomy (label + kpiVal + "last 7 days" caption +
+              trend + Spark), see SkeletonTile's own hasSparkline doc. */}
+          <SkeletonTile hasSparkline style={styles.kpiCard} />
+          <SkeletonTile hasSparkline style={styles.kpiCard} />
+          <SkeletonTile hasSparkline style={styles.kpiCard} />
+        </View>
+        <Spacer size={4} />
+        {/* Daily chart cards aren't in the catalogued row/tile shape family
+            (recon scoped SkeletonRow/SkeletonTile to KPI tiles and funnel
+            rows) — a generic block is the honest placeholder here. */}
+        <Card variant="default">
+          <Skeleton width="40%" height={11} radius={2} />
+          <Spacer size={1} />
+          <Skeleton width="55%" height={9} radius={2} />
+          <Spacer size={2} />
+          <Skeleton width="100%" height={80} radius={4} />
+        </Card>
+      </>
+    );
+  }
 
   const series: Series = rollups.data.series;
   if (!hasAnyData(series)) {
@@ -251,7 +275,20 @@ const TrendLine: React.FC<{ trend: Trend | null }> = ({ trend }) => {
 const ResearchTab: React.FC = () => {
   const t = useTheme();
   const rollups = useRollups();
-  if (rollups.isLoading || !rollups.data) return <Skeleton height={160} />;
+  if (rollups.isLoading || !rollups.data) {
+    return (
+      <Card variant="default">
+        <Skeleton width="60%" height={11} radius={2} />
+        <Spacer size={1} />
+        <Skeleton width="45%" height={9} radius={2} />
+        <Spacer size={3} />
+        <SkeletonFunnelRow />
+        <SkeletonFunnelRow />
+        <SkeletonFunnelRow />
+        <SkeletonFunnelRow />
+      </Card>
+    );
+  }
 
   const stages = buildFunnel(rollups.data.series, todayUtc(), CHART_WINDOW_DAYS);
   const summary = funnelSummary(stages);
@@ -339,6 +376,27 @@ const ResearchTab: React.FC = () => {
   );
 };
 
+/**
+ * Bespoke — single consumer (Research tab has no analog elsewhere in the
+ * app; recon confirmed the funnel row doesn't fit the shared SkeletonRow
+ * family). Mirrors the real funnel row: label + mono count on the head
+ * line, then the full-width track — height 18 is an EXACT match to
+ * `styles.funnelTrack` below, not an approximation, since the track's real
+ * height is fixed regardless of data.
+ */
+const SkeletonFunnelRow: React.FC = () => {
+  const t = useTheme();
+  return (
+    <View style={styles.funnelRow}>
+      <View style={styles.funnelHead}>
+        <Skeleton width="50%" height={9} radius={2} />
+        <Skeleton width={24} height={9} radius={2} />
+      </View>
+      <Skeleton width="100%" height={18} radius={t.gensparkRadius.r2} />
+    </View>
+  );
+};
+
 // -------------------- Publishing --------------------
 
 const PublishingTab: React.FC = () => {
@@ -347,7 +405,20 @@ const PublishingTab: React.FC = () => {
     queryFn: () =>
       apiClient().get<Analytics.AnalyticsPublishingResponse>('/analytics/publishing'),
   });
-  if (publishing.isLoading || !publishing.data) return <Skeleton height={160} />;
+  if (publishing.isLoading || !publishing.data) {
+    return (
+      <>
+        {/* Both real Publishing cards share the KPI-tile anatomy (caption
+            label + kpiVal + a descriptive detail line), just full-width
+            instead of the 47%-basis grid — SkeletonTile's detailWidth
+            covers the extra line neither Dashboard's nor Automation's
+            plain tiles have. */}
+        <SkeletonTile detailWidth="70%" />
+        <Spacer size={2} />
+        <SkeletonTile detailWidth="85%" />
+      </>
+    );
+  }
 
   const { success, timeToPublish } = publishing.data;
   const rate = formatSuccessRate(success);

@@ -9,7 +9,8 @@ import {
   Icon,
   Pressable,
   Screen,
-  Skeleton,
+  SkeletonRow,
+  SkeletonTile,
   Spacer,
   Text,
   useGx,
@@ -72,7 +73,7 @@ const HubContent: React.FC = () => {
       </Text>
       <Spacer size={4} />
 
-      <KpiRow prefs={prefs.data} entries={log.data?.entries} />
+      <KpiRow prefs={prefs.data} entries={log.data?.entries} isLoading={prefs.isLoading || log.isLoading} />
       <Spacer size={4} />
 
       <TabRow tab={tab} onChange={setTab} />
@@ -80,7 +81,7 @@ const HubContent: React.FC = () => {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {tab === 'rules' ? (
-          <RulesTab prefs={prefs.data} />
+          <RulesTab prefs={prefs.data} isLoading={prefs.isLoading} />
         ) : (
           <LogTab entries={log.data?.entries} isLoading={log.isLoading} />
         )}
@@ -101,17 +102,26 @@ const HubContent: React.FC = () => {
 const KpiRow: React.FC<{
   prefs: AlertPreference[] | undefined;
   entries: Automation.AutomationLogEntry[] | undefined;
-}> = ({ prefs, entries }) => (
+  isLoading: boolean;
+}> = ({ prefs, entries, isLoading }) => (
   <View style={styles.kpiRow}>
-    {hubKpis(prefs, entries, new Date()).map(({ label, value }) => (
-      <Card key={label} style={styles.kpiTile}>
-        <Text variant="label" color="tertiary">
-          {label}
-        </Text>
-        <Spacer size={1} />
-        <Text variant="kpiVal">{value}</Text>
-      </Card>
-    ))}
+    {isLoading ? (
+      <>
+        <SkeletonTile style={styles.kpiTile} />
+        <SkeletonTile style={styles.kpiTile} />
+        <SkeletonTile style={styles.kpiTile} />
+      </>
+    ) : (
+      hubKpis(prefs, entries, new Date()).map(({ label, value }) => (
+        <Card key={label} style={styles.kpiTile}>
+          <Text variant="label" color="tertiary">
+            {label}
+          </Text>
+          <Spacer size={1} />
+          <Text variant="kpiVal">{value}</Text>
+        </Card>
+      ))
+    )}
   </View>
 );
 
@@ -172,9 +182,25 @@ const TabRow: React.FC<{ tab: HubTab; onChange: (t: HubTab) => void }> = ({
 
 // -------------------- Rules (AH-2) --------------------
 
-const RulesTab: React.FC<{ prefs: AlertPreference[] | undefined }> = ({
+const RulesTab: React.FC<{ prefs: AlertPreference[] | undefined; isLoading: boolean }> = ({
   prefs,
+  isLoading,
 }) => {
+  if (isLoading) {
+    return (
+      <Card header={<CardHeader title="Rules" />}>
+        <HairlineRowList>
+          {/* RuleRow anatomy: category chip (~88px, the reference's
+              min-width) flanking the label/description block, cadence chip
+              trailing. */}
+          <SkeletonRow leadingPlacement="flank" leadingWidth={88} hasTrailingChip />
+          <SkeletonRow leadingPlacement="flank" leadingWidth={88} hasTrailingChip />
+          <SkeletonRow leadingPlacement="flank" leadingWidth={88} hasTrailingChip />
+        </HairlineRowList>
+      </Card>
+    );
+  }
+
   const frequencyOf = (category: string): string => {
     const row = (prefs ?? []).find(
       (p) => p.type === category && p.channel === 'in_app',
@@ -255,7 +281,19 @@ const LogTab: React.FC<{
   isLoading: boolean;
 }> = ({ entries, isLoading }) => {
   if (isLoading) {
-    return <Skeleton height={100} />;
+    return (
+      <Card header={<CardHeader title="Action log" />}>
+        <HairlineRowList>
+          {/* LogRow anatomy: stacked mono time + caption date column (64px,
+              the reference's fixed width) flanking title/subtitle, outcome
+              chip trailing — the small expand-chevron icon isn't separately
+              represented, an acceptable skeleton simplification. */}
+          <SkeletonRow leadingPlacement="flank" leadingWidth={64} stackedLeading hasTrailingChip />
+          <SkeletonRow leadingPlacement="flank" leadingWidth={64} stackedLeading hasTrailingChip />
+          <SkeletonRow leadingPlacement="flank" leadingWidth={64} stackedLeading hasTrailingChip />
+        </HairlineRowList>
+      </Card>
+    );
   }
 
   const rows = toFeedRows(entries ?? []);

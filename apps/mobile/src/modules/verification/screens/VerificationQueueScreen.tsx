@@ -38,8 +38,16 @@ export const VerificationQueueScreen: React.FC = () => {
   if (queue.isLoading || !queue.data) {
     return (
       <Screen background="primary">
-        <Spacer size={6} />
-        <Skeleton height={120} />
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <Spacer size={6} />
+          <Text variant="pageTitle">Review queue</Text>
+          <Spacer size={6} />
+          <SkeletonQueueCard />
+          <Spacer size={2} />
+          <SkeletonQueueCard />
+          <Spacer size={2} />
+          <SkeletonQueueCard />
+        </ScrollView>
       </Screen>
     );
   }
@@ -132,6 +140,27 @@ export const VerificationQueueScreen: React.FC = () => {
     </Screen>
   );
 };
+
+/**
+ * Bespoke — single consumer. Neither claim nor conflict rows use
+ * HairlineRowList (recon confirmed Verification Center is the app's one
+ * standalone-elevated-card row family, not the shared hairline-row shape),
+ * so this mirrors that directly: a `Card variant="elevated"` with a
+ * subject/type-line bar, a 2-line body-text bar, and a small badge/pill bar
+ * — the real anatomy both claim and conflict cards share (subject-or-type
+ * line, secondary text, EpistemicTypeBadge-or-SeverityPill).
+ */
+const SkeletonQueueCard: React.FC = () => (
+  <Card variant="elevated">
+    <Skeleton width="55%" height={11} radius={2} />
+    <Spacer size={2} />
+    <Skeleton width="90%" height={9} radius={2} />
+    <Spacer size={1} />
+    <Skeleton width="70%" height={9} radius={2} />
+    <Spacer size={2} />
+    <Skeleton width={70} height={16} radius={8} />
+  </Card>
+);
 
 const styles = StyleSheet.create({
   conflictHead: {
