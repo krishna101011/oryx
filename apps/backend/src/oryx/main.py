@@ -84,6 +84,18 @@ def should_colocate(settings) -> bool:
 async def _lifespan(app: FastAPI):
     tasks: list[asyncio.Task] = []
     settings = get_settings()
+
+    # Real, every-startup check: is this DB actually at the latest migration
+    # head? Non-fatal (loud stderr banner + warning log, not an abort) — see
+    # core/migration_check.py's docstring for why a stale-DB-vs-live-code
+    # mismatch here was the real root cause of a stuck onboarding flow that
+    # took a full diagnostic pass to catch, because nothing surfaced it at
+    # startup.
+    from oryx.core.db import get_engine
+    from oryx.core.migration_check import check_and_warn
+
+    await check_and_warn(get_engine())
+
     if should_colocate(settings):
         # Imports stay local so the API process never pays for (or
         # accidentally depends on) worker wiring in the normal topology.
