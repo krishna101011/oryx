@@ -174,7 +174,7 @@ id                uuid     pk
 name              text     not null
 kind              enum     ('personal', 'team')
 owner_account_id  uuid     fk → accounts.id, not null
-plan              enum     ('free', 'pro', 'enterprise')
+plan              enum     ('glimpse', 'focus', 'clarity', 'vision')  -- widened, billing foundation wave (0030)
 created_at        timestamp
 updated_at        timestamp
 deleted_at        timestamp nullable

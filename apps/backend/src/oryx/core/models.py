@@ -73,10 +73,17 @@ class Workspace(Base):
     owner_account_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
     )
+    # Billing foundation wave: widened from ('free','pro','enterprise') to the
+    # real 4-tier model. Migration 0029 rebuilds workspace_plan as a fresh
+    # Postgres type with exactly these 4 labels (type-swap, not ADD VALUE —
+    # see that migration's docstring for why) and converts every existing
+    # row, so — unlike activity_type's additive-widen precedent — the
+    # retired free/pro/enterprise labels are dropped outright, not kept
+    # dormant in the DB type.
     plan: Mapped[str] = mapped_column(
-        Enum("free", "pro", "enterprise", name="workspace_plan"),
+        Enum("glimpse", "focus", "clarity", "vision", name="workspace_plan"),
         nullable=False,
-        default="free",
+        default="glimpse",
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -1513,3 +1520,49 @@ class CalendarEntry(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     # uq_calendar_entries_draft_target + idx_calendar_* live in migration 0013.
+
+
+# ============================================================================
+# Billing foundation wave — Stripe/Razorpay subscription state ledger
+# ============================================================================
+
+
+class WorkspaceSubscription(Base):
+    """One row per vendor subscription. UNIQUE (provider, provider_subscription_id)
+    is the durable cross-reference the webhook handler resolves an inbound
+    event against — see services/billing/repository.py.
+
+    `plan` is nullable: until the (not-yet-built) checkout flow stashes the
+    target tier in the vendor's own metadata/notes field at creation time, a
+    freshly-seen subscription has no known tier. BillingService only ever
+    promotes Workspace.plan when this column is populated AND the resolved
+    SubscriptionStatus is ACTIVE — never on creation/pending states, and
+    never when the tier is still unknown."""
+
+    __tablename__ = "workspace_subscriptions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(
+        Enum("stripe", "razorpay", name="payment_provider"), nullable=False
+    )
+    provider_subscription_id: Mapped[str] = mapped_column(Text, nullable=False)
+    plan: Mapped[str | None] = mapped_column(
+        Enum("glimpse", "focus", "clarity", "vision", name="workspace_plan", create_type=False)
+    )
+    currency: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum("pending", "active", "past_due", "canceled", name="subscription_status"),
+        nullable=False,
+        default="pending",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    # uq_workspace_subscriptions_provider_ref + ix_workspace_subscriptions_workspace
+    # live in migration 0029.

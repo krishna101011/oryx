@@ -121,7 +121,11 @@ class UpdateProfileRequest(_Base):
 # ============================================================================
 
 WorkspaceKind = Literal["personal", "team"]
-WorkspacePlan = Literal["free", "pro", "enterprise"]
+# Billing foundation wave: widened from ("free","pro","enterprise") to the
+# real 4-tier model. See migration 0029_billing_foundation.py for the
+# free/pro/enterprise -> glimpse/focus/vision data mapping and why the
+# retired names are dropped here rather than kept alongside the new ones.
+WorkspacePlan = Literal["glimpse", "focus", "clarity", "vision"]
 Role = Literal["owner", "admin", "editor", "reader"]
 
 

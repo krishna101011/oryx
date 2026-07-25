@@ -92,7 +92,7 @@ class AuthService:
             name=f"{display_name}'s Workspace",
             kind="personal",
             owner_account_id=account.id,
-            plan="free",
+            plan="glimpse",
         )
         self.db.add(workspace)
         await self.db.flush()

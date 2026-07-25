@@ -184,6 +184,19 @@ class Settings(BaseSettings):
     smtp_username: str | None = None
     smtp_password: str | None = None
 
+    # --- Billing foundation wave: PaymentProvider (core/payment_provider.py) ---
+    # Same shape as AI_PROVIDER/PUSH_PROVIDER/EMAIL_PROVIDER above: no live
+    # credential is configured by default, so create_subscription/
+    # cancel_subscription raise PaymentProviderError(PERMANENT) pre-flight
+    # until real keys are wired (deliberately out of scope for this wave).
+    # Currency routes the vendor (INR -> Razorpay, else Stripe); see
+    # get_payment_provider()'s docstring for why.
+    stripe_api_key: str | None = None
+    stripe_webhook_secret: str | None = None
+    razorpay_key_id: str | None = None
+    razorpay_key_secret: str | None = None
+    razorpay_webhook_secret: str | None = None
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
