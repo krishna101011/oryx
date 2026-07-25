@@ -9,7 +9,6 @@ function AIAnalystScreen() {
         { n: '[3]', src: 'Reuters',                              q: 94, claim: 'CL-1408' },
       ],
       followup: 'The bullish read would weaken if (a) PCE prints hot (>0.3% MoM core), (b) ETF flow fails to clear $200M in the next session, or (c) the funding-rate flip reverses on Binance perps within 24h.',
-      conf: 0.92,
     },
     { role: 'user',  txt: 'Draft a paragraph I can use in today\'s brief.' },
     { role: 'ai',    agent: 'CONTENT COPILOT',
@@ -87,7 +86,7 @@ function AIAnalystScreen() {
               <div style={{ flex: 1, maxWidth: 720 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <span style={{ fontSize: 11.5, fontWeight: 600, color: m.role === 'user' ? 'var(--text)' : 'var(--violet)' }}>{m.role === 'user' ? 'Jordan' : m.agent}</span>
-                  {m.role === 'ai' && <span className="chip teal dot" style={{ fontSize: 9 }}>VERIFIED · {m.conf.toFixed(2)}</span>}
+                  {m.role === 'ai' && m.conf !== undefined && <span className="chip teal dot" style={{ fontSize: 9 }}>VERIFIED · {m.conf.toFixed(2)}</span>}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.65 }}
                      dangerouslySetInnerHTML={{ __html: m.txt.replace(/\*\*(.+?)\*\*/g, '<span style="font-family:var(--font-mono); background: rgba(139,92,246,0.15); padding:1px 4px; border-radius:2px;">$1</span>') }}/>
@@ -106,7 +105,7 @@ function AIAnalystScreen() {
                 )}
                 {m.meta && (
                   <div className="mono" style={{ marginTop: 8, fontSize: 10, color: 'var(--text-4)', letterSpacing: '0.06em' }}>
-                    {m.meta.words} WORDS · VOICE {m.meta.voice} · {m.meta.readability}
+                    DRAFT — REVIEW BEFORE USE · {m.meta.words} WORDS · VOICE {m.meta.voice} · {m.meta.readability}
                   </div>
                 )}
                 {m.role === 'ai' && (
