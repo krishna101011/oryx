@@ -28,8 +28,11 @@ export type SettingsStackParamList = {
   IntakeHealth: undefined;
   IntakeActivity: { sourceId?: string } | undefined;
   // One ingested item's real content (2026-07-12) — opened from an Activity
-  // "New item ingested" row and from web search results.
-  IntakeItemDetail: { itemId: string };
+  // "New item ingested" row, a Dashboard "Today" row, and web search results.
+  // `origin` is set only by the Activity entry point (2026-07-25) so back
+  // navigation can return to Activity instead of the Settings stack it was
+  // pushed onto — see ItemDetailScreen's beforeRemove handling.
+  IntakeItemDetail: { itemId: string; origin?: 'activity' };
   ManualIngest: undefined;
   // Phase 4 Wave C — per-source credibility (ADR-031), keyed by intake source id
   SourceCredibility: { sourceId: string };

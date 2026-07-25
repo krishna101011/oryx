@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
-import { type RouteProp, useRoute } from '@react-navigation/native';
+import { type RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useQuery } from '@tanstack/react-query';
 import {
   Card,
@@ -13,20 +15,48 @@ import {
   useTheme,
 } from '@oryx/design-system';
 import type { IntakeItemDetail } from '@oryx/shared-types';
-import type { SettingsStackParamList } from '../../../navigation/types';
+import type { RootTabParamList, SettingsStackParamList } from '../../../navigation/types';
 import { EmptyState } from '../../../components/EmptyState';
 import { intakeApi } from '../api/intake';
 
 /**
  * One ingested item's REAL content (GET /intake/items/{id}) — what an
- * Activity "New item ingested" row and a web search result open onto:
- * headline, source, sender, body text, extracted links. Un-normalized items
- * (the normalizer hasn't reached them yet) render honestly as "processing",
- * not as an error.
+ * Activity "New item ingested" row, a Dashboard "Today" row, and a web
+ * search result open onto: headline, source, sender, body text, extracted
+ * links. Un-normalized items (the normalizer hasn't reached them yet) render
+ * honestly as "processing", not as an error.
  */
 export const ItemDetailScreen: React.FC = () => {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<SettingsStackParamList, 'IntakeItemDetail'>>();
   const route = useRoute<RouteProp<SettingsStackParamList, 'IntakeItemDetail'>>();
-  const { itemId } = route.params;
+  const { itemId, origin } = route.params;
+
+  // Activity opens this screen with a cross-tab navigate ('Settings', {screen:
+  // 'IntakeItemDetail'}), which PUSHES it onto whatever the Settings stack
+  // already holds (usually just SettingsHome) — so the default back button
+  // pops to SettingsHome, not to Activity. Intercept every dismissal path
+  // (header back, hardware back, swipe) via beforeRemove and redirect to
+  // Activity instead, ONLY when that's really where the user came from —
+  // Dashboard's Today row and web search open the same screen with no
+  // `origin`, and must keep their existing (unchanged) back behavior.
+  //
+  // bypassRef breaks the loop this would otherwise cause: preventDefault
+  // cancels the pop, so we replay the original action (e.data.action) to
+  // actually remove this screen from the Settings stack once the redirect is
+  // under way — replaying it re-fires this same listener, and the ref is
+  // what lets that second pass through instead of preventing default again.
+  const bypassRef = useRef(false);
+  useEffect(() => {
+    if (origin !== 'activity') return undefined;
+    return navigation.addListener('beforeRemove', (e) => {
+      if (bypassRef.current) return;
+      e.preventDefault();
+      bypassRef.current = true;
+      navigation.getParent<BottomTabNavigationProp<RootTabParamList>>()?.navigate('Activity');
+      navigation.dispatch(e.data.action);
+    });
+  }, [navigation, origin]);
 
   const item = useQuery<IntakeItemDetail>({
     queryKey: ['intake', 'item', itemId],

@@ -77,7 +77,7 @@ export const ActivityHomeScreen: React.FC = () => {
                     if (itemId) {
                       navigation.navigate('Settings', {
                         screen: 'IntakeItemDetail',
-                        params: { itemId },
+                        params: { itemId, origin: 'activity' },
                       });
                     }
                   }}

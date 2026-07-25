@@ -755,6 +755,47 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   `useEffect` deps array looks incomplete to a future reviewer, just write
   it correctly (or note the reason in a plain comment) rather than
   suppressing a rule this project's eslint config doesn't run.
+- A "known small cost" list item can already be fixed — CONFIRM STATE BEFORE
+  FIXING (2026-07-25). Asked to wire WebSidebar's foot profile row to real
+  /me data, recon found it already was (`displayName`/initials/workspace
+  role, conditionally rendered on real data, no "Jordan Mehta" placeholder)
+  — the real remaining work that wave was a NEW regression test
+  (WebSidebar.test.tsx) locking in behavior that already shipped, not a
+  code fix. Don't assume a task description's premise is still true; quote
+  the real current code first.
+- A CROSS-TAB `navigation.navigate(tab, {screen})` PUSH NEEDS AN EXPLICIT
+  BACK-TARGET, NOT JUST A FORWARD DESTINATION (2026-07-25, companion bug to
+  the 2026-07-11 bare-tab-navigate class above). Activity opened
+  IntakeItemDetail via `navigate('Settings', {screen: 'IntakeItemDetail'})`
+  — a real destination, but back popped to whatever the Settings stack
+  already held (SettingsHome), not to Activity, since the push landed on a
+  foreign navigator with no memory of where the user came from.
+  IntakeItemDetail has 3 real callers (Activity, Dashboard's Today row, web
+  search) sharing one registered screen, so the fix couldn't change default
+  back behavior for all of them — ActivityHomeScreen now tags its navigate
+  with `params: {..., origin: 'activity'}`, and ItemDetailScreen only
+  intercepts `beforeRemove` when it sees that origin, redirecting to the
+  Activity tab via `navigation.getParent()?.navigate('Activity')`. The
+  interception must replay the original `e.data.action` via
+  `navigation.dispatch()` after redirecting (guarded by a ref so the replay
+  doesn't re-trigger the same preventDefault) — otherwise the Settings
+  stack is left stuck on IntakeItemDetail, and a later bare Settings-tab
+  press (bottom tab icon, no explicit screen) shows stale item content
+  instead of SettingsHome. Same recipe applies to any future "screen with
+  multiple real callers, one of which needs a different back target" bug.
+- FOUR MORE EXPO PACKAGES NEEDED TEST SHIMS ONCE A COMPONENT TRANSITIVELY
+  IMPORTED `store/thunks/auth.ts` (2026-07-25, WebSidebar.test.tsx —
+  WebSidebar imports `signout` from that thunk for its workspace menu).
+  `expo-secure-store` (lib/secure-store.ts) → `expo-constants` +
+  `expo-notifications` (lib/push/expoPushEffects.ts) chain-load
+  `expo-modules-core`'s real native module and crash under plain Node, even
+  though the shimmed `Platform.OS === 'web'` guard means secure-store's
+  real code path is never actually reached in the test. `expo-linear-
+  gradient` (WebSidebar's foot/avatar gradient) needed the same inert-host
+  shim treatment as `expo-blur`. All four added to
+  `src/test/shims/register.js` alongside the existing shims — check that
+  file before assuming a new expo-* import can't be rendered under
+  `tsx --test`.
 
 ## What This Skill Deliberately Does NOT Contain
 

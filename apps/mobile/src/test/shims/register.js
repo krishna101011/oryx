@@ -17,6 +17,10 @@ const SHIMS = {
     'react-native-safe-area-context.js',
   ),
   'expo-blur': path.join(__dirname, 'expo-blur.js'),
+  'expo-linear-gradient': path.join(__dirname, 'expo-linear-gradient.js'),
+  'expo-secure-store': path.join(__dirname, 'expo-secure-store.js'),
+  'expo-constants': path.join(__dirname, 'expo-constants.js'),
+  'expo-notifications': path.join(__dirname, 'expo-notifications.js'),
   'lucide-react-native': path.join(__dirname, 'lucide-react-native.js'),
 };
 
