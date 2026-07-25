@@ -162,6 +162,7 @@ REAL_CATALOG_FEED_URLS = {
     "coindesk": "https://www.coindesk.com/arc/outboundfeeds/rss/",
     "cointelegraph": "https://cointelegraph.com/rss",
     "decrypt": "https://decrypt.co/feed",
+    "the_block": "https://www.theblock.co/rss.xml",
     "yahoo_finance": "https://finance.yahoo.com/news/rssindex",
     "investing_company_news": "https://www.investing.com/rss/news_356.rss",
     "investing_stock_market_news": "https://www.investing.com/rss/news_25.rss",

@@ -1,12 +1,13 @@
 import type { Focus, IntakeSource, SourceCatalogEntry } from '@oryx/shared-types';
 
 /**
- * the_block has no confirmed real feed URL yet (source_catalog.url is still
- * its homepage, per migration 0026/0027's own standard) — excluded from the
- * picker until a real feed exists, rather than offering a tile that would
- * create a decorative, permanently-failing intake source.
+ * Catalog keys with no confirmed real feed URL, excluded from the picker
+ * rather than offering a tile that would create a decorative,
+ * permanently-failing intake source. Empty as of migration 0028 (the_block
+ * got its real feed) — kept as infrastructure since this has recurred once
+ * already.
  */
-const UNACTIVATABLE_CATALOG_KEYS = new Set<string>(['the_block']);
+const UNACTIVATABLE_CATALOG_KEYS = new Set<string>();
 
 export function activatableCatalogEntries(
   catalog: SourceCatalogEntry[],

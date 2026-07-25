@@ -35,7 +35,7 @@ const CATALOG: SourceCatalogEntry[] = [
   { key: 'coindesk', name: 'CoinDesk', url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', focus: 'crypto', editorialConfidence: 78 },
   { key: 'cointelegraph', name: 'Cointelegraph', url: 'https://cointelegraph.com/rss', focus: 'crypto', editorialConfidence: 76 },
   { key: 'decrypt', name: 'Decrypt', url: 'https://decrypt.co/feed', focus: 'crypto', editorialConfidence: 75 },
-  { key: 'the_block', name: 'The Block', url: 'https://www.theblock.co', focus: 'crypto', editorialConfidence: 82 },
+  { key: 'the_block', name: 'The Block', url: 'https://www.theblock.co/rss.xml', focus: 'crypto', editorialConfidence: 82 },
   { key: 'yahoo_finance', name: 'Yahoo Finance', url: 'https://finance.yahoo.com/news/rssindex', focus: 'markets', editorialConfidence: 80 },
   { key: 'investing_company_news', name: 'Investing.com Company News', url: 'https://www.investing.com/rss/news_356.rss', focus: 'markets', editorialConfidence: 78 },
   { key: 'investing_earnings', name: 'Investing.com Earnings Reports & Whispers', url: 'https://www.investing.com/rss/news_1063.rss', focus: 'markets', editorialConfidence: 76 },
@@ -187,7 +187,7 @@ function renderTrustedSources(initialSources: IntakeSource[] = []) {
   return { tree, act, pressByLabel, flush, rendered, backend, restore };
 }
 
-test('renders both real sections (Crypto, Markets) with real names, and never renders The Block', () => {
+test('renders both real sections (Crypto, Markets) with real names, including The Block', () => {
   const { tree, rendered, restore } = renderTrustedSources([]);
   const text = rendered();
   assert.ok(text.includes('CRYPTO'), 'Crypto section header renders');
@@ -196,6 +196,7 @@ test('renders both real sections (Crypto, Markets) with real names, and never re
     'CoinDesk',
     'Cointelegraph',
     'Decrypt',
+    'The Block',
     'Yahoo Finance',
     'Investing.com Company News',
     'Investing.com Earnings Reports & Whispers',
@@ -203,7 +204,6 @@ test('renders both real sections (Crypto, Markets) with real names, and never re
   ]) {
     assert.ok(text.includes(name), `${name} renders as a real tile`);
   }
-  assert.ok(!text.includes('The Block'), 'The Block is excluded (no confirmed real feed yet)');
   tree.unmount();
   restore();
 });

@@ -11,12 +11,12 @@ import {
   resolveToggleAction,
 } from './catalogPicker';
 
-/** The 8 real source_catalog rows as of migration 0027. */
+/** The 8 real source_catalog rows as of migration 0028. */
 const CATALOG: SourceCatalogEntry[] = [
   { key: 'coindesk', name: 'CoinDesk', url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', focus: 'crypto', editorialConfidence: 78 },
   { key: 'cointelegraph', name: 'Cointelegraph', url: 'https://cointelegraph.com/rss', focus: 'crypto', editorialConfidence: 76 },
   { key: 'decrypt', name: 'Decrypt', url: 'https://decrypt.co/feed', focus: 'crypto', editorialConfidence: 75 },
-  { key: 'the_block', name: 'The Block', url: 'https://www.theblock.co', focus: 'crypto', editorialConfidence: 82 },
+  { key: 'the_block', name: 'The Block', url: 'https://www.theblock.co/rss.xml', focus: 'crypto', editorialConfidence: 82 },
   { key: 'yahoo_finance', name: 'Yahoo Finance', url: 'https://finance.yahoo.com/news/rssindex', focus: 'markets', editorialConfidence: 80 },
   { key: 'investing_company_news', name: 'Investing.com Company News', url: 'https://www.investing.com/rss/news_356.rss', focus: 'markets', editorialConfidence: 78 },
   { key: 'investing_earnings', name: 'Investing.com Earnings Reports & Whispers', url: 'https://www.investing.com/rss/news_1063.rss', focus: 'markets', editorialConfidence: 76 },
@@ -41,20 +41,20 @@ function source(overrides: Partial<IntakeSource>): IntakeSource {
   };
 }
 
-test('activatableCatalogEntries excludes the_block (no confirmed real feed yet)', () => {
+test('activatableCatalogEntries includes every catalog entry (the_block got its real feed in migration 0028)', () => {
   const entries = activatableCatalogEntries(CATALOG);
-  assert.equal(entries.length, 7);
-  assert.ok(!entries.some((e) => e.key === 'the_block'));
+  assert.equal(entries.length, 8);
+  assert.ok(entries.some((e) => e.key === 'the_block'));
 });
 
-test('groupCatalogBySection produces exactly 3 crypto + 4 markets, the_block excluded from both', () => {
+test('groupCatalogBySection produces exactly 4 crypto + 4 markets', () => {
   const sections = groupCatalogBySection(CATALOG);
   assert.equal(sections.length, 2);
   const crypto = sections.find((s) => s.title === 'Crypto')!;
   const markets = sections.find((s) => s.title === 'Markets')!;
   assert.deepEqual(
     crypto.entries.map((e) => e.key).sort(),
-    ['coindesk', 'cointelegraph', 'decrypt'],
+    ['coindesk', 'cointelegraph', 'decrypt', 'the_block'],
   );
   assert.deepEqual(
     markets.entries.map((e) => e.key).sort(),
@@ -113,7 +113,7 @@ test('resolveToggleAction: no existing row -> create; existing enabled row -> pa
   });
 });
 
-test('keysMissingActivation lists activatable keys with no real row yet, ignoring the_block', () => {
+test('keysMissingActivation lists activatable keys with no real row yet, including the_block', () => {
   const map = buildCatalogActivationMap([
     source({ id: 's1', originCatalogKey: 'coindesk', enabled: true }),
   ]);
@@ -124,6 +124,7 @@ test('keysMissingActivation lists activatable keys with no real row yet, ignorin
     'investing_company_news',
     'investing_earnings',
     'investing_stock_market_news',
+    'the_block',
     'yahoo_finance',
   ]);
 });

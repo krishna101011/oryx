@@ -706,10 +706,18 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   RSS endpoints for the entries meant to be real (coindesk, decrypt,
   cointelegraph, yahoo_finance) and removes the ones with no confirmed feed
   (bloomberg/ft/reuters/wsj) rather than leaving `url` semantically split
-  between "homepage" and "feed" across different rows. `the_block` is the
+  between "homepage" and "feed" across different rows. `the_block` was the
   one remaining exception — still homepage-only, deliberately left that way
-  pending a confirmed feed URL, not fabricated. Any future catalog entry
-  must have a real, live-checked feed URL in `url` before being added — a
+  pending a confirmed feed URL, not fabricated — until migration 0028 found
+  its real feed at `https://www.theblock.co/rss.xml` (live-checked: HTTP 200,
+  genuine RSS 2.0; the also-200 `/api/rss` path is a JSON error page, not a
+  feed — a reminder that HTTP 200 alone doesn't confirm a feed, check the
+  body). Every source_catalog row now has a real, confirmed feed URL — the
+  mobile picker's `UNACTIVATABLE_CATALOG_KEYS` exclusion set
+  (`catalogPicker.ts`) is currently empty as a result, kept as
+  infrastructure since a decorative row has now recurred once already. Any
+  future catalog entry must have a real, live-checked feed URL in `url`
+  before being added — a
   `pytest.mark.requires_network` test (opt-in via
   `ORYX_ALLOW_NETWORK_TESTS=1`, mirroring `requires_db`) now exists in
   `test_catalog_source_activation.py` to keep proving this as entries change.
