@@ -9,6 +9,7 @@ import { ChangePasswordScreen } from '../modules/settings/screens/ChangePassword
 import { ActiveSessionsScreen } from '../modules/settings/screens/ActiveSessionsScreen';
 import { AlertsSettingsScreen } from '../modules/settings/screens/AlertsSettingsScreen';
 import { PlanBillingScreen } from '../modules/settings/screens/PlanBillingScreen';
+import { AcceptInviteScreen } from '../modules/settings/screens/AcceptInviteScreen';
 import { TrustedSourcesScreen } from '../modules/settings/screens/TrustedSourcesScreen';
 import { IntakeHomeScreen } from '../modules/intake/screens/IntakeHomeScreen';
 import { SourceManagementScreen } from '../modules/intake/screens/SourceManagementScreen';
@@ -47,6 +48,7 @@ export const SettingsStack: React.FC = () => {
       <Stack.Screen name="ActiveSessions" component={ActiveSessionsScreen} options={{ title: 'Sessions' }} />
       <Stack.Screen name="AlertsSettings" component={AlertsSettingsScreen} options={{ title: 'Alerts' }} />
       <Stack.Screen name="PlanBilling" component={PlanBillingScreen} options={{ title: 'Plan' }} />
+      <Stack.Screen name="AcceptInvite" component={AcceptInviteScreen} options={{ title: 'Invite' }} />
       <Stack.Screen name="TrustedSources" component={TrustedSourcesScreen} options={{ title: 'Sources' }} />
       <Stack.Screen name="IntakeHome" component={IntakeHomeScreen} options={{ title: 'Intake' }} />
       <Stack.Screen name="IntakeSourceManagement" component={SourceManagementScreen} options={{ title: 'Manage' }} />

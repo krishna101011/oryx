@@ -64,7 +64,9 @@ test('SettingsHomeScreen groups every navigation-row section under CardHeader + 
     assert.ok(screen.includes(`<CardHeader title="${title}"`), `real CardHeader for ${title}`);
   }
   // 7 sections migrated to the row/list anatomy = 7 HairlineRowList groups
-  // (billing wave, 2026-07-26, added the Plan section right after Profile).
+  // (Team promotion wave, 2026-07-26, removed the Members section — that
+  // real content moved to its own top-level Team tab, see modules/team/).
+  assert.ok(!screen.includes('<CardHeader title="Members"'), 'Members card removed — real content lives in the Team tab now');
   const hairlineCount = (screen.match(/<HairlineRowList>/g) ?? []).length;
   assert.equal(hairlineCount, 7, 'one HairlineRowList per migrated section');
 });

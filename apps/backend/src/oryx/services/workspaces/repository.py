@@ -10,7 +10,18 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from oryx.core.models import Account, Workspace, WorkspaceInvite, WorkspaceMember
+from oryx.core.models import (
+    Account,
+    Workspace,
+    WorkspaceAuditLog,
+    WorkspaceInvite,
+    WorkspaceMember,
+)
+
+# Real event kinds record_activity currently emits — the type layer (shared/
+# types.py, workspaces.ts) also reserves 'role_changed' for a future
+# role-change endpoint that doesn't exist yet.
+_ACTIVITY_LIST_LIMIT = 50
 
 # A real, decided default — not specified by the architecture doc, chosen as
 # a conventional invite lifetime (long enough for a real person to notice
@@ -121,6 +132,26 @@ class WorkspaceRepository:
         )
         return result.scalar_one_or_none()
 
+    async def list_pending_invites(
+        self, workspace_id: uuid.UUID
+    ) -> list[WorkspaceInvite]:
+        """Not-yet-resolved invites for a workspace's Members screen: never
+        accepted, never revoked. Expired-but-unactioned invites are
+        deliberately included (not filtered by expires_at) — the UI renders
+        the real expired state from the same fields view_invite already
+        exposes, and an admin still needs to see + revoke a stale invite to
+        clean it up."""
+        result = await self.db.execute(
+            select(WorkspaceInvite)
+            .where(
+                WorkspaceInvite.workspace_id == workspace_id,
+                WorkspaceInvite.accepted_at.is_(None),
+                WorkspaceInvite.revoked_at.is_(None),
+            )
+            .order_by(WorkspaceInvite.created_at.desc())
+        )
+        return list(result.scalars().all())
+
     async def get_pending_email_invite(
         self, *, workspace_id: uuid.UUID, invited_email: str
     ) -> WorkspaceInvite | None:
@@ -218,3 +249,45 @@ class WorkspaceRepository:
         )
         await self.db.execute(stmt)
         return now
+
+    # ---- activity log (Team nav promotion wave) ----
+
+    async def record_activity(
+        self,
+        *,
+        workspace_id: uuid.UUID,
+        event: str,
+        actor_account_id: uuid.UUID | None = None,
+        subject_account_id: uuid.UUID | None = None,
+        subject_email: str | None = None,
+        role: str | None = None,
+    ) -> None:
+        """Inserts inside the CALLER's transaction — no commit here, same
+        convention as core/audit.py's record_auth_event. Always call this
+        from the same request handler that just made the real membership
+        change, after the change succeeded."""
+        self.db.add(
+            WorkspaceAuditLog(
+                id=uuid.uuid4(),
+                workspace_id=workspace_id,
+                event=event,
+                actor_account_id=actor_account_id,
+                subject_account_id=subject_account_id,
+                subject_email=subject_email,
+                role=role,
+            )
+        )
+        await self.db.flush()
+
+    async def list_activity(self, workspace_id: uuid.UUID) -> list[WorkspaceAuditLog]:
+        """Most-recent-first, capped at _ACTIVITY_LIST_LIMIT — the Team
+        Activity view has no pagination UI yet, so this mirrors
+        list_pending_invites' simple unpaginated shape rather than
+        inventing cursor support nothing consumes."""
+        result = await self.db.execute(
+            select(WorkspaceAuditLog)
+            .where(WorkspaceAuditLog.workspace_id == workspace_id)
+            .order_by(WorkspaceAuditLog.created_at.desc())
+            .limit(_ACTIVITY_LIST_LIMIT)
+        )
+        return list(result.scalars().all())

@@ -4,6 +4,7 @@ import type {
   ResearchStackParamList,
   RootStackParamList,
   SettingsStackParamList,
+  TeamStackParamList,
 } from './types';
 
 /**
@@ -14,7 +15,7 @@ import type {
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 /** Navigate to a top-level tab from the web sidebar. No-op until ready. */
-export function navigateTab(tab: 'Home' | 'Research' | 'Content' | 'Activity' | 'Settings'): void {
+export function navigateTab(tab: 'Home' | 'Research' | 'Content' | 'Team' | 'Activity' | 'Settings'): void {
   if (!navigationRef.isReady()) return;
   navigationRef.navigate('Tabs', { screen: tab });
 }
@@ -59,6 +60,18 @@ export function navigateContentScreen<S extends keyof ContentStackParamList>(
   if (!navigationRef.isReady()) return;
   navigationRef.navigate('Tabs', {
     screen: 'Content',
+    params: params === undefined ? { screen } : { screen, params },
+  } as never);
+}
+
+/** Team promotion wave (2026-07-26) — same mirror, fourth stacked tab. */
+export function navigateTeamScreen<S extends keyof TeamStackParamList>(
+  screen: S,
+  params?: TeamStackParamList[S],
+): void {
+  if (!navigationRef.isReady()) return;
+  navigationRef.navigate('Tabs', {
+    screen: 'Team',
     params: params === undefined ? { screen } : { screen, params },
   } as never);
 }

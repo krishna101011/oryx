@@ -9,7 +9,7 @@ import type { MeResponse } from '@oryx/shared-types';
  * everything else is `pending: true` (Phase 6+ surfaces) and renders dimmed and
  * non-interactive rather than as a fake live screen.
  */
-export type WebNavTab = 'Home' | 'Research' | 'Content' | 'Activity' | 'Settings';
+export type WebNavTab = 'Home' | 'Research' | 'Content' | 'Team' | 'Activity' | 'Settings';
 
 export interface WebNavItem {
   id: string;
@@ -83,6 +83,16 @@ export const WEB_NAV: WebNavGroup[] = [
     items: [{ id: 'academy', label: 'Academy', icon: 'Book', pending: true }],
   },
   {
+    // Team promotion wave (2026-07-26) — this group is NOT part of the
+    // ported Genspark reference (docs/design-reference/data.jsx has no
+    // Team concept); it's a deliberate addition, moving the former
+    // Settings > Members surface to its own first-class top-level section
+    // per the owner's explicit direction. screen REQUIRED — same
+    // bare-tab-navigate bug class as Research/Content/Settings.
+    group: 'TEAM',
+    items: [{ id: 'team', label: 'Team', icon: 'Users', tab: 'Team', screen: 'TeamHome' }],
+  },
+  {
     group: 'SYSTEM',
     items: [
       { id: 'activity', label: 'Activity', icon: 'Bell', tab: 'Activity', countKey: 'activityUnread' },
@@ -126,6 +136,8 @@ export const SETTINGS_ROOT_SCREEN = 'SettingsHome';
 /** Same deterministic-root rule for the other two STACKED tabs (2026-07-13). */
 export const RESEARCH_ROOT_SCREEN = 'ResearchWorkspaceList';
 export const CONTENT_ROOT_SCREEN = 'ContentHome';
+/** Team promotion wave (2026-07-26) — fourth stacked tab, same rule. */
+export const TEAM_ROOT_SCREEN = 'TeamHome';
 
 /**
  * The tabs that mount a nested stack — the only tabs where a bare tab-level
@@ -133,7 +145,7 @@ export const CONTENT_ROOT_SCREEN = 'ContentHome';
  * a single screen directly (RootTabNavigator), so the bare-tab path is
  * CORRECT for them: there is no stack to reset.
  */
-export const STACKED_TABS = ['Settings', 'Research', 'Content'] as const;
+export const STACKED_TABS = ['Settings', 'Research', 'Content', 'Team'] as const;
 
 /**
  * Resolve a nav item to real navigation. Extracted from WebShell so the topbar
@@ -156,6 +168,7 @@ export function performNav(
     navigateSettingsScreen: (screen: string) => void;
     navigateResearchScreen: (screen: string) => void;
     navigateContentScreen: (screen: string) => void;
+    navigateTeamScreen: (screen: string) => void;
   },
 ): void {
   if (item.pending) return;
@@ -165,6 +178,8 @@ export function performNav(
     nav.navigateResearchScreen(item.screen ?? RESEARCH_ROOT_SCREEN);
   } else if (item.tab === 'Content') {
     nav.navigateContentScreen(item.screen ?? CONTENT_ROOT_SCREEN);
+  } else if (item.tab === 'Team') {
+    nav.navigateTeamScreen(item.screen ?? TEAM_ROOT_SCREEN);
   } else if (item.tab) {
     // Home / Activity: stackless tabs — a bare focus is the whole job.
     nav.navigateTab(item.tab);

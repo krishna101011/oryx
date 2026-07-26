@@ -6,6 +6,7 @@ import type { RootTabParamList } from './types';
 import { DashboardScreen } from '../modules/dashboard/screens/DashboardScreen';
 import { ResearchStack } from './ResearchStack';
 import { ContentStack } from './ContentStack';
+import { TeamStack } from './TeamStack';
 import { ActivityHomeScreen } from '../modules/activity/screens/ActivityHomeScreen';
 import { SettingsStack } from './SettingsStack';
 import { FeatureGate } from '../components/FeatureGate';
@@ -69,6 +70,15 @@ export const RootTabNavigator: React.FC = () => {
         options={{
           tabBarIcon: ({ focused }) => (
             <Icon name="FileText" color={focused ? 'brand' : 'tertiary'} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Team"
+        component={TeamStack}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <Icon name="Users" color={focused ? 'brand' : 'tertiary'} />
           ),
         }}
       />

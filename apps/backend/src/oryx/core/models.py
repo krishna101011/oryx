@@ -1661,3 +1661,36 @@ class WorkspaceInvite(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class WorkspaceAuditLog(Base):
+    """Real, workspace-scoped membership audit trail — the Team nav section's
+    Activity view. Same write-only shape as AuthAuditLog (core/audit.py): a
+    plain Text `event` column (not a Postgres enum, deliberately — sidesteps
+    the ADD VALUE single-transaction trap documented for activity_type) so a
+    future event kind is just a new string, no migration required. Rows are
+    inserted inside the same transaction as the membership change itself
+    (services/workspaces/repository.py's record_activity), never a separate
+    commit. `event` values in use: member_invited, member_joined,
+    member_removed. `subject_email` carries the invited address for
+    member_invited (the invitee has no account yet); `subject_account_id`
+    carries the real account for member_joined/member_removed."""
+
+    __tablename__ = "workspace_audit_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    event: Mapped[str] = mapped_column(Text, nullable=False)
+    actor_account_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id")
+    )
+    subject_account_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id")
+    )
+    subject_email: Mapped[str | None] = mapped_column(Text)
+    role: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

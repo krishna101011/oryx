@@ -32,8 +32,8 @@ export interface ActiveWorkspace {
 
 // ============================================================================
 // Team/Workspace Rev 2 (docs/TEAM_WORKSPACE_ARCHITECTURE.md) — invites,
-// switching, member listing. Backend foundation only — no screen consumes
-// these yet.
+// switching, member listing. Consumed by the web sidebar switcher and
+// Settings → Members screen.
 // ============================================================================
 
 /** GET /v1/workspaces — every real workspace this account actively belongs
@@ -81,4 +81,40 @@ export interface AcceptInviteResult {
   workspaceId: Id;
   role: InviteRole;
   joinedAt: Timestamp;
+}
+
+/** GET /v1/workspaces/invites — Members-screen gap found while building the
+ * UI (not in the frozen Rev 2 doc's endpoint list): create/view/accept/
+ * revoke existed, but nothing listed a workspace's own pending invites.
+ * Same capability gate as create (workspace.manage). */
+export interface WorkspaceInvitesListResponse {
+  invites: WorkspaceInvite[];
+}
+
+// ============================================================================
+// Team nav promotion wave — the Team section's real Activity view (GET
+// /v1/workspaces/activity). Not a Postgres enum on the backend (plain Text
+// column), so a future event kind is just a new string. 'role_changed' has
+// no emitter yet (no role-change endpoint exists today) — reserved here so
+// the client's copy map is ready when that capability ships.
+// ============================================================================
+
+export type WorkspaceActivityEventType =
+  | 'member_invited'
+  | 'member_joined'
+  | 'member_removed'
+  | 'role_changed';
+
+export interface WorkspaceActivityEvent {
+  id: Id;
+  event: WorkspaceActivityEventType;
+  actorAccountId: Id | null;
+  subjectAccountId: Id | null;
+  subjectEmail: string | null;
+  role: string | null;
+  createdAt: Timestamp;
+}
+
+export interface WorkspaceActivityListResponse {
+  events: WorkspaceActivityEvent[];
 }

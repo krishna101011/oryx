@@ -8,12 +8,14 @@ import {
   navigateResearchScreen,
   navigateSettingsScreen,
   navigateTab,
+  navigateTeamScreen,
   navigationRef,
 } from '../../navigation/navigationRef';
 import type {
   ContentStackParamList,
   ResearchStackParamList,
   SettingsStackParamList,
+  TeamStackParamList,
 } from '../../navigation/types';
 import { WEB_NAV, type WebNavItem, performNav } from './webNav';
 import { WebSearchOverlay } from './WebSearchOverlay';
@@ -105,6 +107,8 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         navigateResearchScreen(screen as keyof ResearchStackParamList),
       navigateContentScreen: (screen) =>
         navigateContentScreen(screen as keyof ContentStackParamList),
+      navigateTeamScreen: (screen) =>
+        navigateTeamScreen(screen as keyof TeamStackParamList),
     });
   };
 

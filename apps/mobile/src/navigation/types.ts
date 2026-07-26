@@ -21,6 +21,12 @@ export type SettingsStackParamList = {
   ActiveSessions: undefined;
   AlertsSettings: undefined;
   PlanBilling: undefined;
+  // Deep-link target for the invite email — token identifies which invite.
+  // Team promotion wave (2026-07-26): Members moved out to its own top-level
+  // Team tab (see TeamStackParamList) — this is the only Team-related route
+  // left in Settings, since the invite link itself is unrelated to that nav
+  // change and stays reachable from wherever the user currently is.
+  AcceptInvite: { token: string };
   TrustedSources: undefined;
   // Phase 3 intake module — entered via Settings → Sources (§15.4)
   IntakeHome: undefined;
@@ -59,6 +65,15 @@ export type ResearchStackParamList = {
   ClaimDetail: { claimId: string };
 };
 
+// Team promotion wave (2026-07-26) — Team is now its own top-level tab
+// (previously Settings > Members). TeamHome carries the real member list +
+// invite form (moved verbatim from the old MembersScreen); TeamActivity is
+// the new real activity feed (invited/joined/removed events).
+export type TeamStackParamList = {
+  TeamHome: undefined;
+  TeamActivity: undefined;
+};
+
 // Phase 5 Wave A — content tab stack
 export type ContentStackParamList = {
   ContentHome: undefined;
@@ -77,6 +92,7 @@ export type RootTabParamList = {
   Home: undefined;
   Research: NavigatorScreenParams<ResearchStackParamList> | undefined;
   Content: NavigatorScreenParams<ContentStackParamList> | undefined;
+  Team: NavigatorScreenParams<TeamStackParamList> | undefined;
   Activity: undefined;
   Settings: NavigatorScreenParams<SettingsStackParamList> | undefined;
 };

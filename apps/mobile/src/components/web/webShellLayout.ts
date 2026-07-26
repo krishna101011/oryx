@@ -65,6 +65,7 @@ const TAB_TO_NAV: Record<string, string> = {
   Home: 'home',
   Research: 'research',
   Content: 'content',
+  Team: 'team',
   Activity: 'activity',
   Settings: 'settings',
 };

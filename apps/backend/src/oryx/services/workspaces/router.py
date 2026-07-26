@@ -40,6 +40,9 @@ from oryx.shared.types import (
     AcceptInviteResult,
     ActiveWorkspace,
     CreateInviteRequest,
+    WorkspaceActivityEvent,
+    WorkspaceActivityListResponse,
+    WorkspaceInvitesListResponse,
     WorkspaceMemberSummary,
     WorkspacesListResponse,
 )
@@ -49,6 +52,18 @@ from oryx.shared.types import (
 )
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
+
+
+def _activity_to_schema(row) -> WorkspaceActivityEvent:
+    return WorkspaceActivityEvent(
+        id=str(row.id),
+        event=row.event,
+        actorAccountId=str(row.actor_account_id) if row.actor_account_id else None,
+        subjectAccountId=str(row.subject_account_id) if row.subject_account_id else None,
+        subjectEmail=row.subject_email,
+        role=row.role,
+        createdAt=row.created_at,
+    )
 
 
 def _invite_to_schema(invite) -> WorkspaceInviteSchema:
@@ -154,6 +169,24 @@ async def list_members(
     return envelope(payload, request_id=get_request_id(request))
 
 
+@router.get("/activity")
+async def list_activity(
+    request: Request,
+    ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+    db: AsyncSession = Depends(db_session),
+) -> dict:
+    """Team nav promotion wave — the real Team Activity view. Same access
+    level as list_members (no workspace.manage gate): any active member can
+    see who was invited/joined/removed, matching what the Members list
+    already exposes to every role."""
+    repo = WorkspaceRepository(db)
+    events = await repo.list_activity(ws.workspace_id)
+    payload = WorkspaceActivityListResponse(
+        events=[_activity_to_schema(e) for e in events]
+    )
+    return envelope(payload.model_dump(by_alias=True), request_id=get_request_id(request))
+
+
 @router.delete(
     "/members/{account_id}",
     dependencies=[Depends(require_capability("workspace.manage"))],
@@ -162,6 +195,7 @@ async def remove_member(
     account_id: str,
     request: Request,
     ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+    account: Account = Depends(get_current_account),
     db: AsyncSession = Depends(db_session),
 ) -> dict:
     target_id = uuid.UUID(account_id)
@@ -177,6 +211,13 @@ async def remove_member(
     removed = await repo.remove_member(workspace_id=ws.workspace_id, account_id=target_id)
     if removed is None:
         raise WorkspaceNotFoundError("Not an active member of this workspace")
+    await repo.record_activity(
+        workspace_id=ws.workspace_id,
+        event="member_removed",
+        actor_account_id=account.id,
+        subject_account_id=target_id,
+        role=target.role,
+    )
     return envelope({"removed": True}, request_id=get_request_id(request))
 
 
@@ -215,6 +256,13 @@ async def create_invite(
         role=body.role,
         invited_by=account.id,
     )
+    await repo.record_activity(
+        workspace_id=ws.workspace_id,
+        event="member_invited",
+        actor_account_id=account.id,
+        subject_email=body.email,
+        role=body.role,
+    )
 
     result = await db.execute(select(Workspace).where(Workspace.id == ws.workspace_id))
     workspace = result.scalar_one()
@@ -235,6 +283,28 @@ async def create_invite(
         _invite_to_schema(invite).model_dump(by_alias=True),
         request_id=get_request_id(request),
     )
+
+
+@router.get(
+    "/invites", dependencies=[Depends(require_capability("workspace.manage"))]
+)
+async def list_invites(
+    request: Request,
+    ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+    db: AsyncSession = Depends(db_session),
+) -> dict:
+    """Members-screen gap found while building the UI (not in the frozen
+    Rev 2 doc's endpoint list): create/view/accept/revoke existed, but
+    nothing let a workspace list its own pending invites. Same capability
+    gate as create_invite; never accepted, never revoked (see
+    WorkspaceRepository.list_pending_invites for why expired ones stay in
+    this list rather than being silently filtered out)."""
+    repo = WorkspaceRepository(db)
+    invites = await repo.list_pending_invites(ws.workspace_id)
+    payload = WorkspaceInvitesListResponse(
+        invites=[_invite_to_schema(i) for i in invites]
+    )
+    return envelope(payload.model_dump(by_alias=True), request_id=get_request_id(request))
 
 
 @router.get("/invites/{token}")
@@ -284,6 +354,13 @@ async def accept_invite(
         account_id=account.id,
         role=invite.role,
         invited_by=invite.invited_by,
+    )
+    await repo.record_activity(
+        workspace_id=invite.workspace_id,
+        event="member_joined",
+        actor_account_id=account.id,
+        subject_account_id=account.id,
+        role=invite.role,
     )
     payload = AcceptInviteResult(
         workspaceId=str(invite.workspace_id), role=invite.role, joinedAt=joined_at

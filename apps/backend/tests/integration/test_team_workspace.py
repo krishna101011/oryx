@@ -445,6 +445,59 @@ async def test_rename_workspace_requires_capability(app) -> None:
     assert allowed.json()["data"]["name"] == "Renamed Real Team"
 
 
+async def test_list_invites_shows_pending_and_excludes_revoked_and_accepted(app) -> None:
+    owner, owner_ctx = await _signed_up_client(app)
+    invitee, invitee_ctx = await _signed_up_client(app)
+
+    pending_email = f"pending+{uuid.uuid4().hex[:8]}@oryx.test"
+    _pending_id, _pending_token = await _seed_invite(
+        owner_ctx["workspace_id"], pending_email, "reader", owner_ctx["account_id"]
+    )
+
+    revoked_id, _revoked_token = await _seed_invite(
+        owner_ctx["workspace_id"],
+        f"revoked+{uuid.uuid4().hex[:8]}@oryx.test",
+        "editor",
+        owner_ctx["account_id"],
+    )
+    revoke = await owner.post(f"/v1/workspaces/invites/{revoked_id}/revoke")
+    assert revoke.status_code == 200, revoke.text
+
+    _accepted_id, accepted_token = await _seed_invite(
+        owner_ctx["workspace_id"], invitee_ctx["email"], "admin", owner_ctx["account_id"]
+    )
+    accept = await invitee.post(f"/v1/workspaces/invites/{accepted_token}/accept")
+    assert accept.status_code == 200, accept.text
+
+    listed = await owner.get("/v1/workspaces/invites")
+    assert listed.status_code == 200, listed.text
+    invites = listed.json()["data"]["invites"]
+    emails = {i["invitedEmail"] for i in invites}
+    assert emails == {pending_email}
+
+
+async def test_reader_cannot_list_invites(app) -> None:
+    owner, owner_ctx = await _signed_up_client(app)
+    reader, reader_ctx = await _signed_up_client(app)
+
+    _invite_id, raw_token = await _seed_invite(
+        owner_ctx["workspace_id"], reader_ctx["email"], "reader", owner_ctx["account_id"]
+    )
+    assert (await reader.post(f"/v1/workspaces/invites/{raw_token}/accept")).status_code == 200
+    switch = await reader.post(
+        "/v1/auth/switch-workspace",
+        json={
+            "refreshToken": reader_ctx["refresh_token"],
+            "deviceId": reader_ctx["device_id"],
+            "workspaceId": owner_ctx["workspace_id"],
+        },
+    )
+    reader.headers["Authorization"] = f"Bearer {switch.json()['data']['accessToken']}"
+
+    denied = await reader.get("/v1/workspaces/invites")
+    assert denied.status_code == 403, denied.text
+
+
 async def test_revoke_invite_prevents_later_acceptance(app) -> None:
     owner, owner_ctx = await _signed_up_client(app)
     invitee, invitee_ctx = await _signed_up_client(app)
@@ -458,3 +511,90 @@ async def test_revoke_invite_prevents_later_acceptance(app) -> None:
     accept = await invitee.post(f"/v1/workspaces/invites/{raw_token}/accept")
     assert accept.status_code == 410, accept.text
     assert accept.json()["error"]["code"] == "INVITE_INVALID"
+
+
+# ============================================================================
+# Team nav promotion wave — GET /workspaces/activity, the real event data
+# behind the new top-level Team section's Activity view.
+# ============================================================================
+
+
+async def test_activity_records_invited_joined_and_removed_in_order(app) -> None:
+    owner, owner_ctx = await _signed_up_client(app)
+    never_accepts, never_accepts_ctx = await _signed_up_client(app)
+    joiner, joiner_ctx = await _signed_up_client(app)
+
+    # 1. A real HTTP invite that is never accepted — proves member_invited is
+    # recorded on the real create-invite path, not just the repository seed
+    # helper other tests in this file use.
+    invite = await owner.post(
+        "/v1/workspaces/invites", json={"email": never_accepts_ctx["email"], "role": "editor"}
+    )
+    assert invite.status_code == 200, invite.text
+
+    # 2. A second invite, accepted — proves member_joined.
+    _invite_id, raw_token = await _seed_invite(
+        owner_ctx["workspace_id"], joiner_ctx["email"], "editor", owner_ctx["account_id"]
+    )
+    accept = await joiner.post(f"/v1/workspaces/invites/{raw_token}/accept")
+    assert accept.status_code == 200, accept.text
+
+    # 3. Removing the just-joined member — proves member_removed.
+    remove = await owner.delete(f"/v1/workspaces/members/{joiner_ctx['account_id']}")
+    assert remove.status_code == 200, remove.text
+
+    activity = await owner.get("/v1/workspaces/activity")
+    assert activity.status_code == 200, activity.text
+    events = activity.json()["data"]["events"]
+
+    # Most-recent-first: removed, joined, invited.
+    kinds = [e["event"] for e in events]
+    assert kinds[:3] == ["member_removed", "member_joined", "member_invited"]
+
+    removed_event = events[0]
+    assert removed_event["actorAccountId"] == owner_ctx["account_id"]
+    assert removed_event["subjectAccountId"] == joiner_ctx["account_id"]
+    assert removed_event["role"] == "editor"
+
+    joined_event = events[1]
+    assert joined_event["actorAccountId"] == joiner_ctx["account_id"]
+    assert joined_event["subjectAccountId"] == joiner_ctx["account_id"]
+    assert joined_event["role"] == "editor"
+
+    invited_event = events[2]
+    assert invited_event["actorAccountId"] == owner_ctx["account_id"]
+    assert invited_event["subjectAccountId"] is None
+    assert invited_event["subjectEmail"] == never_accepts_ctx["email"]
+    assert invited_event["role"] == "editor"
+
+
+async def test_reader_can_read_activity_but_not_manage_gated(app) -> None:
+    """Same access level as the Members list: activity is member-visible,
+    not workspace.manage-gated."""
+    owner, owner_ctx = await _signed_up_client(app)
+    reader, reader_ctx = await _signed_up_client(app)
+
+    invite_id, raw_token = await _seed_invite(
+        owner_ctx["workspace_id"], reader_ctx["email"], "reader", owner_ctx["account_id"]
+    )
+    assert (await reader.post(f"/v1/workspaces/invites/{raw_token}/accept")).status_code == 200
+    switch = await reader.post(
+        "/v1/auth/switch-workspace",
+        json={
+            "refreshToken": reader_ctx["refresh_token"],
+            "deviceId": reader_ctx["device_id"],
+            "workspaceId": owner_ctx["workspace_id"],
+        },
+    )
+    assert switch.status_code == 200, switch.text
+    reader.headers["Authorization"] = f"Bearer {switch.json()['data']['accessToken']}"
+
+    activity = await reader.get("/v1/workspaces/activity")
+    assert activity.status_code == 200, activity.text
+    # _seed_invite bypasses the HTTP create-invite endpoint (see its own
+    # docstring), so it never records member_invited itself — only proving
+    # that member_joined (recorded by the real accept endpoint above) is
+    # visible to a plain reader, same access level as GET /workspaces/members.
+    kinds = {e["event"] for e in activity.json()["data"]["events"]}
+    assert "member_joined" in kinds
+    assert invite_id

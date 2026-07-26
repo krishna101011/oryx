@@ -26,6 +26,14 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
           Home: 'home',
           Research: 'research/:id?',
           Content: 'content/:id?',
+          // Team promotion wave (2026-07-26): the real member list/invite
+          // form moved from Settings > Members to its own top-level tab.
+          Team: {
+            screens: {
+              TeamHome: 'team',
+              TeamActivity: 'team/activity',
+            },
+          },
           Activity: 'activity',
           Settings: {
             screens: {
@@ -35,6 +43,14 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
               ActiveSessions: 'settings/sessions',
               AlertsSettings: 'settings/alerts',
               PlanBilling: 'settings/plan',
+              // Deep-link target for the invite email (Team/Workspace Rev 2
+              // UI wave) — same registered-here-explicitly convention as
+              // every other Settings sub-screen, so the invite link is
+              // reachable on web instead of 404ing like Intake's screens did
+              // before the 2026-07-22 wave caught the same gap. Stays under
+              // Settings (unrelated to the Team nav promotion — this route
+              // is just the invite-link entry point).
+              AcceptInvite: 'settings/invite/:token',
               TrustedSources: 'settings/sources',
               AutomationHub: 'settings/automation',
               Analytics: 'settings/analytics',

@@ -189,10 +189,39 @@ class WorkspaceInvite(_Base):
     created_at: datetime = Field(alias="createdAt")
 
 
+# GET /v1/workspaces/invites — Members-screen gap found while building the
+# UI: create/view/accept/revoke existed, but nothing listed a workspace's
+# own pending invites. Same shape family as WorkspacesListResponse.
+class WorkspaceInvitesListResponse(_Base):
+    invites: list[WorkspaceInvite]
+
+
 class AcceptInviteResult(_Base):
     workspace_id: str = Field(alias="workspaceId")
     role: InviteRole
     joined_at: datetime = Field(alias="joinedAt")
+
+
+# Team nav promotion wave — the Team section's real Activity view. Not a
+# Postgres enum (workspace_audit_log.event is plain Text) so a future kind is
+# just a new string; 'role_changed' has no emitter yet (no role-change
+# endpoint exists) but is reserved here so the client's copy map is ready
+# when that capability ships.
+WorkspaceActivityEventType = Literal["member_invited", "member_joined", "member_removed", "role_changed"]
+
+
+class WorkspaceActivityEvent(_Base):
+    id: str
+    event: WorkspaceActivityEventType
+    actor_account_id: str | None = Field(default=None, alias="actorAccountId")
+    subject_account_id: str | None = Field(default=None, alias="subjectAccountId")
+    subject_email: str | None = Field(default=None, alias="subjectEmail")
+    role: str | None = None
+    created_at: datetime = Field(alias="createdAt")
+
+
+class WorkspaceActivityListResponse(_Base):
+    events: list[WorkspaceActivityEvent]
 
 
 # ============================================================================

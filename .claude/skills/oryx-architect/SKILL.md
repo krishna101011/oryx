@@ -840,6 +840,53 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   `src/test/shims/register.js` alongside the existing shims — check that
   file before assuming a new expo-* import can't be rendered under
   `tsx --test`.
+- A REAL DEV DB AT A STALE MIGRATION HEAD FAILS SILENTLY AT THE UI LAYER,
+  LOUDLY ONLY IN THE SERVER LOG (Team nav promotion wave, 2026-07-26, found
+  live). The startup migration-drift check (b403c4c) logs a clear
+  `migration.stale_database` warning block when `alembic_version` lags the
+  latest head, but that warning is INFO-level server output only — any new
+  code path that writes to a table the stale DB doesn't have yet (here: a
+  fresh `record_activity()` INSERT into a table added by the wave's own new
+  migration) fails the whole request, and the client just shows its generic
+  honest-error copy ("Could not send invite") with no hint that the real
+  cause is schema drift, not a real validation failure. Symptom signature:
+  a brand-new feature 500s or generic-errors on its first live click, full
+  test suite is green (tests run against a DB already migrated by CI/the
+  test fixture), and the ONLY signal is that stale-database warning block
+  buried in the dev server's own stdout. Check `alembic current` (or the
+  server log for `migration.stale_database`) before assuming new code is
+  broken when it "works in tests but not live."
+- A `uvicorn --reload` LOG FILE WRITTEN INSIDE THE WATCHED DIRECTORY CAUSES
+  AN INFINITE RELOAD LOOP (same wave, found live while starting the dev
+  server for screenshots). Redirecting the server's own stdout/stderr to a
+  file under `apps/backend/` (the directory watchfiles watches) makes every
+  log line append trigger a `1 change detected` → reload cycle, which then
+  logs its own restart lines, feeding itself forever — CPU churns, and any
+  request that lands mid-restart fails outright (this is what made the
+  migration-drift symptom above look worse than it was, before the real
+  cause was found). Always redirect a manually-started dev server's log
+  output to a path OUTSIDE any directory the reloader watches (e.g. the
+  session scratchpad, or `/tmp`), never to a file inside the watched app
+  directory itself.
+- THE require-CACHE-PATCH TRICK FOR `useNavigation` ONLY WORKS FOR THE
+  FIRST TEST IN A FILE TO REQUIRE THAT SCREEN MODULE (found writing
+  TeamHomeScreen.test.tsx, 2026-07-26). AcceptInviteScreen.test.tsx's
+  pattern — replacing `require.cache[resolvedPath].exports` with a patched
+  `@react-navigation/native` object before `req('./Screen')` — only
+  rebinds what a FUTURE `require()` call returns; a screen module's own
+  `useNavigation` reference is captured ONCE at its first load (Node's
+  module cache means later `renderScreen()` calls in the same test file
+  return the ALREADY-loaded module, whose captured reference still points
+  at whichever patch object existed the first time it loaded). A test that
+  only checks rendered text or that navigation doesn't crash never notices
+  this (which is why AcceptInviteScreen.test.tsx's own tests never caught
+  it — none of them assert on captured navigate() calls). A test that DOES
+  assert `navigateCalls` contents across multiple tests in one file gets a
+  silently-empty array. Fix: use `NavigationContext.Provider` with a
+  fresh-per-render fake navigation object instead (the pattern
+  research/rowNavigation.test.tsx already established) — never the
+  require-cache patch — whenever a test needs to actually verify what a
+  screen navigated to, not just that it didn't crash.
 
 ## What This Skill Deliberately Does NOT Contain
 
