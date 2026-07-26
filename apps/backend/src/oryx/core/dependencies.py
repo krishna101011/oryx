@@ -176,6 +176,10 @@ CAPABILITIES: dict[str, list[str]] = {
         # tests/unit/test_capability_admin_coverage.py — it fails loudly
         # if a future capability namespace is added without this happening.
         "workspace.*",
+        # Pre-existing gap found BY that same guard test when it shipped
+        # (intake.read/intake.write already gated live source-management/
+        # OAuth routes with no admin grant at all) — fixed here.
+        "intake.*",
     ],
     "editor": [
         "research.write", "research.read", "content.*", "activity.read",

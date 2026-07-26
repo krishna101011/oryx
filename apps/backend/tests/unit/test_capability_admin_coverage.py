@@ -23,13 +23,11 @@ _CAP_CALL_RE = re.compile(r'require_capability\(\s*["\']([a-z_]+)\.[a-z_*]+["\']
 # DELIBERATELY does not cover. Each entry must say why — a real, examined
 # decision, not a way to silence this test.
 #
-# 'intake': a REAL pre-existing gap (intake.read/intake.write are used on
-# live source-management/OAuth routes — src/oryx/services/intake/router.py,
-# oauth_router.py), discovered by this sweep while building Team/Workspace
-# Rev 2. NOT fixed here — out of scope for this wave, which is specifically
-# about the new workspace.* namespace. Flagged here rather than silently
-# left invisible, so a future wave can pick it up deliberately.
-ADMIN_EXCLUDED_NAMESPACES: set[str] = {"intake"}
+# Empty today. 'intake' was here (a real pre-existing gap this sweep found
+# while building Team/Workspace Rev 2 — intake.read/intake.write gated live
+# source-management/OAuth routes with no admin grant) until the very next
+# wave fixed it by adding "intake.*" to CAPABILITIES["admin"].
+ADMIN_EXCLUDED_NAMESPACES: set[str] = set()
 
 
 def _discover_capability_namespaces() -> set[str]:
