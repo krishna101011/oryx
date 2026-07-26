@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  ChangeMemberRoleRequest,
   CreateInviteRequest,
+  InviteRole,
   WorkspaceInvite,
   WorkspaceInvitesListResponse,
   WorkspaceMemberSummary,
@@ -23,6 +25,24 @@ export function useRemoveMember() {
   return useMutation({
     mutationFn: (accountId: string) =>
       apiClient().delete<{ removed: boolean }>(`/workspaces/members/${accountId}`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: MEMBERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ACTIVITY_KEY });
+    },
+  });
+}
+
+// Role-change wave: closes the real remove+reinvite-to-change-access gap.
+// Same invalidation shape as useRemoveMember — a role change also produces a
+// new real activity event.
+export function useChangeMemberRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ accountId, role }: { accountId: string; role: InviteRole }) =>
+      apiClient().patch<WorkspaceMemberSummary, ChangeMemberRoleRequest>(
+        `/workspaces/members/${accountId}`,
+        { role },
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: MEMBERS_KEY });
       void queryClient.invalidateQueries({ queryKey: ACTIVITY_KEY });

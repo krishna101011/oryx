@@ -18,9 +18,9 @@ from oryx.core.models import (
     WorkspaceMember,
 )
 
-# Real event kinds record_activity currently emits — the type layer (shared/
-# types.py, workspaces.ts) also reserves 'role_changed' for a future
-# role-change endpoint that doesn't exist yet.
+# Real event kinds record_activity emits: member_invited, member_joined,
+# member_removed, role_changed (role-change wave — the last one to gain a
+# real emitter; see change_member_role below).
 _ACTIVITY_LIST_LIMIT = 50
 
 # A real, decided default — not specified by the architecture doc, chosen as
@@ -88,6 +88,25 @@ class WorkspaceRepository:
                 WorkspaceMember.removed_at.is_(None),
             )
             .values(removed_at=datetime.now(UTC))
+            .returning(WorkspaceMember)
+        )
+        return result.scalar_one_or_none()
+
+    async def change_member_role(
+        self, *, workspace_id: uuid.UUID, account_id: uuid.UUID, role: str
+    ) -> WorkspaceMember | None:
+        """Returns the updated row, or None if the target wasn't an active
+        member — same "caller decides what that means" contract as
+        remove_member. The owner-role guard lives in the router (it needs
+        the pre-update role to build the error/activity row), not here."""
+        result = await self.db.execute(
+            update(WorkspaceMember)
+            .where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.account_id == account_id,
+                WorkspaceMember.removed_at.is_(None),
+            )
+            .values(role=role)
             .returning(WorkspaceMember)
         )
         return result.scalar_one_or_none()
@@ -261,11 +280,14 @@ class WorkspaceRepository:
         subject_account_id: uuid.UUID | None = None,
         subject_email: str | None = None,
         role: str | None = None,
+        previous_role: str | None = None,
     ) -> None:
         """Inserts inside the CALLER's transaction — no commit here, same
         convention as core/audit.py's record_auth_event. Always call this
         from the same request handler that just made the real membership
-        change, after the change succeeded."""
+        change, after the change succeeded. `previous_role` is only ever set
+        by the role_changed caller (migration 0033) — every other event
+        leaves it null."""
         self.db.add(
             WorkspaceAuditLog(
                 id=uuid.uuid4(),
@@ -275,6 +297,7 @@ class WorkspaceRepository:
                 subject_account_id=subject_account_id,
                 subject_email=subject_email,
                 role=role,
+                previous_role=previous_role,
             )
         )
         await self.db.flush()

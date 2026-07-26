@@ -62,10 +62,15 @@ function setAuthenticated(store: { dispatch: (action: unknown) => void }) {
   );
 }
 
-function makeFakeBackend() {
+function makeFakeBackend(opts: { changeRoleStatus?: number } = {}) {
   const calls: { method: string; path: string; body: unknown }[] = [];
   const json = (data: unknown, status = 200): Response =>
     new Response(JSON.stringify({ data }), { status, headers: { 'content-type': 'application/json' } });
+  const errorJson = (code: string, message: string, status: number): Response =>
+    new Response(
+      JSON.stringify({ error: { code, message, requestId: 'test-request-id' } }),
+      { status, headers: { 'content-type': 'application/json' } },
+    );
 
   const fetchImpl = async (input: unknown, init?: RequestInit): Promise<Response> => {
     const full = String(input);
@@ -94,6 +99,18 @@ function makeFakeBackend() {
     if (method === 'DELETE' && /\/workspaces\/members\/.+$/.test(path)) {
       return json({ removed: true });
     }
+    if (method === 'PATCH' && /\/workspaces\/members\/(.+)$/.test(path)) {
+      const status = opts.changeRoleStatus ?? 200;
+      if (status !== 200) {
+        return errorJson('VALIDATION_FAILED', "The workspace owner's role cannot be changed here", status);
+      }
+      const accountId = path.match(/\/workspaces\/members\/(.+)$/)![1]!;
+      return json({
+        accountId,
+        role: (body as { role: WorkspaceMemberSummary['role'] }).role,
+        joinedAt: '2026-02-01T00:00:00Z',
+      });
+    }
     throw new Error(`unhandled fake fetch: ${method} ${path}`);
   };
 
@@ -104,8 +121,9 @@ function renderScreen(
   me: MeResponse,
   invites: WorkspaceInvitesListResponse = NO_INVITES,
   activity: WorkspaceActivityListResponse = NO_ACTIVITY,
+  backendOpts: { changeRoleStatus?: number } = {},
 ) {
-  const backend = makeFakeBackend();
+  const backend = makeFakeBackend(backendOpts);
   const originalFetch = globalThis.fetch;
   (globalThis as unknown as { fetch: typeof fetch }).fetch = backend.fetchImpl as unknown as typeof fetch;
 
@@ -257,6 +275,83 @@ test('as editor (no workspace.manage): read-only member list, no invite form, no
   assert.equal(findAllByTestId('Pressable', 'send-invite-button').length, 0);
   assert.equal(findAllByTestId('Pressable', 'remove-member-acc-editor').length, 0);
   assert.equal(findAllByTestId('Pressable', 'remove-member-acc-owner').length, 0);
+  assert.equal(
+    findAllByTestId('Pressable', 'role-chip-acc-editor').length,
+    0,
+    'a read-only role has no role chip on any member, not even a non-owner one',
+  );
+
+  restore();
+  act(() => tree.unmount());
+});
+
+test('as owner: the editor row gets a role chip; the owner row never gets one', () => {
+  const { tree, act, findAllByTestId, restore } = renderScreen(ME_OWNER);
+
+  assert.equal(
+    findAllByTestId('Pressable', 'role-chip-acc-editor').length,
+    1,
+    'a non-owner member has a role chip',
+  );
+  assert.equal(
+    findAllByTestId('Pressable', 'role-chip-acc-owner').length,
+    0,
+    'the owner row never gets a role chip — ownership transfer is out of scope',
+  );
+
+  restore();
+  act(() => tree.unmount());
+});
+
+test('tapping the role chip opens a picker offering Admin/Editor/Reader; picking one calls the real PATCH endpoint and closes the picker', async () => {
+  const { tree, act, flush, pressByTestId, findAllByTestId, backend, restore } = renderScreen(ME_OWNER);
+
+  pressByTestId('role-chip-acc-editor');
+
+  assert.equal(findAllByTestId('Pressable', 'role-option-acc-editor-admin').length, 1);
+  assert.equal(findAllByTestId('Pressable', 'role-option-acc-editor-editor').length, 1);
+  assert.equal(findAllByTestId('Pressable', 'role-option-acc-editor-reader').length, 1);
+
+  pressByTestId('role-option-acc-editor-admin');
+  await flush();
+
+  const call = backend.calls.find(
+    (c) => c.method === 'PATCH' && c.path === '/workspaces/members/acc-editor',
+  );
+  assert.ok(call, 'the real change-role endpoint was called');
+  assert.deepEqual(call!.body, { role: 'admin' });
+
+  assert.equal(
+    findAllByTestId('Pressable', 'role-option-acc-editor-admin').length,
+    0,
+    'the picker closes after a successful change',
+  );
+
+  restore();
+  act(() => tree.unmount());
+});
+
+test('a rejected role change (targeting the owner) surfaces the real error and leaves the picker open', async () => {
+  const { tree, act, flush, pressByTestId, findAllByTestId, rendered, restore } = renderScreen(
+    ME_OWNER,
+    NO_INVITES,
+    NO_ACTIVITY,
+    { changeRoleStatus: 422 },
+  );
+
+  pressByTestId('role-chip-acc-editor');
+  pressByTestId('role-option-acc-editor-admin');
+  await flush();
+
+  assert.ok(
+    rendered().includes("The workspace owner's role cannot be changed here"),
+    'the real error message renders',
+  );
+  assert.equal(
+    findAllByTestId('Pressable', 'role-option-acc-editor-admin').length,
+    1,
+    'the picker stays open after a failed change, so the member can retry',
+  );
 
   restore();
   act(() => tree.unmount());
@@ -331,6 +426,7 @@ test('real activity renders in the Recent activity preview, and "View all activi
         subjectAccountId: 'acc-editor',
         subjectEmail: null,
         role: 'editor',
+        previousRole: null,
         createdAt: '2026-07-26T12:00:00Z',
       },
     ],

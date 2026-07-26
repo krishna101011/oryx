@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
   Button,
@@ -19,6 +19,7 @@ import { ChoiceTile } from '../../onboarding/components/ChoiceTile';
 import { describeActivityEvent } from '../activityCopy';
 import { useTeamActivity } from '../hooks/useTeamActivity';
 import {
+  useChangeMemberRole,
   useCreateInvite,
   useMembers,
   usePendingInvites,
@@ -62,6 +63,7 @@ export const TeamHomeScreen: React.FC = () => {
 
   const members = useMembers();
   const removeMember = useRemoveMember();
+  const changeMemberRole = useChangeMemberRole();
   const pendingInvites = usePendingInvites(canManage);
   const createInvite = useCreateInvite();
   const revokeInvite = useRevokeInvite();
@@ -70,6 +72,8 @@ export const TeamHomeScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<InviteRole>('editor');
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [editingRoleFor, setEditingRoleFor] = useState<string | null>(null);
+  const [roleChangeError, setRoleChangeError] = useState<string | null>(null);
 
   const onSendInvite = () => {
     setInviteError(null);
@@ -108,26 +112,89 @@ export const TeamHomeScreen: React.FC = () => {
             {(members.data ?? []).map((m) => {
               const isSelf = m.accountId === me.data?.account.id;
               const removable = canManage && m.role !== 'owner' && !isSelf;
+              // Ownership transfer is a separate, unbuilt capability — the
+              // owner row never gets a role picker, matching how it never
+              // gets a Remove button.
+              const roleEditable = canManage && m.role !== 'owner';
+              const isEditingRole = editingRoleFor === m.accountId;
               return (
-                <View key={m.accountId} style={styles.row}>
-                  <View style={{ flex: 1 }}>
-                    <Text variant="body">
-                      {isSelf ? 'You' : shortId(m.accountId)}
-                    </Text>
-                    <Spacer size={1} />
-                    <Text variant="caption" color="tertiary">
-                      {title(m.role)} · Joined {new Date(m.joinedAt).toLocaleDateString()}
-                    </Text>
+                <View key={m.accountId}>
+                  <View style={styles.row}>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="body">
+                        {isSelf ? 'You' : shortId(m.accountId)}
+                      </Text>
+                      <Spacer size={1} />
+                      {roleEditable ? (
+                        <Pressable
+                          onPress={() => {
+                            setRoleChangeError(null);
+                            setEditingRoleFor(isEditingRole ? null : m.accountId);
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Change role for ${isSelf ? 'yourself' : shortId(m.accountId)}`}
+                          testID={`role-chip-${m.accountId}`}
+                        >
+                          <Text variant="caption" color="tertiary">
+                            {title(m.role)} · Joined {new Date(m.joinedAt).toLocaleDateString()} · Change
+                          </Text>
+                        </Pressable>
+                      ) : (
+                        <Text variant="caption" color="tertiary">
+                          {title(m.role)} · Joined {new Date(m.joinedAt).toLocaleDateString()}
+                        </Text>
+                      )}
+                    </View>
+                    {removable ? (
+                      <Button
+                        label="Remove"
+                        variant="ghost"
+                        size="sm"
+                        loading={removeMember.isPending && removeMember.variables === m.accountId}
+                        onPress={() => removeMember.mutate(m.accountId)}
+                        testID={`remove-member-${m.accountId}`}
+                      />
+                    ) : null}
                   </View>
-                  {removable ? (
-                    <Button
-                      label="Remove"
-                      variant="ghost"
-                      size="sm"
-                      loading={removeMember.isPending && removeMember.variables === m.accountId}
-                      onPress={() => removeMember.mutate(m.accountId)}
-                      testID={`remove-member-${m.accountId}`}
-                    />
+                  {isEditingRole ? (
+                    <View style={styles.rolePicker}>
+                      {ROLE_OPTIONS.map((r) => (
+                        <Pressable
+                          key={r}
+                          disabled={changeMemberRole.isPending}
+                          onPress={() => {
+                            setRoleChangeError(null);
+                            changeMemberRole.mutate(
+                              { accountId: m.accountId, role: r },
+                              {
+                                onSuccess: () => setEditingRoleFor(null),
+                                onError: (e) =>
+                                  setRoleChangeError(
+                                    isApiError(e) ? e.message : 'Could not change role.',
+                                  ),
+                              },
+                            );
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Set role to ${ROLE_COPY[r].label} for ${isSelf ? 'yourself' : shortId(m.accountId)}`}
+                          testID={`role-option-${m.accountId}-${r}`}
+                          style={styles.roleOption}
+                        >
+                          <Text
+                            variant="bodySm"
+                            color={m.role === r ? 'primary' : 'secondary'}
+                          >
+                            {ROLE_COPY[r].label}
+                            {m.role === r ? ' (current)' : ''}
+                          </Text>
+                        </Pressable>
+                      ))}
+                      {roleChangeError ? (
+                        <Text variant="caption" color="danger">
+                          {roleChangeError}
+                        </Text>
+                      ) : null}
+                    </View>
                   ) : null}
                 </View>
               );
@@ -267,6 +334,14 @@ export const TeamHomeScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
+  rolePicker: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingHorizontal: 4,
+    paddingBottom: 12,
+  },
+  roleOption: { paddingVertical: 4 },
   inviteForm: { padding: 12 },
   footnote: {
     alignItems: 'center',

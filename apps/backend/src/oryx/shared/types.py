@@ -202,11 +202,21 @@ class AcceptInviteResult(_Base):
     joined_at: datetime = Field(alias="joinedAt")
 
 
+# PATCH /v1/workspaces/members/{accountId} — the owner's role is never a
+# valid target (same InviteRole exclusion as invites); ownership transfer is
+# a separate, unbuilt capability.
+class ChangeMemberRoleRequest(_Base):
+    role: InviteRole
+
+
 # Team nav promotion wave — the Team section's real Activity view. Not a
 # Postgres enum (workspace_audit_log.event is plain Text) so a future kind is
-# just a new string; 'role_changed' has no emitter yet (no role-change
-# endpoint exists) but is reserved here so the client's copy map is ready
-# when that capability ships.
+# just a new string. 'role_changed' is now real — PATCH
+# /v1/workspaces/members/{accountId} (role-change wave) emits it with both
+# `role` (the new role) and `previous_role` (what it was), following the
+# existing convention that `role` always carries the role meaningfully
+# associated with the subject AFTER the event (invited-as, joined-as,
+# removed-from). `previous_role` is null for every other event kind.
 WorkspaceActivityEventType = Literal["member_invited", "member_joined", "member_removed", "role_changed"]
 
 
@@ -217,6 +227,7 @@ class WorkspaceActivityEvent(_Base):
     subject_account_id: str | None = Field(default=None, alias="subjectAccountId")
     subject_email: str | None = Field(default=None, alias="subjectEmail")
     role: str | None = None
+    previous_role: str | None = Field(default=None, alias="previousRole")
     created_at: datetime = Field(alias="createdAt")
 
 

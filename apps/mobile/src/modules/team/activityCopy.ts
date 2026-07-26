@@ -22,9 +22,9 @@ export interface ActivityCopy {
 /**
  * Exhaustive switch over WorkspaceActivityEventType, no default branch — same
  * convention as automation/feed.ts's ACTION_COPY: a future event kind fails
- * type-check here until this is updated. 'role_changed' has no emitter yet
- * (no role-change endpoint exists), but is covered so the type stays
- * exhaustive the moment one ships.
+ * type-check here until this is updated. 'role_changed' is now real
+ * (role-change wave) — every real emission sets `previousRole`, so the copy
+ * states the honest from/to transition rather than just the new role.
  */
 export function describeActivityEvent(
   event: WorkspaceActivityEvent,
@@ -49,7 +49,9 @@ export function describeActivityEvent(
     case 'role_changed':
       return {
         icon: 'Shield',
-        text: `${who(event.subjectAccountId, meAccountId)}'s role changed to ${title(event.role ?? '')}`,
+        text: event.previousRole
+          ? `${who(event.subjectAccountId, meAccountId)}'s role changed from ${title(event.previousRole)} to ${title(event.role ?? '')}`
+          : `${who(event.subjectAccountId, meAccountId)}'s role changed to ${title(event.role ?? '')}`,
       };
   }
 }

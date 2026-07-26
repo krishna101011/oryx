@@ -83,6 +83,13 @@ export interface AcceptInviteResult {
   joinedAt: Timestamp;
 }
 
+/** PATCH /v1/workspaces/members/{accountId} — the owner's role is never a
+ * valid target (same InviteRole exclusion as invites); ownership transfer
+ * is a separate, unbuilt capability. */
+export interface ChangeMemberRoleRequest {
+  role: InviteRole;
+}
+
 /** GET /v1/workspaces/invites — Members-screen gap found while building the
  * UI (not in the frozen Rev 2 doc's endpoint list): create/view/accept/
  * revoke existed, but nothing listed a workspace's own pending invites.
@@ -94,9 +101,13 @@ export interface WorkspaceInvitesListResponse {
 // ============================================================================
 // Team nav promotion wave — the Team section's real Activity view (GET
 // /v1/workspaces/activity). Not a Postgres enum on the backend (plain Text
-// column), so a future event kind is just a new string. 'role_changed' has
-// no emitter yet (no role-change endpoint exists today) — reserved here so
-// the client's copy map is ready when that capability ships.
+// column), so a future event kind is just a new string. 'role_changed' is
+// now real — PATCH /v1/workspaces/members/{accountId} (role-change wave)
+// emits it with both `role` (the new role) and `previousRole` (what it was),
+// following the existing convention that `role` always carries the role
+// meaningfully associated with the subject AFTER the event (invited-as,
+// joined-as, removed-from). `previousRole` is null for every other event
+// kind — only role_changed ever sets it.
 // ============================================================================
 
 export type WorkspaceActivityEventType =
@@ -112,6 +123,7 @@ export interface WorkspaceActivityEvent {
   subjectAccountId: Id | null;
   subjectEmail: string | null;
   role: string | null;
+  previousRole: string | null;
   createdAt: Timestamp;
 }
 

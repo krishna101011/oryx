@@ -39,6 +39,7 @@ from oryx.services.workspaces.repository import INVITE_TTL, WorkspaceRepository
 from oryx.shared.types import (
     AcceptInviteResult,
     ActiveWorkspace,
+    ChangeMemberRoleRequest,
     CreateInviteRequest,
     WorkspaceActivityEvent,
     WorkspaceActivityListResponse,
@@ -62,6 +63,7 @@ def _activity_to_schema(row) -> WorkspaceActivityEvent:
         subjectAccountId=str(row.subject_account_id) if row.subject_account_id else None,
         subjectEmail=row.subject_email,
         role=row.role,
+        previousRole=row.previous_role,
         createdAt=row.created_at,
     )
 
@@ -219,6 +221,53 @@ async def remove_member(
         role=target.role,
     )
     return envelope({"removed": True}, request_id=get_request_id(request))
+
+
+@router.patch(
+    "/members/{account_id}",
+    dependencies=[Depends(require_capability("workspace.manage"))],
+)
+async def change_member_role(
+    account_id: str,
+    body: ChangeMemberRoleRequest,
+    request: Request,
+    ws: ActiveWorkspaceContext = Depends(get_active_workspace),
+    account: Account = Depends(get_current_account),
+    db: AsyncSession = Depends(db_session),
+) -> dict:
+    """Closes the real remove+reinvite-to-change-access gap: previously the
+    only way to move a member between admin/editor/reader was removing them
+    and sending a brand new invite. Mirrors remove_member's exact shape —
+    same owner guard (changing the sole owner's own role is ownership
+    transfer, a separate, unbuilt capability, not this endpoint), same
+    workspace.manage gate, same record_activity call inside the same
+    transaction as the real change."""
+    target_id = uuid.UUID(account_id)
+    repo = WorkspaceRepository(db)
+    members = await repo.list_active_members(ws.workspace_id)
+    target = next((m for m in members if m.account_id == target_id), None)
+    if target is None:
+        raise WorkspaceNotFoundError("Not an active member of this workspace")
+    if target.role == "owner":
+        raise ValidationError("The workspace owner's role cannot be changed here")
+    previous_role = target.role
+    updated = await repo.change_member_role(
+        workspace_id=ws.workspace_id, account_id=target_id, role=body.role
+    )
+    if updated is None:
+        raise WorkspaceNotFoundError("Not an active member of this workspace")
+    await repo.record_activity(
+        workspace_id=ws.workspace_id,
+        event="role_changed",
+        actor_account_id=account.id,
+        subject_account_id=target_id,
+        role=body.role,
+        previous_role=previous_role,
+    )
+    payload = WorkspaceMemberSummary(
+        accountId=str(updated.account_id), role=updated.role, joinedAt=updated.joined_at
+    )
+    return envelope(payload.model_dump(by_alias=True), request_id=get_request_id(request))
 
 
 # ============================================================================

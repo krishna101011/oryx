@@ -13,6 +13,7 @@ function event(overrides: Partial<WorkspaceActivityEvent>): WorkspaceActivityEve
     subjectAccountId: null,
     subjectEmail: null,
     role: null,
+    previousRole: null,
     createdAt: '2026-07-26T00:00:00Z',
     ...overrides,
   };
@@ -53,13 +54,26 @@ test('member_removed: no role suffix, current account still resolves to "You"', 
   assert.equal(copy.text, 'You was removed');
 });
 
-test('role_changed: reserved for a future endpoint, still produces real copy from whatever role is passed', () => {
+test('role_changed: real emissions always carry previousRole, so the copy states the honest from/to transition', () => {
+  const copy = describeActivityEvent(
+    event({
+      event: 'role_changed',
+      subjectAccountId: 'acc-999999999999',
+      role: 'admin',
+      previousRole: 'editor',
+    }),
+    ME,
+  );
+  assert.equal(copy.icon, 'Shield');
+  assert.equal(copy.text, "acc-9999…'s role changed from Editor to Admin");
+});
+
+test('role_changed: a null previousRole (should not happen for a real emission, but stays honest) falls back to "changed to"', () => {
   const copy = describeActivityEvent(
     event({ event: 'role_changed', subjectAccountId: 'acc-999999999999', role: 'admin' }),
     ME,
   );
-  assert.equal(copy.icon, 'Shield');
-  assert.ok(copy.text.includes('role changed to Admin'));
+  assert.equal(copy.text, "acc-9999…'s role changed to Admin");
 });
 
 test('a null subject account (should not happen for joined/removed, but stays honest) renders as "Someone"', () => {

@@ -1672,9 +1672,13 @@ class WorkspaceAuditLog(Base):
     inserted inside the same transaction as the membership change itself
     (services/workspaces/repository.py's record_activity), never a separate
     commit. `event` values in use: member_invited, member_joined,
-    member_removed. `subject_email` carries the invited address for
-    member_invited (the invitee has no account yet); `subject_account_id`
-    carries the real account for member_joined/member_removed."""
+    member_removed, role_changed. `subject_email` carries the invited address
+    for member_invited (the invitee has no account yet); `subject_account_id`
+    carries the real account for member_joined/member_removed/role_changed.
+    `role` always carries the role meaningfully associated with the subject
+    AFTER the event (invited-as, joined-as, removed-from, changed-to);
+    `previous_role` (migration 0033) is set ONLY for role_changed — the role
+    the subject held immediately before this change."""
 
     __tablename__ = "workspace_audit_log"
 
@@ -1691,6 +1695,7 @@ class WorkspaceAuditLog(Base):
     )
     subject_email: Mapped[str | None] = mapped_column(Text)
     role: Mapped[str | None] = mapped_column(Text)
+    previous_role: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

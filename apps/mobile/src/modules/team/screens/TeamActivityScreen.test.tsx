@@ -79,6 +79,7 @@ test('renders real invited/joined/removed events with their real, describable co
         subjectAccountId: 'acc-editor',
         subjectEmail: null,
         role: 'editor',
+        previousRole: null,
         createdAt: '2026-07-26T14:00:00Z',
       },
       {
@@ -88,6 +89,7 @@ test('renders real invited/joined/removed events with their real, describable co
         subjectAccountId: 'acc-editor',
         subjectEmail: null,
         role: 'editor',
+        previousRole: null,
         createdAt: '2026-07-26T13:00:00Z',
       },
       {
@@ -97,6 +99,7 @@ test('renders real invited/joined/removed events with their real, describable co
         subjectAccountId: null,
         subjectEmail: 'friend@oryx.test',
         role: 'editor',
+        previousRole: null,
         createdAt: '2026-07-26T12:00:00Z',
       },
     ],

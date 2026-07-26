@@ -598,3 +598,133 @@ async def test_reader_can_read_activity_but_not_manage_gated(app) -> None:
     kinds = {e["event"] for e in activity.json()["data"]["events"]}
     assert "member_joined" in kinds
     assert invite_id
+
+
+# ============================================================================
+# Role-change wave — PATCH /v1/workspaces/members/{accountId}
+# ============================================================================
+
+
+async def _join_as(app, owner, owner_ctx, role: str):
+    """Signs up a fresh account, invites+accepts it into owner's workspace at
+    `role`, switches its client into that workspace, and returns
+    (client, ctx) ready to act as that role — the same 4-step dance most
+    multi-member tests in this file already repeat inline."""
+    member, member_ctx = await _signed_up_client(app)
+    _invite_id, raw_token = await _seed_invite(
+        owner_ctx["workspace_id"], member_ctx["email"], role, owner_ctx["account_id"]
+    )
+    accept = await member.post(f"/v1/workspaces/invites/{raw_token}/accept")
+    assert accept.status_code == 200, accept.text
+    switch = await member.post(
+        "/v1/auth/switch-workspace",
+        json={
+            "refreshToken": member_ctx["refresh_token"],
+            "deviceId": member_ctx["device_id"],
+            "workspaceId": owner_ctx["workspace_id"],
+        },
+    )
+    assert switch.status_code == 200, switch.text
+    member.headers["Authorization"] = f"Bearer {switch.json()['data']['accessToken']}"
+    return member, member_ctx
+
+
+async def test_change_member_role_succeeds_for_owner_and_admin_on_non_owner_member(app) -> None:
+    owner, owner_ctx = await _signed_up_client(app)
+    admin, admin_ctx = await _join_as(app, owner, owner_ctx, "admin")
+    target, target_ctx = await _join_as(app, owner, owner_ctx, "editor")
+
+    # The owner promotes the target editor -> reader.
+    by_owner = await owner.patch(
+        f"/v1/workspaces/members/{target_ctx['account_id']}", json={"role": "reader"}
+    )
+    assert by_owner.status_code == 200, by_owner.text
+    assert by_owner.json()["data"]["accountId"] == target_ctx["account_id"]
+    assert by_owner.json()["data"]["role"] == "reader"
+
+    # An ADMIN (not just the owner) can also change a non-owner member's
+    # role — workspace.manage, same gate as remove_member.
+    by_admin = await admin.patch(
+        f"/v1/workspaces/members/{target_ctx['account_id']}", json={"role": "admin"}
+    )
+    assert by_admin.status_code == 200, by_admin.text
+    assert by_admin.json()["data"]["role"] == "admin"
+
+    # Real DB proof: GET /workspaces/members reflects the final role.
+    members = await owner.get("/v1/workspaces/members")
+    assert members.status_code == 200, members.text
+    target_row = next(
+        m for m in members.json()["data"] if m["accountId"] == target_ctx["account_id"]
+    )
+    assert target_row["role"] == "admin"
+
+
+async def test_change_member_role_rejected_for_reader(app) -> None:
+    owner, owner_ctx = await _signed_up_client(app)
+    reader, reader_ctx = await _join_as(app, owner, owner_ctx, "reader")
+    target, target_ctx = await _join_as(app, owner, owner_ctx, "editor")
+
+    denied = await reader.patch(
+        f"/v1/workspaces/members/{target_ctx['account_id']}", json={"role": "admin"}
+    )
+    assert denied.status_code == 403, denied.text
+
+    # The target's role is unchanged — the rejected attempt had zero effect.
+    members = await owner.get("/v1/workspaces/members")
+    target_row = next(
+        m for m in members.json()["data"] if m["accountId"] == target_ctx["account_id"]
+    )
+    assert target_row["role"] == "editor"
+
+
+async def test_change_member_role_rejected_when_targeting_owner(app) -> None:
+    owner, owner_ctx = await _signed_up_client(app)
+    admin, admin_ctx = await _join_as(app, owner, owner_ctx, "admin")
+
+    # Even an admin (workspace.manage-capable) cannot change the owner's own
+    # role — that's ownership transfer, a separate, unbuilt capability.
+    res = await admin.patch(
+        f"/v1/workspaces/members/{owner_ctx['account_id']}", json={"role": "admin"}
+    )
+    assert res.status_code == 422, res.text
+    assert res.json()["error"]["code"] == "VALIDATION_FAILED"
+
+    # The owner cannot demote themselves through this endpoint either.
+    self_attempt = await owner.patch(
+        f"/v1/workspaces/members/{owner_ctx['account_id']}", json={"role": "editor"}
+    )
+    assert self_attempt.status_code == 422, self_attempt.text
+
+    # Real DB proof: the owner's role is untouched.
+    members = await owner.get("/v1/workspaces/members")
+    owner_row = next(
+        m for m in members.json()["data"] if m["accountId"] == owner_ctx["account_id"]
+    )
+    assert owner_row["role"] == "owner"
+
+
+async def test_role_changed_activity_records_real_old_and_new_role(app) -> None:
+    owner, owner_ctx = await _signed_up_client(app)
+    target, target_ctx = await _join_as(app, owner, owner_ctx, "editor")
+
+    changed = await owner.patch(
+        f"/v1/workspaces/members/{target_ctx['account_id']}", json={"role": "admin"}
+    )
+    assert changed.status_code == 200, changed.text
+
+    activity = await owner.get("/v1/workspaces/activity")
+    assert activity.status_code == 200, activity.text
+    events = activity.json()["data"]["events"]
+
+    # Most-recent-first — the just-recorded role_changed event is first.
+    event = events[0]
+    assert event["event"] == "role_changed"
+    assert event["actorAccountId"] == owner_ctx["account_id"]
+    assert event["subjectAccountId"] == target_ctx["account_id"]
+    assert event["role"] == "admin", "role carries the NEW role, same convention as other events"
+    assert event["previousRole"] == "editor", "previousRole carries the REAL prior role, not a guess"
+
+    # Every other real event kind in this same activity list still has a
+    # null previousRole — it's exclusively a role_changed field.
+    joined_event = next(e for e in events if e["event"] == "member_joined")
+    assert joined_event["previousRole"] is None
