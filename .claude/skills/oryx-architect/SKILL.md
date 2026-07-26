@@ -840,6 +840,31 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   `src/test/shims/register.js` alongside the existing shims — check that
   file before assuming a new expo-* import can't be rendered under
   `tsx --test`.
+- WEB NEVER PERSISTS A REFRESH TOKEN — ANY refreshToken-DEPENDENT FLOW
+  SILENTLY NO-OPS AFTER A PAGE RELOAD (found building the Team/Workspace
+  switcher, 2026-07-26). `set_session_cookie` (core/security/cookies.py)
+  cookies ONLY the access token; the refresh token is handed to the client
+  once, in the signin/signup/refresh JSON body, and `store/thunks/auth.ts`
+  puts it in Redux (`state.auth.refreshToken`). `bootstrapAuth()`'s web
+  branch never repopulates it — it only probes `/auth/me` via the cookie to
+  decide authenticated/not. So `state.auth.refreshToken` is real ONLY for
+  the tab that just live-completed signin/signup; a page reload, a fresh
+  tab, or (critically) opening any deep link from a real email — which is
+  indistinguishable from a fresh page load — leaves it `null` and stays
+  `null` for the rest of that page's life. This silently breaks the
+  EXISTING `/auth/refresh` 401-retry interceptor on web too (pre-existing,
+  not introduced by this wave) and broke the new switch-workspace flow
+  identically until fixed: `WebSidebar.tsx`'s switch handler and
+  `AcceptInviteScreen.tsx`'s "Switch to this workspace now" both now check
+  for a missing refreshToken and show an honest inline message ("Switching
+  needs a fresh sign-in in this browser tab...") instead of silently doing
+  nothing. Any FUTURE web feature that calls a refreshToken-requiring
+  endpoint (switch-workspace, /auth/refresh, anything built the same way)
+  must plan for this null case explicitly — don't assume Redux has it just
+  because the user is "signed in" per the cookie. Fixing the underlying gap
+  (e.g. also cookying a refresh token) is an auth-architecture decision, not
+  something to slip in inside a feature wave.
+
 - A REAL DEV DB AT A STALE MIGRATION HEAD FAILS SILENTLY AT THE UI LAYER,
   LOUDLY ONLY IN THE SERVER LOG (Team nav promotion wave, 2026-07-26, found
   live). The startup migration-drift check (b403c4c) logs a clear

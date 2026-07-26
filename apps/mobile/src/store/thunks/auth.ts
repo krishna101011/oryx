@@ -3,6 +3,7 @@ import type {
   RefreshRequest,
   SigninRequest,
   SignupRequest,
+  SwitchWorkspaceRequest,
   TokenPair,
   SigninResponse,
   SignupResponse,
@@ -118,6 +119,29 @@ export const signout = () => async (dispatch: AppDispatch): Promise<void> => {
   await secureDelete(SecureKeys.deviceId);
   dispatch(authActions.signedOut());
 };
+
+/**
+ * Team/Workspace Rev 2 switcher: reuses the refresh-token rotation
+ * mechanism exactly like refreshAccess, scoped to a target workspace.
+ * refreshToken is passed in (read from Redux by the caller) rather than
+ * re-derived here — same shape as signin/signup taking primitive args,
+ * since this runs from a component with useAppSelector already in scope.
+ */
+export const switchWorkspace =
+  (workspaceId: string, refreshToken: string) =>
+  async (dispatch: AppDispatch): Promise<void> => {
+    const body: SwitchWorkspaceRequest = {
+      refreshToken,
+      deviceId: await getDeviceId(),
+      workspaceId,
+    };
+    const res = await apiClient().post<TokenPair, SwitchWorkspaceRequest>(
+      '/auth/switch-workspace',
+      body,
+    );
+    await persistTokens(res);
+    dispatch(authActions.tokensSet(res));
+  };
 
 export const refreshAccess =
   (getRefreshToken: () => string | null, dispatch: AppDispatch) =>

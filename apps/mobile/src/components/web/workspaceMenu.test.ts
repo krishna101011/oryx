@@ -1,10 +1,11 @@
 /**
  * Workspace-pill dropdown — the pure model the sidebar renders.
  *
- * The dropdown is deliberately NOT a workspace switcher: one workspace exists
- * per account today (Team/Workspace architecture is frozen but unbuilt), so
- * the menu is current-workspace facts + Account settings + Sign out. These
- * tests pin that scope so a switcher can't sneak in half-built.
+ * Team/Workspace Rev 2 shipped real multi-workspace membership + switching,
+ * so this is now a real switcher: any OTHER real workspace passed in renders
+ * as a 'switch:<id>' item above Account settings / Sign out. These tests
+ * replace the old single-workspace-only pin (2026-07-12) now that a second
+ * workspace is a real, reachable state, not a hypothetical.
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -25,18 +26,45 @@ test('menu header shows the real workspace name and kind + role meta from /me', 
   assert.equal(menu.meta, 'Personal workspace · Owner');
 });
 
-test('menu offers exactly Account settings and Sign out — and NO workspace switcher', () => {
-  const menu = workspaceMenu(me);
+test('with only one real workspace, the menu offers exactly Account settings and Sign out', () => {
+  const menu = workspaceMenu(me, [
+    { id: 'ws-1', name: 'Krishna Mishra', kind: 'personal', role: 'owner' },
+  ]);
   assert.deepEqual(
     menu.items.map((i) => i.id),
     ['account', 'signout'],
   );
-  const labels = menu.items.map((i) => i.label.toLowerCase()).join(' ');
-  assert.ok(!labels.includes('switch'), 'no switch item until a second workspace can exist');
-  assert.ok(!labels.includes('create'), 'no create-workspace item either');
 });
 
-test('the single-workspace reality is stated in plain copy, not hidden', () => {
-  const menu = workspaceMenu(me);
-  assert.ok(menu.note.toLowerCase().includes('only workspace'));
+test('a second real workspace renders as a switch item above account/signout', () => {
+  const menu = workspaceMenu(me, [
+    { id: 'ws-1', name: 'Krishna Mishra', kind: 'personal', role: 'owner' },
+    { id: 'ws-2', name: 'ORYX Research Team', kind: 'team', role: 'editor' },
+  ]);
+  assert.deepEqual(
+    menu.items.map((i) => i.id),
+    ['switch:ws-2', 'account', 'signout'],
+  );
+  const switchItem = menu.items[0]!;
+  assert.equal(switchItem.label, 'ORYX Research Team');
+  assert.equal(switchItem.sub, 'Team · Editor');
+});
+
+test('the current workspace never appears as its own switch target', () => {
+  const menu = workspaceMenu(me, [
+    { id: 'ws-1', name: 'Krishna Mishra', kind: 'personal', role: 'owner' },
+  ]);
+  assert.ok(!menu.items.some((i) => i.id === 'switch:ws-1'));
+});
+
+test('multiple other workspaces all render as switch items, each keyed by its own id', () => {
+  const menu = workspaceMenu(me, [
+    { id: 'ws-1', name: 'Krishna Mishra', kind: 'personal', role: 'owner' },
+    { id: 'ws-2', name: 'ORYX Research Team', kind: 'team', role: 'editor' },
+    { id: 'ws-3', name: 'Side Project', kind: 'team', role: 'admin' },
+  ]);
+  assert.deepEqual(
+    menu.items.map((i) => i.id),
+    ['switch:ws-2', 'switch:ws-3', 'account', 'signout'],
+  );
 });

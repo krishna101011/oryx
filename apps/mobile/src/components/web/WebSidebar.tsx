@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Divider,
   GensparkIcon,
@@ -9,9 +10,11 @@ import {
   useGx,
   useTheme,
 } from '@oryx/design-system';
-import type { MeResponse } from '@oryx/shared-types';
-import { useAppDispatch } from '../../store';
-import { signout } from '../../store/thunks/auth';
+import type { MeResponse, WorkspacesListResponse } from '@oryx/shared-types';
+import { apiClient } from '../../lib/api/client';
+import { isApiError } from '../../lib/errors';
+import { useAppDispatch, useAppSelector } from '../../store';
+import { signout, switchWorkspace } from '../../store/thunks/auth';
 import { WEB_NAV, type WebNavItem, findNavItem, navCounts } from './webNav';
 import { workspaceMenu } from './workspaceMenu';
 
@@ -23,11 +26,12 @@ import { workspaceMenu } from './workspaceMenu';
  * build version badge come from /me. No "Jordan Mehta" / "ORYX Editorial" / fake
  * counts — pending nav items render dimmed; badges show real /me counts only.
  *
- * The workspace pill is a real button (2026-07-12): it opens an honestly-scoped
- * menu — current workspace facts, Account settings, Sign out. Deliberately NOT
- * a workspace switcher: exactly one workspace exists per account today
- * (Team/Workspace architecture is frozen but unbuilt), so there is nothing to
- * switch to — see workspaceMenu.ts.
+ * The workspace pill is a real button (2026-07-12). Team/Workspace Rev 2
+ * shipped multi-workspace membership, invites, and switching, so as of this
+ * wave it's a real switcher: GET /workspaces lists every real workspace the
+ * account belongs to, and picking one calls POST /auth/switch-workspace (see
+ * workspaceMenu.ts for the pure item-list model). Account settings and Sign
+ * out are always present below the switch items.
  */
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -44,19 +48,60 @@ export const WebSidebar: React.FC<{
   const t = useTheme();
   const gx = useGx();
   const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+  const refreshToken = useAppSelector((s) => s.auth.refreshToken);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [switchingId, setSwitchingId] = useState<string | null>(null);
+  const [switchError, setSwitchError] = useState<string | null>(null);
 
   const counts = navCounts(me);
-  const menu = me ? workspaceMenu(me) : null;
+  // Small, real list — every workspace the account belongs to, not paginated.
+  // Fetched whenever /me is (not just while the menu is open) so the switch
+  // items are ready the first time the pill is pressed, no extra spinner.
+  const workspacesQuery = useQuery<WorkspacesListResponse>({
+    queryKey: ['workspaces'],
+    queryFn: () => apiClient().get<WorkspacesListResponse>('/workspaces'),
+    enabled: !!me,
+    staleTime: 30 * 1000,
+  });
+  const menu = me ? workspaceMenu(me, workspacesQuery.data?.workspaces ?? []) : null;
 
-  const onMenuAction = (id: 'account' | 'signout') => {
-    setMenuOpen(false);
+  const onMenuAction = (id: 'account' | 'signout' | `switch:${string}`) => {
     if (id === 'account') {
+      setMenuOpen(false);
       // The same explicit-screen resolution every sidebar Settings press uses.
       onNavigate(findNavItem('settings'));
-    } else {
-      void dispatch(signout());
+      return;
     }
+    if (id === 'signout') {
+      setMenuOpen(false);
+      void dispatch(signout());
+      return;
+    }
+    // 'switch:<workspaceId>' — the refresh token lives in Redux only for the
+    // tab that just completed a live signin/signup (web never cookies it,
+    // only the access token; see store/thunks/auth.ts persistTokens). A
+    // cookie-restored session — the common case after any page reload — has
+    // none, so this is surfaced honestly rather than silently doing nothing.
+    const workspaceId = id.slice('switch:'.length);
+    if (!refreshToken) {
+      setSwitchError('Switching needs a fresh sign-in in this browser tab — please sign out and sign back in, then try again.');
+      return;
+    }
+    void (async () => {
+      setSwitchError(null);
+      setSwitchingId(workspaceId);
+      try {
+        await dispatch(switchWorkspace(workspaceId, refreshToken));
+        setMenuOpen(false);
+        await queryClient.invalidateQueries({ queryKey: ['me'] });
+        await queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+      } catch (e) {
+        setSwitchError(isApiError(e) ? e.message : 'Could not switch workspaces.');
+      } finally {
+        setSwitchingId(null);
+      }
+    })();
   };
 
   const wsName = me?.workspace.name ?? 'Workspace';
@@ -91,6 +136,7 @@ export const WebSidebar: React.FC<{
             disabled={!menu}
             accessibilityRole="button"
             accessibilityLabel="Workspace menu"
+            testID="workspace-pill"
           >
             <View style={gx.wsIcon}>
               <HornMark size={12} />
@@ -115,35 +161,50 @@ export const WebSidebar: React.FC<{
               <View style={styles.menuHeader}>
                 <Text variant="navLabel" color="primary" numberOfLines={1}>{menu.name}</Text>
                 <Text variant="navGroup" color="tertiary">{menu.meta}</Text>
-                <Text variant="caption" color="tertiary">{menu.note}</Text>
+                {switchError ? (
+                  <Text variant="caption" color="danger">{switchError}</Text>
+                ) : null}
               </View>
               <Divider />
-              {menu.items.map((item) => (
-                <Pressable
-                  key={item.id}
-                  style={styles.menuItem}
-                  onPress={() => onMenuAction(item.id)}
-                  accessibilityRole="button"
-                  accessibilityLabel={item.label}
-                >
-                  <GensparkIcon
-                    name={item.id === 'account' ? 'Cog' : 'ChevRight'}
-                    size={12}
-                    color={
-                      item.id === 'signout'
-                        ? t.colors.semantic.danger
-                        : t.colors.text.tertiary
-                    }
-                  />
-                  <Text
-                    variant="navLabel"
-                    color={item.id === 'signout' ? undefined : 'secondary'}
-                    style={item.id === 'signout' ? { color: t.colors.semantic.danger } : undefined}
+              {menu.items.map((item) => {
+                const isSwitch = item.id.startsWith('switch:');
+                const pending = switchingId !== null;
+                const icon = item.id === 'account' ? 'Cog' : isSwitch ? 'Layers' : 'ChevRight';
+                return (
+                  <Pressable
+                    key={item.id}
+                    style={[styles.menuItem, pending && { opacity: 0.5 }]}
+                    onPress={() => onMenuAction(item.id)}
+                    disabled={pending}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.label}
+                    testID={`workspace-menu-item-${item.id}`}
                   >
-                    {item.label}
-                  </Text>
-                </Pressable>
-              ))}
+                    <GensparkIcon
+                      name={icon}
+                      size={12}
+                      color={
+                        item.id === 'signout'
+                          ? t.colors.semantic.danger
+                          : t.colors.text.tertiary
+                      }
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        variant="navLabel"
+                        color={item.id === 'signout' ? undefined : 'secondary'}
+                        style={item.id === 'signout' ? { color: t.colors.semantic.danger } : undefined}
+                        numberOfLines={1}
+                      >
+                        {item.label}
+                      </Text>
+                      {item.sub ? (
+                        <Text variant="navGroup" color="tertiary">{item.sub}</Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
             </View>
           ) : null}
         </View>
