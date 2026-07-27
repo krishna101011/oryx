@@ -912,6 +912,25 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   research/rowNavigation.test.tsx already established) — never the
   require-cache patch — whenever a test needs to actually verify what a
   screen navigated to, not just that it didn't crash.
+- EXPO SDK 51's TOP-LEVEL `app.json` "splash" KEY HAS NO LIGHT/DARK VARIANT
+  (found closing the long-flagged app.json splash issue, 2026-07-27). The
+  classic `expo.splash.{image,backgroundColor}` shape always renders one
+  color/image regardless of `userInterfaceStyle` — real per-appearance
+  splash values require installing `expo-splash-screen` as an explicit dep
+  (`npx expo install expo-splash-screen` — resolves the SDK-51-correct
+  0.27.x, not latest) and moving splash config into a `plugins` array entry
+  with a sibling `dark: {image, backgroundColor}` object. Before that
+  install, "add light-mode splash values" is not achievable via config
+  alone — don't fake it by picking one compromise color. Separately: the
+  actual app.json/icon assets at the time (splash.png #1A2332,
+  icon.png/adaptive-icon.png #0A0A0F) were flat single-color placeholders
+  with zero logo/mark — not a stale-but-designed asset, literally a solid
+  rectangle. Confirmed pixel-exact via manual PNG decode (Node zlib
+  inflate on the IDAT chunk) since no PIL/ImageMagick was available in
+  either the backend uv env or bash. Regenerated the same way (zlib
+  deflate + hand-built IHDR/IDAT/IEND chunks) rather than pulling in a new
+  image lib — fine for flat placeholder color swaps, NOT a substitute for
+  real icon/splash artwork (a HornMark or similar) if that's ever wanted.
 
 ## What This Skill Deliberately Does NOT Contain
 
