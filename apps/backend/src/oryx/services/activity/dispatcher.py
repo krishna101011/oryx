@@ -112,6 +112,7 @@ from oryx.services.publishing.events.constants import (
 )
 from oryx.services.queue.bus import DomainEvent
 from oryx.services.verification.events.constants import CLAIM_FAILED
+from oryx.services.workspaces.events.constants import CHAT_MESSAGE_SENT
 
 logger = get_logger(__name__)
 
@@ -164,6 +165,13 @@ CATALOG: dict[str, NotificationSpec] = {
     CALENDAR_ENTRY_CANCELLED: NotificationSpec("publishing", "info", "Scheduled post cancelled"),
     CONTENT_PUBLISHED: NotificationSpec("publishing", "info", "Content published"),
     CONTENT_PUBLISH_FAILED: NotificationSpec("publishing", "error", "Publishing failed"),
+    # Team Chat foundation wave (post-freeze addition, not part of the frozen
+    # Phase 6 §2 table above — see FROZEN_SECTION_2 in
+    # test_notification_dispatcher.py, deliberately NOT extended for this).
+    # Reuses the existing, already-proven dispatch/preference/push/email
+    # machinery unchanged; only a new category ('chat', migration 0034) and
+    # this one catalog entry were added.
+    CHAT_MESSAGE_SENT: NotificationSpec("chat", "info", "New message"),
 }
 
 # The event names the dispatcher subscribes to (build_bus wires each to it).

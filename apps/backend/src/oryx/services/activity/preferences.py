@@ -14,18 +14,26 @@ Both import from here, so the agreement is structural — and Wave A asserts it
 directly with a test. Phase 6 only ever resolves the four real content
 categories; the reserved cadence-label activity_type values
 (instant_alert/daily_digest/weekly_digest) are never used on alert_preferences.
+
+Team Chat foundation wave adds a fifth category, 'chat' — a single global
+toggle across in_app/push/email (per-conversation granularity is out of
+scope while there is only one workspace-wide channel to have granularity
+over). It resolves through the exact same default logic below; no new
+endpoint or preference concept was built for it.
 """
 from __future__ import annotations
 
 # A missing alert_preferences row resolves to this frequency ("enabled").
 DEFAULT_ALERT_FREQUENCY = "instant"
 
-# The four real content categories Phase 6 reads/writes on alert_preferences.
+# The real content categories Phase 6 (+ the Team Chat foundation wave)
+# reads/writes on alert_preferences.
 NOTIFICATION_CATEGORIES: tuple[str, ...] = (
     "security",
     "system",
     "verification",
     "publishing",
+    "chat",
 )
 
 # The delivery channels the preference grid resolves defaults for. Phase 6

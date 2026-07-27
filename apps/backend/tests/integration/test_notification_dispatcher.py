@@ -289,15 +289,26 @@ async def test_multi_account_fanout_independent_preferences(sm) -> None:
 
 # --- Scenario 6: the full frozen catalog, category + severity per event ---
 
+# Deliberate, named post-freeze additions to CATALOG — NOT part of the frozen
+# Phase 6 §2 table, so kept out of FROZEN_SECTION_2 itself, but tracked here
+# explicitly rather than left to silently break the exactness guard below.
+# Team Chat foundation wave: CHAT_MESSAGE_SENT reuses the existing, unmodified
+# dispatch machinery (see dispatcher.py's CATALOG comment at that entry).
+POST_FREEZE_ADDITIONS: dict[str, tuple[str, str]] = {
+    "workspace.chat.message_sent": ("chat", "info"),
+}
 
-def test_catalog_covers_exactly_the_frozen_section_2_events() -> None:
-    """The dispatcher's CATALOG is the frozen table — nothing missing, nothing
-    invented — and every (category, severity) pair matches the document."""
+
+def test_catalog_covers_exactly_the_frozen_section_2_events_plus_named_additions() -> None:
+    """The dispatcher's CATALOG is the frozen table PLUS the explicit,
+    named POST_FREEZE_ADDITIONS above — nothing missing, nothing
+    UNTRACKED-invented — and every (category, severity) pair matches."""
     from oryx.services.activity.dispatcher import CATALOG, SUBSCRIBED_EVENTS
 
-    assert set(CATALOG) == set(FROZEN_SECTION_2)
-    assert set(SUBSCRIBED_EVENTS) == set(FROZEN_SECTION_2)
-    for name, (category, severity) in FROZEN_SECTION_2.items():
+    expected = {**FROZEN_SECTION_2, **POST_FREEZE_ADDITIONS}
+    assert set(CATALOG) == set(expected)
+    assert set(SUBSCRIBED_EVENTS) == set(expected)
+    for name, (category, severity) in expected.items():
         assert (CATALOG[name].category, CATALOG[name].severity) == (category, severity), name
 
 
@@ -391,3 +402,50 @@ async def test_severity_error_for_publish_failed(sm) -> None:
     inbox = await _inbox_rows(sm, ids["accounts"][0])
     assert len(inbox) == 1
     assert inbox[0].severity == "error"
+
+
+# --- Team Chat foundation wave: CHAT_MESSAGE_SENT routes through the real,
+# unmodified dispatcher (post-freeze addition — deliberately NOT added to
+# FROZEN_SECTION_2 above, which is pinned to the frozen Phase 6 doc). ---
+
+
+@pytest.mark.asyncio
+async def test_chat_message_sent_dispatches_via_real_notification_dispatcher(sm) -> None:
+    from oryx.services.workspaces.events.constants import CHAT_MESSAGE_SENT
+
+    ids = await _seed_workspace(sm, members=2)
+    sender, other = ids["accounts"]
+
+    await _dispatcher(sm)(_event(CHAT_MESSAGE_SENT, workspace_id=ids["workspace"]))
+
+    # Both real workspace members get an inbox row (the dispatcher resolves
+    # every account in the event's workspace, not just the sender).
+    for account in (sender, other):
+        inbox = await _inbox_rows(sm, account)
+        assert len(inbox) == 1
+        assert inbox[0].type == "chat"
+        assert inbox[0].severity == "info"
+        assert inbox[0].title == "New message"
+
+        logs = await _log_rows(sm, account)
+        assert len(logs) == 1
+        assert logs[0].action_taken == "notification_created"
+
+
+@pytest.mark.asyncio
+async def test_chat_notifications_respect_the_global_chat_toggle(sm) -> None:
+    """The single global toggle from services/activity/preferences.py's
+    NOTIFICATION_CATEGORIES — proves 'chat' resolves through the exact same
+    preference machinery as every other category, no parallel path."""
+    from oryx.services.workspaces.events.constants import CHAT_MESSAGE_SENT
+
+    ids = await _seed_workspace(sm)
+    account = ids["accounts"][0]
+    await _set_preference(sm, account_id=account, type_="chat", frequency="off")
+
+    await _dispatcher(sm)(_event(CHAT_MESSAGE_SENT, workspace_id=ids["workspace"]))
+
+    assert await _inbox_rows(sm, account) == []
+    logs = await _log_rows(sm, account)
+    assert len(logs) == 1
+    assert logs[0].action_taken == "suppressed_by_preference"

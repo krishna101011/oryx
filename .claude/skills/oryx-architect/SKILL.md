@@ -931,6 +931,35 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   deflate + hand-built IHDR/IDAT/IEND chunks) rather than pulling in a new
   image lib — fine for flat placeholder color swaps, NOT a substitute for
   real icon/splash artwork (a HornMark or similar) if that's ever wanted.
+- A "FROZEN" EXACT-MATCH TEST NEEDS AN EXPLICIT, NAMED WIDENING WHEN A REAL
+  POST-FREEZE ADDITION LANDS — DON'T LET IT SILENTLY FAIL (Team Chat
+  foundation wave, 2026-07-27). test_notification_dispatcher.py's
+  test_catalog_covers_exactly_the_frozen_section_2_events asserts
+  `set(CATALOG) == set(FROZEN_SECTION_2)` — a deliberate drift guard against
+  the frozen Phase 6 doc. Adding a legitimate new CATALOG entry for a later
+  wave (CHAT_MESSAGE_SENT) breaks that exact-match on purpose; the fix is
+  NOT to loosen the assertion but to add a small, explicitly-named
+  POST_FREEZE_ADDITIONS dict beside FROZEN_SECTION_2 and assert against
+  `{**FROZEN_SECTION_2, **POST_FREEZE_ADDITIONS}` — same pattern as widening
+  a frozen enum: additive, and named, never silent. Same wave found a sibling
+  trap in test_automation_hub_api.py: CATEGORIES/len(grid)==12/len(others)==11
+  are separately pinned to the pre-chat 4-category grid and needed their own
+  explicit update (to 5/15/14) — grep for a category tuple's exact literal
+  member list AND every hardcoded count derived from it before assuming a
+  NOTIFICATION_CATEGORIES widen is test-safe.
+- RUNNING A MIGRATION AGAINST oryx_test WHILE A BACKGROUND FULL-SUITE PYTEST
+  RUN IS STILL IN FLIGHT ON THE SAME DB is a real race worth avoiding, even
+  though it happened to complete cleanly this one time (Team Chat foundation
+  wave, 2026-07-27: `alembic upgrade head` applying a CREATE TABLE + ALTER
+  TYPE ADD VALUE landed mid-run of an already-launched full-suite pytest
+  background job on the identical oryx_test connection string). A pure
+  additive migration (new table, new enum value) happened not to collide
+  with the running suite's queries against pre-existing tables, but a
+  migration that ALTERs an existing table's columns while a live suite reads
+  that same table could deadlock or observe a half-migrated schema. Always
+  let an in-flight full-suite background run finish (or stop it first, e.g.
+  via TaskStop) before applying a new migration to the same test database —
+  don't rely on "it happened to be safe" repeating.
 
 ## What This Skill Deliberately Does NOT Contain
 

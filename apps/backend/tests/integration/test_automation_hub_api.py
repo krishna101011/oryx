@@ -17,7 +17,10 @@ from httpx import ASGITransport, AsyncClient
 
 pytestmark = pytest.mark.requires_db
 
-CATEGORIES = ("security", "system", "verification", "publishing")
+# 'chat' added by the Team Chat foundation wave (services/activity/
+# preferences.py's NOTIFICATION_CATEGORIES) — a fifth real category resolved
+# by the same grid, not a parallel preference concept.
+CATEGORIES = ("security", "system", "verification", "publishing", "chat")
 CHANNELS = ("in_app", "push", "email")
 
 
@@ -51,14 +54,14 @@ async def _signup(client: AsyncClient) -> dict:
 @pytest.mark.asyncio
 async def test_alert_preferences_get_returns_resolved_grid(app) -> None:
     """A brand-new account with NO stored rows gets the complete backfilled
-    grid: 4 categories x 3 channels at the shared default 'instant' — and no
+    grid: 5 categories x 3 channels at the shared default 'instant' — and no
     cadence-label types (instant_alert/daily_digest/weekly_digest) appear."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
         ids = await _signup(client)
         res = await client.get("/v1/activity/alerts/preferences", headers=ids["headers"])
         assert res.status_code == 200
         grid = res.json()["data"]
-        assert len(grid) == 12
+        assert len(grid) == 15
         combos = {(p["type"], p["channel"]) for p in grid}
         assert combos == {(c, ch) for c in CATEGORIES for ch in CHANNELS}
         assert all(p["frequency"] == "instant" for p in grid)
@@ -68,7 +71,7 @@ async def test_alert_preferences_get_returns_resolved_grid(app) -> None:
 @pytest.mark.asyncio
 async def test_alert_preferences_put_then_get_roundtrip(app) -> None:
     """The screen's write path: PUT verification/in_app to 'daily', then GET —
-    exactly that cell changed, the other 11 stay at the resolved default."""
+    exactly that cell changed, the other 14 stay at the resolved default."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
         ids = await _signup(client)
         put = await client.put(
@@ -85,7 +88,7 @@ async def test_alert_preferences_put_then_get_roundtrip(app) -> None:
         by_combo = {(p["type"], p["channel"]): p["frequency"] for p in grid}
         assert by_combo[("verification", "in_app")] == "daily"
         others = [f for k, f in by_combo.items() if k != ("verification", "in_app")]
-        assert len(others) == 11
+        assert len(others) == 14
         assert all(f == "instant" for f in others)
 
 

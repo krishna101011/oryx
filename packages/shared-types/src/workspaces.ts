@@ -1,4 +1,4 @@
-import type { Id, Timestamp } from './common';
+import type { Id, Pagination, Timestamp } from './common';
 
 export type WorkspaceKind = 'personal' | 'team';
 // Billing foundation wave: widened from ('free'|'pro'|'enterprise') to the
@@ -129,4 +129,60 @@ export interface WorkspaceActivityEvent {
 
 export interface WorkspaceActivityListResponse {
   events: WorkspaceActivityEvent[];
+}
+
+// ============================================================================
+// Team Chat foundation wave — a single workspace-wide channel (no multi-
+// conversation/DM support yet; that's a later, separate scope). Polling-
+// friendly: GET /v1/workspaces/messages takes a real cursor (`since`) so a
+// second poll returns only messages newer than the last one the client saw,
+// not the whole history again — deliberately NOT the unpaginated "latest 50"
+// shape WorkspaceAuditLog uses (recon flagged that as unfit for message
+// history: no pagination, no edit/delete semantics). No websockets/real-time
+// transport — this is HTTP polling only, per the frozen wave scope.
+// ============================================================================
+
+/** `body` is null once `deletedAt` is set — soft-delete redacts content from
+ * every API response while the row (and its audit trail) stays in the DB;
+ * `editedAt` is set on any real edit and left null otherwise. */
+export interface ChatMessage {
+  id: Id;
+  workspaceId: Id;
+  senderAccountId: Id;
+  body: string | null;
+  createdAt: Timestamp;
+  editedAt: Timestamp | null;
+  deletedAt: Timestamp | null;
+}
+
+export interface SendChatMessageRequest {
+  body: string;
+}
+
+export interface EditChatMessageRequest {
+  body: string;
+}
+
+/** GET /v1/workspaces/messages — `since` is an opaque cursor from a prior
+ * response's `meta.pagination.nextCursor` (same Phase 1 cursor envelope
+ * `claims.ts` uses). Omitting `since` returns the latest page of history;
+ * passing the last cursor a client saw returns only messages strictly after
+ * it — the real "don't refetch the whole history on every poll" behavior. */
+export interface ChatMessagesListResponse {
+  messages: ChatMessage[];
+  meta: { pagination: Pagination };
+}
+
+/** One row per (workspace, account) — the minimal marker an unread indicator
+ * needs. `lastReadMessageId`/`lastReadAt` are both null until the account
+ * marks anything read at least once. */
+export interface ChatReadMarker {
+  workspaceId: Id;
+  accountId: Id;
+  lastReadMessageId: Id | null;
+  lastReadAt: Timestamp | null;
+}
+
+export interface MarkChatReadRequest {
+  messageId: Id;
 }

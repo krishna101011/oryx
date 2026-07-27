@@ -282,7 +282,7 @@ class AlertPreference(Base):
     type: Mapped[str] = mapped_column(
         Enum(
             "security", "system", "instant_alert", "daily_digest", "weekly_digest",
-            "verification", "publishing",
+            "verification", "publishing", "chat",
             name="activity_type",
         ),
         primary_key=True,
@@ -335,7 +335,7 @@ class ActivityInbox(Base):
     type: Mapped[str] = mapped_column(
         Enum(
             "security", "system", "instant_alert", "daily_digest", "weekly_digest",
-            "verification", "publishing",
+            "verification", "publishing", "chat",
             name="activity_type", create_type=False,
         ),
         nullable=False,
@@ -435,7 +435,7 @@ class DigestRun(Base):
     activity_type: Mapped[str] = mapped_column(
         Enum(
             "security", "system", "instant_alert", "daily_digest", "weekly_digest",
-            "verification", "publishing",
+            "verification", "publishing", "chat",
             name="activity_type", create_type=False,
         ),
         nullable=False,
@@ -1699,3 +1699,54 @@ class WorkspaceAuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class ChatMessage(Base):
+    """Team Chat foundation wave — a single workspace-wide channel (no
+    conversation/thread concept yet). Deliberately NOT modeled on
+    WorkspaceAuditLog: that table is an unpaginated "latest 50" append-only
+    log with no edit/delete semantics, which doesn't fit real message
+    history (recon: docs/design-reference has no chat mockup, and
+    WorkspaceAuditLog's own read path has zero pagination). `body` is
+    redacted to null at the API layer (never in this column) once
+    `deleted_at` is set — the row and its real content stay in the DB, only
+    clients stop seeing it. `edited_at` is set on a real edit and left null
+    otherwise. See services/workspaces/repository.py for the cursor-paginated
+    read path (ORDER BY created_at, id — a stable compound order so a cursor
+    of (created_at, id) never skips or duplicates a row on a timestamp tie)."""
+
+    __tablename__ = "chat_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    sender_account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WorkspaceChatRead(Base):
+    """One row per (workspace, account) — the minimal last-read marker an
+    unread indicator needs. Upserted on every real POST
+    /workspaces/messages/read; both fields stay null until an account marks
+    anything read at least once."""
+
+    __tablename__ = "workspace_chat_reads"
+
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), primary_key=True
+    )
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True
+    )
+    last_read_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("chat_messages.id", ondelete="SET NULL")
+    )
+    last_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

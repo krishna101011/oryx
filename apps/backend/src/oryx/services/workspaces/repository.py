@@ -6,14 +6,16 @@ import secrets as py_secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oryx.core.models import (
     Account,
+    ChatMessage,
     Workspace,
     WorkspaceAuditLog,
+    WorkspaceChatRead,
     WorkspaceInvite,
     WorkspaceMember,
 )
@@ -314,3 +316,134 @@ class WorkspaceRepository:
             .limit(_ACTIVITY_LIST_LIMIT)
         )
         return list(result.scalars().all())
+
+    # ---- chat (Team Chat foundation wave) ----
+    #
+    # Deliberately NOT modeled on list_activity above: that method is the
+    # unpaginated "latest 50" shape recon flagged as unfit for real message
+    # history. list_latest_messages/list_messages_after together give a real,
+    # stable cursor over (created_at, id) — see ChatMessage's docstring in
+    # core/models.py for why the compound order matters.
+
+    async def send_message(
+        self, *, workspace_id: uuid.UUID, sender_account_id: uuid.UUID, body: str
+    ) -> ChatMessage:
+        row = ChatMessage(
+            id=uuid.uuid4(),
+            workspace_id=workspace_id,
+            sender_account_id=sender_account_id,
+            body=body,
+        )
+        self.db.add(row)
+        await self.db.flush()
+        return row
+
+    async def get_message(self, message_id: uuid.UUID) -> ChatMessage | None:
+        result = await self.db.execute(
+            select(ChatMessage).where(ChatMessage.id == message_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def list_latest_messages(
+        self, *, workspace_id: uuid.UUID, limit: int
+    ) -> list[ChatMessage]:
+        """The initial page: the most recent `limit` messages, returned in
+        chronological (ascending) order so a client can render them
+        top-to-bottom directly. Fetched DESC (to get the recent end) then
+        reversed in Python — the ORDER BY DESC ... LIMIT is what makes this
+        a bounded, indexed query rather than a full table scan."""
+        result = await self.db.execute(
+            select(ChatMessage)
+            .where(ChatMessage.workspace_id == workspace_id)
+            .order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
+            .limit(limit)
+        )
+        rows = list(result.scalars().all())
+        rows.reverse()
+        return rows
+
+    async def list_messages_after(
+        self,
+        *,
+        workspace_id: uuid.UUID,
+        after_created_at: datetime,
+        after_id: uuid.UUID,
+        limit: int,
+    ) -> list[ChatMessage]:
+        """The poll path: every message strictly newer than (after_created_at,
+        after_id) — the compound comparison is what makes a cursor safe when
+        two messages tie on created_at (same-millisecond sends), matching the
+        ORDER BY below so a row is never skipped or re-delivered."""
+        result = await self.db.execute(
+            select(ChatMessage)
+            .where(
+                ChatMessage.workspace_id == workspace_id,
+                or_(
+                    ChatMessage.created_at > after_created_at,
+                    and_(
+                        ChatMessage.created_at == after_created_at,
+                        ChatMessage.id > after_id,
+                    ),
+                ),
+            )
+            .order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    async def edit_message(
+        self, *, message_id: uuid.UUID, body: str
+    ) -> ChatMessage | None:
+        """Returns the updated row, or None if it wasn't an editable message
+        (missing or already soft-deleted) — same "caller decides what that
+        means" contract as change_member_role. The sender-ownership check
+        happens in the router (it needs the pre-update row to build the
+        403/404 distinction), not here."""
+        result = await self.db.execute(
+            update(ChatMessage)
+            .where(ChatMessage.id == message_id, ChatMessage.deleted_at.is_(None))
+            .values(body=body, edited_at=datetime.now(UTC))
+            .returning(ChatMessage)
+        )
+        return result.scalar_one_or_none()
+
+    async def soft_delete_message(self, *, message_id: uuid.UUID) -> ChatMessage | None:
+        result = await self.db.execute(
+            update(ChatMessage)
+            .where(ChatMessage.id == message_id, ChatMessage.deleted_at.is_(None))
+            .values(deleted_at=datetime.now(UTC))
+            .returning(ChatMessage)
+        )
+        return result.scalar_one_or_none()
+
+    async def mark_read(
+        self, *, workspace_id: uuid.UUID, account_id: uuid.UUID, message_id: uuid.UUID
+    ) -> datetime:
+        """Upsert — same on_conflict_do_update shape as join_workspace above."""
+        now = datetime.now(UTC)
+        stmt = (
+            pg_insert(WorkspaceChatRead)
+            .values(
+                workspace_id=workspace_id,
+                account_id=account_id,
+                last_read_message_id=message_id,
+                last_read_at=now,
+            )
+            .on_conflict_do_update(
+                index_elements=["workspace_id", "account_id"],
+                set_={"last_read_message_id": message_id, "last_read_at": now},
+            )
+        )
+        await self.db.execute(stmt)
+        return now
+
+    async def get_read_marker(
+        self, *, workspace_id: uuid.UUID, account_id: uuid.UUID
+    ) -> WorkspaceChatRead | None:
+        result = await self.db.execute(
+            select(WorkspaceChatRead).where(
+                WorkspaceChatRead.workspace_id == workspace_id,
+                WorkspaceChatRead.account_id == account_id,
+            )
+        )
+        return result.scalar_one_or_none()

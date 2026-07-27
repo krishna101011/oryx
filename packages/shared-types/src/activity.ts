@@ -7,7 +7,8 @@ export type ActivityType =
   | 'daily_digest' // Phase 6 — DigestWorker bundle-row marker
   | 'weekly_digest' // Phase 6 — DigestWorker bundle-row marker
   | 'verification' // Phase 6 Wave A (migration 0014 widened the DB enum)
-  | 'publishing'; // Phase 6 Wave A (migration 0014 widened the DB enum)
+  | 'publishing' // Phase 6 Wave A (migration 0014 widened the DB enum)
+  | 'chat'; // Team Chat foundation wave (migration 0034 widened the DB enum)
 
 export interface ActivityItem {
   id: Id;

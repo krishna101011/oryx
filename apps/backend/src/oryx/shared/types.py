@@ -236,6 +236,52 @@ class WorkspaceActivityListResponse(_Base):
 
 
 # ============================================================================
+# Team Chat foundation wave — a single workspace-wide channel (no multi-
+# conversation/DM support yet). Polling-friendly: GET /v1/workspaces/messages
+# takes a real cursor (`since`) so a second poll returns only messages newer
+# than the last one the client saw, not the whole history again.
+# ============================================================================
+
+
+class ChatMessage(_Base):
+    id: str
+    workspace_id: str = Field(alias="workspaceId")
+    sender_account_id: str = Field(alias="senderAccountId")
+    body: str | None = None
+    created_at: datetime = Field(alias="createdAt")
+    edited_at: datetime | None = Field(default=None, alias="editedAt")
+    deleted_at: datetime | None = Field(default=None, alias="deletedAt")
+
+
+class SendChatMessageRequest(_Base):
+    body: str
+
+
+class EditChatMessageRequest(_Base):
+    body: str
+
+
+class _ChatMessagesListMeta(_Base):
+    pagination: Pagination
+
+
+class ChatMessagesListResponse(_Base):
+    messages: list[ChatMessage]
+    meta: _ChatMessagesListMeta
+
+
+class ChatReadMarker(_Base):
+    workspace_id: str = Field(alias="workspaceId")
+    account_id: str = Field(alias="accountId")
+    last_read_message_id: str | None = Field(default=None, alias="lastReadMessageId")
+    last_read_at: datetime | None = Field(default=None, alias="lastReadAt")
+
+
+class MarkChatReadRequest(_Base):
+    message_id: str = Field(alias="messageId")
+
+
+# ============================================================================
 # Preferences
 # ============================================================================
 
@@ -426,7 +472,7 @@ class FeatureFlagOverride(_Base):
 
 ActivityType = Literal[
     "security", "system", "instant_alert", "daily_digest", "weekly_digest",
-    "verification", "publishing",
+    "verification", "publishing", "chat",
 ]
 
 
