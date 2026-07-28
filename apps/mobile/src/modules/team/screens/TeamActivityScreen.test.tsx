@@ -1,8 +1,8 @@
 /**
  * TeamActivityScreen — the Team section's full activity history. Same
- * seeded-cache harness convention as TeamHomeScreen.test.tsx: no chat/
- * messaging surface exists here (explicitly out of scope this wave), only a
- * read-only real event log.
+ * seeded-cache harness convention as TeamHomeScreen.test.tsx: this screen
+ * is still only a read-only real event log; chat lives on its own screen
+ * (TeamChatScreen, see TeamChatScreen.test.tsx).
  */
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';

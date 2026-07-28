@@ -54,6 +54,7 @@ module.exports = {
   ActivityIndicator: host('ActivityIndicator'),
   Pressable: host('Pressable'),
   TouchableOpacity: host('TouchableOpacity'),
+  KeyboardAvoidingView: host('KeyboardAvoidingView'),
   Image: host('Image'),
   Animated: {
     View: host('Animated.View'),

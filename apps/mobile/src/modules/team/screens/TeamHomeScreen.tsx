@@ -100,6 +100,28 @@ export const TeamHomeScreen: React.FC = () => {
         </Text>
         <Spacer size={6} />
 
+        <Card>
+          <View style={styles.chatEntryRow}>
+            <Icon name="MessageCircle" size="md" color="brand" />
+            <Spacer size={3} axis="horizontal" />
+            <View style={{ flex: 1 }}>
+              <Text variant="body">Team chat</Text>
+              <Spacer size={1} />
+              <Text variant="caption" color="tertiary">
+                One channel for the whole workspace
+              </Text>
+            </View>
+            <Button
+              label="Open"
+              variant="ghost"
+              size="sm"
+              onPress={() => navigation.navigate('TeamChat' as never)}
+              testID="open-team-chat-button"
+            />
+          </View>
+        </Card>
+        <Spacer size={6} />
+
         <Card
           header={
             <CardHeader
@@ -334,6 +356,7 @@ export const TeamHomeScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
+  chatEntryRow: { flexDirection: 'row', alignItems: 'center' },
   rolePicker: {
     flexDirection: 'row',
     flexWrap: 'wrap',

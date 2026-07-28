@@ -8,9 +8,9 @@ import { useTeamActivity } from '../hooks/useTeamActivity';
 /**
  * Full Team activity history — invited/joined/removed events for the
  * current workspace, real data from GET /workspaces/activity (Team
- * promotion wave, 2026-07-26). No chat/messaging here: this is a read-only
- * factual log, not a comment thread — that's explicitly out of scope this
- * wave.
+ * promotion wave, 2026-07-26). Still a read-only factual log, not a
+ * conversation — real-time messaging lives on its own screen,
+ * TeamChatScreen, reached from TeamHome.
  */
 export const TeamActivityScreen: React.FC = () => {
   const me = useMe();

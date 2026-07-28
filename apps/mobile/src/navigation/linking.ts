@@ -32,6 +32,7 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
             screens: {
               TeamHome: 'team',
               TeamActivity: 'team/activity',
+              TeamChat: 'team/chat',
             },
           },
           Activity: 'activity',

@@ -960,6 +960,48 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   let an in-flight full-suite background run finish (or stop it first, e.g.
   via TaskStop) before applying a new migration to the same test database —
   don't rely on "it happened to be safe" repeating.
+- types.py's "THIS FILE IS GENERATED — DO NOT EDIT" HEADER IS STALE (Team
+  Chat UI wave, 2026-07-27). `pnpm gen:pydantic` / `drift:check` (same
+  script, infra/scripts/gen-pydantic.ts) does NOT generate the file — its
+  own top comment says so: "Phase 2: the type catalog outgrew that
+  approach. The pydantic file is now maintained as a *committed mirror*."
+  The script only verifies (a) every shared-types source is listed and
+  present, (b) types.py parses as Python, (c) every TS string-literal
+  union has an identically-named, identically-membered Python `Literal`.
+  It does NOT check that non-Literal shapes (interfaces/response models)
+  match — removing a whole unused response type from workspaces.ts and
+  running gen:pydantic produced zero diff and zero error, because nothing
+  in the check inspects non-Literal type bodies. Fixing this class of
+  drift means hand-editing types.py to match the TS source, then running
+  drift:check only to confirm the Literal unions still agree — the check
+  is a partial guardrail, not proof the mirror is otherwise correct.
+- THE REAL DEV DATABASE (`anant`) HAS THE SAME TEST-FIXTURE POLLUTION
+  PROBLEM AS source_catalog, BUT FOR WORKSPACES (found seeding Team Chat
+  screenshots, 2026-07-27). `SELECT count(*) FROM workspaces` on the real
+  dev DB returned 971 rows, the overwhelming majority named "Test User's
+  Workspace" / "Admin WS" / "Claims WS" etc. — leftover from prior
+  integration-test runs that were pointed at this DB instead of a
+  dedicated oryx_test at some point. Separately and more surprising: `kind`
+  is `'personal'` on EVERY SINGLE ROW, including the owner's real,
+  actively-used, multi-member workspaces (e.g. "Live Verify's Workspace",
+  which has a real owner + admin + editor). `kind='team'` has never once
+  been set anywhere in this database. Nothing in the codebase currently
+  reads `Workspace.kind` to gate multi-member behavior (confirmed: chat,
+  invites, member list, activity all work identically regardless of
+  `kind`) — treat `kind` as a cosmetic/future-facing label only, never as
+  a signal for "does this workspace have real members," and don't be
+  surprised that seeding a second real member into a `kind='personal'`
+  workspace works fine end-to-end.
+- KeyboardAvoidingView WAS MISSING FROM THE RN TEST SHIM (same wave).
+  `src/test/shims/react-native.js` aliases the platform layer to inert
+  host components for `tsx --test` rendering (see the 2026-07-14/07-25
+  entries above for the pattern), but had never needed
+  `KeyboardAvoidingView` until TeamChatScreen wrapped its compose bar in
+  one — any screen using it crashes under the render-test harness with an
+  "element type is invalid" error until it's added. Added as
+  `host('KeyboardAvoidingView')`, same one-line pattern as every other
+  entry; check this file before assuming a real RN component can't be
+  rendered under the harness.
 
 ## What This Skill Deliberately Does NOT Contain
 

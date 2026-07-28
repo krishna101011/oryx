@@ -4,6 +4,7 @@ import { useTheme } from '@oryx/design-system';
 import type { TeamStackParamList } from './types';
 import { TeamHomeScreen } from '../modules/team/screens/TeamHomeScreen';
 import { TeamActivityScreen } from '../modules/team/screens/TeamActivityScreen';
+import { TeamChatScreen } from '../modules/team/screens/TeamChatScreen';
 
 const Stack = createNativeStackNavigator<TeamStackParamList>();
 
@@ -19,6 +20,7 @@ export const TeamStack: React.FC = () => {
     >
       <Stack.Screen name="TeamHome" component={TeamHomeScreen} options={{ headerShown: false }} />
       <Stack.Screen name="TeamActivity" component={TeamActivityScreen} options={{ title: 'Activity' }} />
+      <Stack.Screen name="TeamChat" component={TeamChatScreen} options={{ title: 'Chat' }} />
     </Stack.Navigator>
   );
 };

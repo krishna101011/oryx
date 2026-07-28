@@ -68,10 +68,12 @@ export type ResearchStackParamList = {
 // Team promotion wave (2026-07-26) — Team is now its own top-level tab
 // (previously Settings > Members). TeamHome carries the real member list +
 // invite form (moved verbatim from the old MembersScreen); TeamActivity is
-// the new real activity feed (invited/joined/removed events).
+// the real activity feed (invited/joined/removed events). TeamChat (Team
+// Chat foundation wave, 2026-07-27) is the single-channel workspace chat.
 export type TeamStackParamList = {
   TeamHome: undefined;
   TeamActivity: undefined;
+  TeamChat: undefined;
 };
 
 // Phase 5 Wave A — content tab stack

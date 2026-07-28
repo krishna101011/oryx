@@ -1,4 +1,4 @@
-import type { Id, Pagination, Timestamp } from './common';
+import type { Id, Timestamp } from './common';
 
 export type WorkspaceKind = 'personal' | 'team';
 // Billing foundation wave: widened from ('free'|'pro'|'enterprise') to the
@@ -167,11 +167,13 @@ export interface EditChatMessageRequest {
  * response's `meta.pagination.nextCursor` (same Phase 1 cursor envelope
  * `claims.ts` uses). Omitting `since` returns the latest page of history;
  * passing the last cursor a client saw returns only messages strictly after
- * it — the real "don't refetch the whole history on every poll" behavior. */
-export interface ChatMessagesListResponse {
-  messages: ChatMessage[];
-  meta: { pagination: Pagination };
-}
+ * it — the real "don't refetch the whole history on every poll" behavior.
+ * The real wire response is the generic `ApiResponse<ChatMessage[]>`
+ * envelope (flat array in `data`, `Pagination` in `meta.pagination`) — there
+ * is deliberately no dedicated response type for this endpoint; a prior
+ * `ChatMessagesListResponse { messages, meta }` shape was declared here but
+ * never matched what the router actually returns and was never imported
+ * anywhere, so it was removed rather than reconciled. */
 
 /** One row per (workspace, account) — the minimal marker an unread indicator
  * needs. `lastReadMessageId`/`lastReadAt` are both null until the account

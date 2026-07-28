@@ -261,13 +261,10 @@ class EditChatMessageRequest(_Base):
     body: str
 
 
-class _ChatMessagesListMeta(_Base):
-    pagination: Pagination
-
-
-class ChatMessagesListResponse(_Base):
-    messages: list[ChatMessage]
-    meta: _ChatMessagesListMeta
+# GET /v1/workspaces/messages' real response is the generic
+# ApiResponse[list[ChatMessage]] envelope (flat array in `data`, `Pagination`
+# in `meta.pagination`) — see workspaces.ts for why no dedicated response
+# model exists for this endpoint.
 
 
 class ChatReadMarker(_Base):
