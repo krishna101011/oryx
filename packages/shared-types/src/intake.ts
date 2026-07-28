@@ -16,15 +16,10 @@ export interface IntakeItem {
   fingerprint: string;
 }
 
-export interface NormalizedItemView {
-  intakeItemId: Id;
-  senderDomain: string | null;
-  senderLabel: string | null;
-  subject: string | null;
-  linkCount: number;
-  normalizedAt: Timestamp;
-  normalizerVersion: number;
-}
+/* GET /intake/items/recent's normalized-item shape is hand-built inline by
+ * the router (bodyText + links array, no normalizerVersion/normalizedAt) —
+ * it diverged from this NormalizedItemView declaration, which nothing ever
+ * imported, so it was removed rather than reconciled. */
 
 // ---- Manual ingest (CR-8, platform admin only) ----
 

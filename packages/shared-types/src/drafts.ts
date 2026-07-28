@@ -73,21 +73,18 @@ export interface DraftCitation {
   addedAt: Timestamp;
 }
 
-/** MeResponse.content counts (Phase 5 Wave A surface). */
-export interface ContentCounts {
-  draftCount: number;
-  pendingReviewCount: number;
-  scheduledCount: number;
-  publishedThisWeek: number;
-}
+/* MeResponse.content is the real Phase 5 Wave A counts surface — an inline
+ * `{ draftCount, pendingReviewCount, scheduledCount, publishedThisWeek }`
+ * object type on `MeResponse` itself (see auth.ts), mirrored on the Python
+ * side as `_MeContent`. A standalone `ContentCounts` interface with the same
+ * fields was declared here but never referenced by `MeResponse` or anywhere
+ * else, so it was removed rather than reconciled (same drift class the
+ * gen-pydantic unused-export check now catches). */
 
-/** POST /drafts/generate request (Phase 5 Wave B). */
-export interface GenerateRequest {
-  packetId: string;
-  format: ContentFormat;
-  templateId?: string | null;
-  instructions?: string | null;
-}
+/* POST /drafts/generate is served by the service-local `GenerateDraftRequest`
+ * schema in oryx.services.drafts.schemas, not a shared-types mirror type — a
+ * `GenerateRequest` interface was declared here but never imported by the
+ * router or mobile, so it was removed rather than reconciled. */
 
 /** POST /drafts/{id}/switch-format request (Phase 5 Wave B). */
 export interface SwitchFormatRequest {

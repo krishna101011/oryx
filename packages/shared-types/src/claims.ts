@@ -4,7 +4,7 @@
  * Claims are created by the verification pipeline (event handler), never
  * by direct API call; the Wave A surface is read-only.
  */
-import type { Id, Pagination, Timestamp } from './common';
+import type { Id, Timestamp } from './common';
 
 export type EpistemicType =
   | 'fact'
@@ -30,9 +30,11 @@ export interface Claim {
   createdAt: Timestamp;
 }
 
-/** List responses use the Phase 1 envelope; `meta.pagination` carries the
- *  cursor pair (the spec's `PaginationMeta` maps onto `Pagination`). */
-export interface ClaimListResponse {
-  claims: Claim[];
-  meta: { pagination: Pagination };
-}
+/** GET /claims' real response is the generic `ApiResponse<Claim[]>` envelope
+ * (flat array in `data`, `Pagination` in `meta.pagination`) — there is
+ * deliberately no dedicated response type for this endpoint; a prior
+ * `ClaimListResponse { claims, meta }` shape was declared here but never
+ * matched what the router actually returns and was never imported anywhere,
+ * so it was removed rather than reconciled (same drift class the gen-pydantic
+ * unused-export check now catches — see workspaces.ts's ChatMessagesListResponse
+ * removal for the precedent). */

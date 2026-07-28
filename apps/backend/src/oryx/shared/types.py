@@ -782,14 +782,10 @@ class IntakeItem(_Base):
     fingerprint: str
 
 
-class NormalizedItemView(_Base):
-    intake_item_id: str = Field(alias="intakeItemId")
-    sender_domain: str | None = Field(default=None, alias="senderDomain")
-    sender_label: str | None = Field(default=None, alias="senderLabel")
-    subject: str | None = None
-    link_count: int = Field(alias="linkCount")
-    normalized_at: datetime = Field(alias="normalizedAt")
-    normalizer_version: int = Field(alias="normalizerVersion")
+# GET /intake/items/recent's normalized-item shape is hand-built inline by
+# the router (bodyText + links array, no normalizerVersion/normalizedAt) — it
+# diverged from this NormalizedItemView declaration, which nothing ever
+# imported, so it was removed rather than reconciled.
 
 
 class IntakeItemReceived(_Base):
@@ -846,13 +842,11 @@ class Claim(_Base):
     created_at: datetime = Field(alias="createdAt")
 
 
-class _ClaimListMeta(_Base):
-    pagination: Pagination
-
-
-class ClaimListResponse(_Base):
-    claims: list[Claim]
-    meta: _ClaimListMeta
+# GET /claims' real response is the generic ApiResponse[list[Claim]] envelope
+# (flat array in `data`, Pagination in `meta.pagination`) — a prior
+# ClaimListResponse { claims, meta } shape was declared here but never matched
+# what the router actually returns and was never imported anywhere, so it was
+# removed rather than reconciled.
 
 
 # ============================================================================
@@ -948,6 +942,9 @@ class SourceCredibility(_Base):
     verified_claim_count: int = Field(alias="verifiedClaimCount")
     contested_claim_count: int = Field(alias="contestedClaimCount")
     total_claim_count: int = Field(alias="totalClaimCount")
+    # Real join, computed only on the single-source read; absent (not 0) on
+    # the list endpoint (source-governance wave, 2026-07-22).
+    conflict_count: int | None = Field(default=None, alias="conflictCount")
     last_evaluated_at: datetime | None = Field(default=None, alias="lastEvaluatedAt")
     updated_at: datetime = Field(alias="updatedAt")
 
@@ -1187,18 +1184,13 @@ class DraftCitation(_Base):
     added_at: datetime = Field(alias="addedAt")
 
 
-class ContentCounts(_Base):
-    draft_count: int = Field(alias="draftCount")
-    pending_review_count: int = Field(alias="pendingReviewCount")
-    scheduled_count: int = Field(alias="scheduledCount")
-    published_this_week: int = Field(alias="publishedThisWeek")
+# MeResponse.content is the real Phase 5 Wave A counts surface (_MeContent,
+# below) — a standalone ContentCounts class with the same fields was declared
+# here but never referenced by MeResponse or anywhere else, so it was removed.
 
-
-class GenerateRequest(_Base):
-    packet_id: str = Field(alias="packetId")
-    format: ContentFormat
-    template_id: str | None = Field(default=None, alias="templateId")
-    instructions: str | None = Field(default=None)
+# POST /drafts/generate is served by the service-local GenerateDraftRequest
+# schema in oryx.services.drafts.schemas — a GenerateRequest class was
+# declared here but never imported by the router, so it was removed.
 
 
 class SwitchFormatRequest(_Base):

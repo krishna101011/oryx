@@ -1,3 +1,5 @@
+import type { ContentFormat } from './drafts';
+
 export type ContentTone =
   | "formal"
   | "analytical"
@@ -9,7 +11,7 @@ export interface ContentTemplate {
   id: string;
   workspaceId: string;
   name: string;
-  format: string;
+  format: ContentFormat;
   tone: ContentTone;
   maxWords: number | null;
   minWords: number | null;
@@ -19,7 +21,7 @@ export interface ContentTemplate {
 
 export interface CreateTemplateRequest {
   name: string;
-  format: string;
+  format: ContentFormat;
   tone?: ContentTone;
   maxWords?: number | null;
   minWords?: number | null;
