@@ -40,17 +40,27 @@ failure can never roll back the notification itself:
      No registered device counts as a failure (push_failed, reason logged),
      never a silent skip.
 
-Email delivery (instant alerts only — emailed digests remain out of scope per
-the frozen doc's §4.2 carve-out) is a third per-account step with the exact
-same discipline as push: it runs strictly AFTER the in_app transaction
-committed, resolves the (account, category, channel='email') preference with
-the shared-default logic, evaluates the same channel-agnostic quiet_hours
-evaluator, holds no db transaction across the provider call (providers/email/
-factory.py, gated by EMAIL_PROVIDER), and commits ONE decision row
-(channel='email', action email_sent/email_failed/email_suppressed_quiet_hours)
-in its own transaction. The recipient is always the account's own signup
-address (accounts.email, NOT NULL) — unlike push there is no
-missing-device-token failure mode.
+Email delivery for INSTANT alerts (single real-time CATALOG events) is a third
+per-account step with the exact same discipline as push: it runs strictly
+AFTER the in_app transaction committed, resolves the (account, category,
+channel='email') preference with the shared-default logic, evaluates the same
+channel-agnostic quiet_hours evaluator, holds no db transaction across the
+provider call (providers/email/factory.py, gated by EMAIL_PROVIDER), and
+commits ONE decision row (channel='email', action
+email_sent/email_failed/email_suppressed_quiet_hours) in its own transaction.
+The recipient is always the account's own signup address (accounts.email,
+NOT NULL) — unlike push there is no missing-device-token failure mode.
+
+Emailed DIGESTS (bundled summaries, not single events) are a separate former
+§4.2 carve-out, now closed — but NOT here. DigestWorker (services/activity/
+digest.py) delivers its own digest emails directly, reusing the same
+get_email_provider()/is_quiet_now/resolve_frequency building blocks this
+module uses, because a digest bundle is account-scoped (workspace_id is None)
+and already has its in_app row written directly by DigestWorker — routing it
+through this class's CATALOG/event-bus/workspace-fan-out machinery would
+either be dropped by the `event.workspace_id is None` guard below or
+duplicate the bundle row. See digest.py's module docstring for the full
+reasoning.
 """
 from __future__ import annotations
 

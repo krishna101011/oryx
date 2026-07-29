@@ -46,6 +46,29 @@ def test_alert_template_renders_subject_and_plain_body() -> None:
     assert "verification.conflict.detected" in body
 
 
+def test_digest_template_renders_bundle_summary_not_single_event() -> None:
+    """Genuinely different shape from _alert(): count/highlights over a
+    window, no severity/event_type fields at all."""
+    subject, body = render(
+        EmailMessage(
+            to="u@x",
+            template="digest",
+            variables={
+                "title": "Daily digest — 3 verification updates",
+                "category": "verification",
+                "frequency": "daily",
+                "count": "3",
+                "highlights": "first; second; third",
+            },
+        )
+    )
+    assert subject == "ORYX daily digest: Daily digest — 3 verification updates"
+    assert "3 verification updates bundled into this daily digest" in body
+    assert "first; second; third" in body
+    assert "Severity" not in body
+    assert "Event" not in body
+
+
 def test_password_reset_template_renders_token_and_expiry() -> None:
     subject, body = render(
         EmailMessage(

@@ -1,4 +1,4 @@
-"""Template rendering for alert email.
+"""Template rendering for alert and digest email.
 
 The EmailMessage Protocol carries (template, variables) — the provider renders
 its own subject/body, exactly like newsletter.py builds its own text/plain
@@ -28,6 +28,33 @@ def _alert(variables: dict[str, str]) -> tuple[str, str]:
         "this category. Adjust this any time in Settings -> Notifications.",
     ]
     return f"ORYX alert: {title}", "\n".join(lines)
+
+
+def _digest(variables: dict[str, str]) -> tuple[str, str]:
+    """A bundled summary of multiple items — genuinely different shape from
+    _alert() above (one event, one line each), matching the real bundle
+    DigestWorker._digest_content produces (title/count/highlights over a
+    window, not a single event_type/severity pair)."""
+    title = variables.get("title", "Your ORYX digest")
+    category = variables.get("category", "-")
+    frequency = variables.get("frequency", "daily")
+    count = variables.get("count", "0")
+    highlights = variables.get("highlights", "")
+    label = "Daily" if frequency == "daily" else "Weekly"
+    plural = "" if count == "1" else "s"
+    lines = [
+        title,
+        "",
+        f"{count} {category} update{plural} bundled into this {label.lower()} digest:",
+        "",
+        highlights or "(no details available)",
+        "",
+        "Open ORYX to see the full activity feed.",
+        "",
+        "You are receiving this because email digests are enabled for this",
+        "category. Adjust this any time in Settings -> Notifications.",
+    ]
+    return f"ORYX {label.lower()} digest: {title}", "\n".join(lines)
 
 
 def _password_reset(variables: dict[str, str]) -> tuple[str, str]:
@@ -69,6 +96,8 @@ def render(message: EmailMessage) -> tuple[str, str]:
     """(subject, plain-text body) for a message. Never raises."""
     if message.template == "alert":
         return _alert(message.variables)
+    if message.template == "digest":
+        return _digest(message.variables)
     if message.template == "password_reset":
         return _password_reset(message.variables)
     if message.template == "invite":

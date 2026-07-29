@@ -6,16 +6,19 @@ FAKE email provider injected through the dispatcher's email_provider_factory
 seam — the real SendGrid/SMTP wire code has its own unit coverage in
 tests/unit/test_email_providers.py.
 
-Scope boundary under test throughout: EMAILED DIGESTS ARE OUT OF SCOPE
-(frozen Phase 6 doc §4.2 carve-out) — see
-test_digest_rows_do_not_trigger_email.
+Scope boundary under test throughout: this file covers INSTANT (single
+real-time CATALOG event) email alerts only, dispatched by
+NotificationDispatcher. Emailed DIGESTS (bundled summaries) are a separate
+former §4.2 carve-out, now closed — but delivered by DigestWorker itself, not
+by NotificationDispatcher (see digest.py's module docstring for why the
+dispatcher's workspace/CATALOG fan-out doesn't fit an account-scoped bundle);
+that coverage lives in test_digest_email.py, not here.
 
 The mandatory scenarios covered here:
   1. enabled pref sends + logs email_sent   test_email_sent_logged_via_fake_provider
   2. provider failure logs email_failed     test_provider_failure_logs_email_failed_without_crashing
   3. quiet window suppresses email          test_quiet_hours_inside_window_suppresses_email
   4. inbox+log decoupled from email step    test_inbox_and_log_survive_email_step_total_failure
-  5. digest rows never email                test_digest_rows_do_not_trigger_email
 """
 from __future__ import annotations
 
@@ -347,83 +350,7 @@ async def test_inbox_and_log_survive_email_step_total_failure(sm) -> None:
     assert in_app[0].activity_inbox_id == inbox[0].id
 
 
-# --- Mandatory scenario 5: digest rows do NOT trigger email (§4.2 carve-out) ---
-
-
-@pytest.mark.asyncio
-async def test_digest_rows_do_not_trigger_email(sm, monkeypatch) -> None:
-    """Emailed digests are explicitly out of scope (frozen §4.2). A digest
-    tick that really produces a bundle row must involve no email provider call
-    and write no email decision rows — with the provider factory globally
-    patched to a spy, so ANY email attempt from the digest path would be
-    caught. Mirrors test_digest_rows_do_not_trigger_push."""
-    from oryx.core.models import Account, ActivityInbox, AlertPreference, Profile
-    from oryx.services.activity import dispatcher as dispatcher_module
-    from oryx.services.activity.digest import DigestWorker
-
-    provider = FakeEmailProvider(ok=True)
-    monkeypatch.setattr(dispatcher_module, "get_email_provider", lambda: provider)
-
-    created = datetime(2026, 7, 1, 0, 0, tzinfo=UTC)
-    account_id = uuid.uuid4()
-    async with sm() as session:
-        session.add(
-            Account(
-                id=account_id,
-                email=f"mail+{account_id.hex[:8]}@oryx.test",
-                password_hash="x",
-                password_changed_at=created,
-                created_at=created,
-                status="active",
-            )
-        )
-        await session.flush()
-        session.add(Profile(account_id=account_id, display_name="M", timezone="UTC"))
-        session.add(
-            AlertPreference(
-                account_id=account_id, type="system", channel="in_app",
-                frequency="daily",
-            )
-        )
-        # Email explicitly enabled, so the boundary (not a preference) is what
-        # is being proven — same construction as the push boundary test.
-        session.add(
-            AlertPreference(
-                account_id=account_id, type="system", channel="email",
-                frequency="instant",
-            )
-        )
-        session.add(
-            ActivityInbox(
-                id=uuid.uuid4(), account_id=account_id, workspace_id=None,
-                type="system", severity="info", title="Bundled item", body=None,
-                data={}, created_at=datetime(2026, 7, 2, 12, 0, tzinfo=UTC),
-            )
-        )
-        await session.commit()
-
-    # 2026-07-03 09:00 UTC — past the 08:00 UTC send point: the digest fires.
-    await DigestWorker(sm).tick(now=datetime(2026, 7, 3, 9, 0, tzinfo=UTC))
-
-    async with sm() as session:
-        digests = (
-            (
-                await session.execute(
-                    select(ActivityInbox).where(
-                        ActivityInbox.account_id == account_id,
-                        ActivityInbox.type == "daily_digest",
-                    )
-                )
-            )
-            .scalars()
-            .all()
-        )
-    assert len(digests) == 1  # the digest genuinely happened...
-    assert provider.sent == []  # ...and no email provider was ever called
-    assert await _logs(sm, account_id, "email") == []  # no email decision rows
-
-
-# --- Channel boundaries beyond the mandatory five ---
+# --- Channel boundaries beyond the mandatory four ---
 
 
 @pytest.mark.asyncio
