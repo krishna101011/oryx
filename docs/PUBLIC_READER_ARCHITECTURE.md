@@ -169,25 +169,66 @@ noise: a decorative "Public handle" profile-field label in
 workspace view (an internal-tool UI element, not a reader-facing page). No
 prior design intent for an unauthenticated article/reader view was found.
 
-## 6. Open Questions for the Design Pass (deliberately unresolved here)
+## 6. Rev 1 Decisions
 
-1. Whether "published" needs a new status/flag meaning "safe to render
-   publicly," given no existing channel means "public web page" (§3) —
-   reusing `ContentDraft.status == "published"` as-is would make a
-   tweeted-only draft publicly renderable with no such intent.
-2. Whether the reader page renders `DraftVersion.content` directly (with
-   its own markdown rendering built fresh) or requires a new durable
-   canonical body field, since neither `content_html` nor any per-channel
-   output is fit for reader-facing rendering today (§1).
-3. What provenance subset (if any) is safe to expose unauthenticated —
-   the existing snapshot table is already isolated from live joins, but
-   whether even `intelligenceObjectId`/`scoringVersion` should be exposed
-   publicly, or only `headline`/`epistemicType`/`confidenceTier`, is
-   undecided (§2).
-4. Rate limiting approach for a scraping-exposed route — no
-   general-purpose or distributed limiter exists to extend (§3).
-5. URL/slug scheme — no content-addressable or human-readable identifier
-   precedent exists; only the bearer-style invite-token pattern does (§3).
-6. Whether reader-engagement analytics is in scope for this surface at
-   all given it requires wholly new instrumentation, or is explicitly
-   deferred the way Phase 7 already demoted it (§4).
+**Automatic public pages.** Every ContentDraft that reaches
+`status == "published"` automatically gets a public page. One open
+edge case, deliberately still unresolved: whether a draft published
+ONLY to a private-facing channel (e.g. an internal newsletter) should
+be exempted from this rule — flagged for confirmation, not decided.
+
+**The public-page model.** A new table, `PublicPage`, one row per
+`ContentDraft` (not per `Publication` — a draft may fan out to several
+external channels, but gets exactly one public page). Fields: `id`,
+`content_draft_id` (FK), `workspace_id`, `slug` (opaque, unique — see
+below), `content_snapshot` (Text — the rendered body at the moment of
+first successful publish), `published_at`. Created automatically the
+instant `ContentDraft.status` transitions to `published`.
+
+**Content is a frozen snapshot, never a live read.** `DraftVersion.content`
+is mutable and internal. The public page stores its own copy at publish
+time — matching the exact philosophy `PublicationCitation` already uses
+for provenance data. A later edit to the internal draft never silently
+changes what's already public; that would need an explicit, separate
+republish action, out of scope for Rev 1.
+
+**Exposure boundary — explicit allow-list, not a deny-list.** The public
+response includes ONLY: the content snapshot, and the exact same fields
+`publication_provenance` already returns today — `headline`,
+`epistemic_type`, `confidence_score`, `scoring_version`,
+`snapshotted_at`. Nothing else. This reuses a boundary already decided
+as safe once; it isn't inventing a new transparency policy.
+
+Never included, ever, enforced by the query itself never joining these
+tables: any account or workspace identifier, `PublishTarget.credentials`,
+`Claim.text`/`subject`/`predicate`/`object`,
+`IntelligenceObject.key_facts`/`claim_ids`/`intake_item_id`,
+`SourceCredibilityRecord`, `VerificationRun`, `IntakeSource.config`,
+`IntakeCredentials`. The public repository method must be written to
+SELECT only PublicPage's own columns — never given the ability to join
+outward at all, not merely trusted not to.
+
+**URLs are opaque, not sequential, not bearer secrets.** A short, random
+public ID (e.g. nanoid — confirmed no such library exists yet, so this
+is a new, small dependency) — not a raw UUID, and explicitly not the
+invite-token pattern (that's a one-time bearer credential; this is a
+permanent, shareable, non-secret address).
+
+**Rendering happens in the existing frontend, not a new backend
+template engine.** No Jinja2, no server-rendered HTML. The backend
+exposes one new, narrow, unauthenticated `GET /public/pages/{slug}`
+returning the shape above; the existing Expo web app renders it as a
+real screen with no auth guard.
+
+**Rate limiting — real for this route, honestly incomplete elsewhere.**
+The existing limiter is an admitted placeholder scoped only to
+signin/signup. Rev 1 extends it to cover the new public route as a
+genuine, immediate improvement — but a Redis-backed or edge-level
+solution is real follow-up work before this route should be considered
+safe under real scraping load at real scale.
+
+**Explicitly out of scope for Rev 1.** Reader-engagement analytics
+(page views, time-on-page) — needs entirely new instrumentation
+including client-side JS, already correctly demoted in the Phase 7 doc.
+Editing a public page after publish, or ever un-publishing one — real
+product questions for a later revision.
