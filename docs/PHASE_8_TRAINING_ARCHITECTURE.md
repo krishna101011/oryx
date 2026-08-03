@@ -6,9 +6,9 @@ displays it as **Academy** (`webNav.ts`'s `LEARN` group, currently
 names, not two separate concepts.
 **Status:** DRAFT — Rev 1. Real decisions below; not yet built, not yet
 recon-verified against current code.
-**Depends on:** Phase 2 (the `require_capability` pattern — reused for
-authoring, not a new permissions scheme), the `ff_training` feature flag
-(already seeded, default OFF)
+**Depends on:** `Account.is_platform_admin` (the existing account-level
+flag gating authoring, per §4's correction), the `ff_training` feature
+flag (already seeded, default OFF)
 **Blocked on (greenfield, confirmed absent):** the entire Course/Module/
 Lesson/Enrollment/Certificate schema, any video hosting integration, any
 authoring flow, any quiz/assessment model
