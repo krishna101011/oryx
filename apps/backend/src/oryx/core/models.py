@@ -1494,6 +1494,92 @@ class PublicationCitation(Base):
     )
 
 
+# ============================================================================
+# Public Reader Rev 1 (docs/PUBLIC_READER_ARCHITECTURE.md §6) — backend
+# foundation only; no frontend rendering yet.
+# ============================================================================
+
+
+class PublicPage(Base):
+    """One row per ContentDraft that has ever reached 'published' — never per
+    Publication (a draft may fan out to several external channels but gets
+    exactly one public page). Created automatically by the publishing engine
+    in the SAME transaction as the draft's status transition to 'published'
+    (services/publishing/engine.py, PublishingEngine.publish_draft step 4),
+    never by a direct API write.
+
+    `content_snapshot` is DraftVersion.content AS OF the moment of first
+    successful publish — matching the frozen-snapshot philosophy
+    PublicationCitation already uses for provenance data (§6 "Content is a
+    frozen snapshot, never a live read"). A later edit to the internal draft
+    never changes what is already public; republishing is out of scope for
+    Rev 1.
+
+    `slug` is an opaque, random, non-enumerable public identifier (nanoid) —
+    deliberately NOT the invite-token bearer-credential pattern and NOT a
+    raw UUID (§6 "URLs are opaque, not sequential, not bearer secrets").
+
+    UNIQUE(content_draft_id) enforces "exactly one public page per draft" at
+    the schema level, not just by the engine's own status guard.
+    """
+
+    __tablename__ = "public_pages"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    content_draft_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("content_drafts.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    content_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    published_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class PublicPageCitation(Base):
+    """Provenance snapshot for one PublicPage's cited intelligence objects —
+    headline, epistemic_type, confidence_score, scoring_version,
+    snapshotted_at — frozen in the SAME transaction as the PublicPage row
+    (mirrors publication_citations exactly, including its ON CONFLICT DO
+    NOTHING composite-PK idempotency).
+
+    Deliberately a SEPARATE table from publication_citations, not a join
+    target of it: §6's exposure allow-list is enforced structurally by
+    giving the public repository method (services/reader/repository.py)
+    only its OWN two tables — public_pages and this one — to SELECT from,
+    with no join clause reaching intelligence_objects, claims, or any other
+    workspace-internal table."""
+
+    __tablename__ = "public_page_citations"
+
+    public_page_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("public_pages.id", ondelete="CASCADE"), primary_key=True
+    )
+    intelligence_object_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("intelligence_objects.id"), primary_key=True
+    )
+    headline: Mapped[str] = mapped_column(Text, nullable=False)
+    epistemic_type: Mapped[str] = mapped_column(
+        Enum(
+            "fact", "claim", "rumor", "speculation", "opinion", "unclassified",
+            name="epistemic_type",
+            create_type=False,
+        ),
+        nullable=False,
+    )
+    confidence_score: Mapped[float | None] = mapped_column(Float)
+    scoring_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    snapshotted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class CalendarEntry(Base):
     """One explicit schedule of (draft, target) for a future time (Phase 5
     Wave E). UNIQUE (draft_id, target_id) — a draft can schedule each target at

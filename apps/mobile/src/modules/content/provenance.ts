@@ -25,7 +25,7 @@ export interface ProvenanceRow {
   epistemicLabel: string;
 }
 
-const TIER_LABEL: Record<Tier, string> = {
+export const TIER_LABEL: Record<Tier, string> = {
   high: 'High confidence',
   moderate: 'Moderate confidence',
   low: 'Low confidence',
@@ -35,7 +35,7 @@ const TIER_LABEL: Record<Tier, string> = {
 
 // Restraint by design (control-screen philosophy): only the strongest tier
 // carries the accent; everything else stays in the grey ramp.
-const TIER_TONE: Record<Tier, ProvenanceTone> = {
+export const TIER_TONE: Record<Tier, ProvenanceTone> = {
   high: 'brand',
   moderate: 'secondary',
   low: 'tertiary',
@@ -43,7 +43,7 @@ const TIER_TONE: Record<Tier, ProvenanceTone> = {
   unscored: 'tertiary',
 };
 
-const EPISTEMIC_LABEL: Record<Epistemic, string> = {
+export const EPISTEMIC_LABEL: Record<Epistemic, string> = {
   fact: 'Fact',
   claim: 'Claim',
   rumor: 'Rumor',

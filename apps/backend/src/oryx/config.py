@@ -66,6 +66,12 @@ class Settings(BaseSettings):
     lockout_threshold: int = 10
     lockout_minutes: int = 15
 
+    # --- Public Reader Rev 1: rate limiting for the one unauthenticated,
+    # scraping-exposed route. Real for THIS route; still the same in-process
+    # placeholder as signin/signup (§6 "honestly incomplete elsewhere") — a
+    # Redis-backed or edge-level limiter is real follow-up work, not this.
+    rate_limit_public_pages_per_10min: int = 60
+
     # --- Phase 2: password policy ---
     password_min_length: int = 10
 

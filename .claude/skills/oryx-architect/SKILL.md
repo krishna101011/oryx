@@ -1003,6 +1003,65 @@ geometric wordmark "ORYX" in white, on deep navy/charcoal background.
   entry; check this file before assuming a real RN component can't be
   rendered under the harness.
 
+- A COMPONENT THAT GATES CHROME ON auth.status MUST ALSO CHECK FOR A
+  PUBLIC/UNAUTHENTICATED ROUTE, INDEPENDENTLY (Public Reader Rev 1 frontend
+  wave, 2026-08-03). RootNavigator's new public-route branch (a genuinely
+  unauthenticated /public/pages/:slug screen, reachable before auth.status
+  is even read — see rootNavigatorDecision.ts) mounts alongside WebShell,
+  which wraps the ENTIRE navigator tree and had its own, separate
+  `showChrome = status === 'authenticated' && me.data?.onboarding?.state
+  === 'complete'` check with no notion of "are we on a public route" at
+  all. Consequence: an already-signed-in visitor opening a public link in
+  the same browser tab would have seen their own sidebar/topbar wrapped
+  around the public page — auth.status alone can't tell you the route is
+  public, since the visitor genuinely IS authenticated. Fixed by having
+  WebShellInner call the SAME usePublicPageRoute() hook RootNavigator uses
+  and AND-ing `!publicRoute.isPublicRoute` into showChrome. Any FUTURE
+  top-level chrome (a global banner, a different shell wrapper) must repeat
+  this same AND, not assume RootNavigator's own branching is sufficient
+  protection — WebShell sits OUTSIDE RootNavigator's component tree
+  entirely (App.tsx: `<WebShell><RootNavigator/></WebShell>`), so it has no
+  visibility into which branch RootNavigator picked.
+- WebSidebar/webNav.ts READ SEVERAL /me FIELDS WITH ONLY ONE LEVEL OF
+  OPTIONAL CHAINING (found writing a rendered WebShell test, same wave).
+  `me?.profile.displayName`, `me?.build.version`, and webNav.ts's
+  `navCounts()` (`me?.verification.pendingReviewCount`, `me?.content.
+  draftCount`, `me?.activity.unreadCount`) all guard only the `me?`
+  itself — a seeded /me fixture missing `profile`/`build`/`verification`/
+  `content`/`activity` crashes the render with "Cannot read properties of
+  undefined", it does not fall back to a blank/zero display. Any test that
+  renders WebSidebar (directly, or indirectly via WebShell with chrome
+  showing) needs the FULL MeResponse shape — copy WebSidebar.test.tsx's own
+  `ME` fixture rather than hand-rolling a minimal one.
+- RENDERING WebShell ITSELF (not just WebSidebar) UNDER THE tsx TEST
+  HARNESS NEEDS A `document` STUB TOO (same wave, first user:
+  WebShellPublicRouteIsolation.test.tsx). WebShellInner's ⌘K-overlay effect
+  calls `document.addEventListener('keydown', ...)` unconditionally on web
+  — plain Node has no `document` global, so a minimal
+  `{addEventListener, removeEventListener}` stub is required in addition to
+  the existing `window` stub pattern. Install both ONCE at module load and
+  never delete them between tests in the same file: WebSidebar's own async
+  `['workspaces']` query can resolve (or a stray effect can fire) after a
+  test's synchronous assertions return, and deleting the globals between
+  tests raced that trailing async work — a later effect referencing an
+  already-deleted `document` crashed a DIFFERENT test than the one that
+  triggered it ("Attempted to capture a commit phase error inside a
+  detached tree"). Mutate `window.location.pathname` in place per test
+  instead of recreating the global.
+- A LOCAL DEV PORT CAN BE SQUATTED BY A COMPLETELY UNRELATED, NON-ORYX
+  PROCESS (found starting the backend for live verification, same wave).
+  `netstat`/`Get-NetTCPConnection` showing something LISTENING on :8000
+  does not mean it's a stale ORYX uvicorn process from an earlier session —
+  `Get-CimInstance Win32_Process` on the PID can reveal a totally different
+  application (seen here: a `venv\Scripts\python.exe -m uvicorn app.main:app
+  --reload --reload-exclude=app.db*` process — SQLite-based, unrelated repo
+  entirely). Never kill a port-holding process on the strength of the port
+  number alone; check its real CommandLine first. The safe move when it's
+  genuinely unrelated is to start ORYX's backend on a different port
+  (`--port 8001`) and point Expo web at it via `apps/mobile/.env`'s
+  `EXPO_PUBLIC_API_BASE_URL` (gitignored, safe to leave/regenerate) rather
+  than touch a process that isn't this project's.
+
 ## What This Skill Deliberately Does NOT Contain
 
 Current phase/wave status, current commit hashes, current test counts.

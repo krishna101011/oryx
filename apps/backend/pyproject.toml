@@ -26,6 +26,8 @@ dependencies = [
   "tzdata; sys_platform == 'win32'",
   # Phase 6 Wave C — APNs requires HTTP/2; h2 is httpx's http2 backend.
   "h2>=4.1.0",
+  # Public Reader Rev 1 — opaque public-page slugs (short, random, non-enumerable).
+  "nanoid>=2.0.0",
 ]
 
 [project.optional-dependencies]

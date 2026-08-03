@@ -5,27 +5,18 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from '@oryx/design-system';
 import { useAppSelector } from '../store';
 import { useMe } from '../hooks/useMe';
+import { PublicPageScreen } from '../modules/reader/screens/PublicPageScreen';
 import type { RootStackParamList } from './types';
 import { AuthStack } from './AuthStack';
 import { OnboardingStack } from './OnboardingStack';
 import { RootTabNavigator } from './RootTabNavigator';
 import { linking } from './linking';
 import { navigationRef } from './navigationRef';
+import { usePublicPageRoute } from './usePublicPageRoute';
+import { decideRootBranch } from './rootNavigatorDecision';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-/**
- * Root decision logic.
- *
- *   status === 'unknown'                        → splash
- *   status === 'unauthenticated'                → AuthStack
- *   authenticated + /me loading (no data yet)   → splash (avoid wrong branch)
- *   authenticated + onboarding incomplete       → OnboardingStack
- *   authenticated + onboarding complete         → RootTabNavigator
- *
- * Terminal auth errors on /me are handled inside useMe by dispatching
- * signedOut(), which causes this component to re-render in 'unauthenticated'.
- */
 const Splash: React.FC = () => {
   const t = useTheme();
   return (
@@ -35,7 +26,49 @@ const Splash: React.FC = () => {
   );
 };
 
+/**
+ * Root decision logic.
+ *
+ *   public reader link (/public/pages/:slug)    → PublicPage (checked FIRST,
+ *                                                  before any auth state —
+ *                                                  see rootNavigatorDecision.ts)
+ *   status === 'unknown'                        → splash
+ *   status === 'unauthenticated'                → AuthStack
+ *   authenticated + /me loading (no data yet)   → splash (avoid wrong branch)
+ *   authenticated + onboarding incomplete       → OnboardingStack
+ *   authenticated + onboarding complete         → RootTabNavigator
+ *
+ * Terminal auth errors on /me are handled inside useMe by dispatching
+ * signedOut(), which causes AuthenticatedRootNavigator to re-render in
+ * 'unauthenticated'.
+ */
 export const RootNavigator: React.FC = () => {
+  const publicRoute = usePublicPageRoute();
+  const branch = decideRootBranch(publicRoute);
+
+  if (branch === 'splash') {
+    return <Splash />;
+  }
+
+  if (branch === 'public') {
+    // A separate NavigationContainer, deliberately without navigationRef —
+    // this tree never touches useMe()/useAppSelector(auth) at all (that only
+    // happens inside AuthenticatedRootNavigator below, which isn't mounted on
+    // this branch), and it stays fully isolated from the app-chrome wiring
+    // (WebShell's sidebar sync) navigationRef drives elsewhere.
+    return (
+      <NavigationContainer linking={linking}>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="PublicPage" component={PublicPageScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    );
+  }
+
+  return <AuthenticatedRootNavigator />;
+};
+
+const AuthenticatedRootNavigator: React.FC = () => {
   const status = useAppSelector((s) => s.auth.status);
   const me = useMe();
 

@@ -36,6 +36,7 @@ from oryx.services.publishing.citations import (
     format_citation_footer,
     load_draft_citations,
     snapshot_citations,
+    snapshot_citations_to_public_page,
 )
 from oryx.services.publishing.events.constants import (
     CONTENT_PUBLISH_FAILED,
@@ -43,6 +44,7 @@ from oryx.services.publishing.events.constants import (
 )
 from oryx.services.publishing.repository import PublicationsRepository
 from oryx.services.queue.outbox import enqueue_event
+from oryx.services.reader.repository import PublicPagesRepository
 from oryx.services.targets.repository import TargetsRepository
 
 logger = get_logger(__name__)
@@ -143,6 +145,27 @@ class PublishingEngine:
                         draft_id=draft_id, status="published"
                     )
                     await self._mark_draft_published_at(session, draft_id)
+                    # Public Reader Rev 1 (docs/PUBLIC_READER_ARCHITECTURE.md
+                    # §6 "Automatic public pages"): every draft that reaches
+                    # 'published' gets exactly one public page, created here
+                    # in the SAME transaction as the status transition.
+                    #
+                    # OPEN EDGE CASE — deliberately NOT decided, per §6:
+                    # `results` here may show delivery ONLY to a
+                    # private-facing channel — concretely, `email_newsletter`
+                    # (PublishTarget.channel enum: twitter_x, linkedin,
+                    # email_newsletter, notion, webhook, export) — with zero
+                    # delivered rows on any of the public-facing ones. Today
+                    # that case is NOT exempted: a draft delivered solely to
+                    # an internal newsletter still gets a public page. This
+                    # is flagged for confirmation before Rev 2, not decided
+                    # here either way.
+                    await self._create_public_page(
+                        session,
+                        draft_id=draft_id,
+                        workspace_id=workspace_id,
+                        content=content,
+                    )
                     await session.commit()
 
         # ---- 5. Per-target results for the API response ----
@@ -384,6 +407,27 @@ class PublishingEngine:
             publication_id=publication_id,
             status="failed",
             error_message=error,
+        )
+
+    async def _create_public_page(
+        self,
+        session: AsyncSession,
+        *,
+        draft_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        content: str,
+    ) -> None:
+        """content_snapshot is DraftVersion.content exactly as loaded at the
+        top of publish_draft — the draft's own canonical body, never a
+        channel-formatted variant (never the citation-footer-appended
+        publish_content, never a per-channel adapter's segmented output)."""
+        page = await PublicPagesRepository(session).create(
+            content_draft_id=draft_id,
+            workspace_id=workspace_id,
+            content_snapshot=content,
+        )
+        await snapshot_citations_to_public_page(
+            session, public_page_id=page.id, draft_id=draft_id
         )
 
     async def _mark_draft_published_at(

@@ -196,6 +196,10 @@ def create_app() -> FastAPI:
 
     # Phase 1 (still stubs in their respective phases)
     app.include_router(health_router, prefix=p)
+    # Public Reader Rev 1: one unauthenticated route, no auth/workspace deps
+    # — same shape as health_router above.
+    from oryx.services.reader.router import router as reader_router
+    app.include_router(reader_router, prefix=p)
     app.include_router(intake_router, prefix=p)
     app.include_router(intake_admin_router, prefix=p)
     app.include_router(intake_oauth_router, prefix=p)

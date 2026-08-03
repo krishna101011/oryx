@@ -45,10 +45,15 @@ class TimingMiddleware(BaseHTTPMiddleware):
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Sliding-window rate limit on /v1/auth/signin and /v1/auth/signup.
+    """Sliding-window rate limit on /v1/auth/signin, /v1/auth/signup, and
+    GET /v1/public/pages/{slug}.
 
     Phase 2: in-memory per-process. Acceptable for a single-instance dev/prod.
-    Replace with Redis-backed when we scale horizontally.
+    Replace with Redis-backed when we scale horizontally. The public-pages
+    bucket (Public Reader Rev 1, §6) is the same placeholder, extended to
+    cover the one unauthenticated, scraping-exposed route this project has
+    ever shipped — real for this route, still honestly incomplete as a
+    general-purpose limiter.
     """
 
     WINDOW_SECONDS = 600  # 10 minutes
@@ -58,6 +63,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.prefix = prefix
         self._signin_hits: dict[str, deque[float]] = defaultdict(deque)
         self._signup_hits: dict[str, deque[float]] = defaultdict(deque)
+        self._public_page_hits: dict[str, deque[float]] = defaultdict(deque)
 
     def _client_key(self, request: Request) -> str:
         fwd = request.headers.get("x-forwarded-for")
@@ -92,17 +98,35 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     self._signup_hits, key, settings.rate_limit_signup_per_10min
                 ):
                     return self._rate_limited(request)
+        elif request.method == "GET" and path.startswith(self.prefix + "/public/pages/"):
+            settings = get_settings()
+            key = self._client_key(request)
+            if not self._check(
+                self._public_page_hits,
+                key,
+                settings.rate_limit_public_pages_per_10min,
+            ):
+                return self._rate_limited(
+                    request,
+                    code="PUBLIC_PAGE_RATE_LIMITED",
+                    message="Too many requests",
+                )
         return await call_next(request)
 
     @staticmethod
-    def _rate_limited(request: Request) -> JSONResponse:
+    def _rate_limited(
+        request: Request,
+        *,
+        code: str = "AUTH_RATE_LIMITED",
+        message: str = "Too many authentication attempts",
+    ) -> JSONResponse:
         request_id = getattr(request.state, "request_id", "unknown")
         return JSONResponse(
             status_code=429,
             content={
                 "error": {
-                    "code": "AUTH_RATE_LIMITED",
-                    "message": "Too many authentication attempts",
+                    "code": code,
+                    "message": message,
                     "requestId": request_id,
                 }
             },

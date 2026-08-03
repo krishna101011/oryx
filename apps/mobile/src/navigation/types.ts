@@ -103,6 +103,10 @@ export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   Onboarding: NavigatorScreenParams<OnboardingStackParamList>;
   Tabs: NavigatorScreenParams<RootTabParamList>;
+  // Public Reader Rev 1 — genuinely unauthenticated, reachable regardless of
+  // auth.status (see RootNavigator's public-route branch). `slug` comes from
+  // the URL via linking.ts's top-level 'public/pages/:slug' entry.
+  PublicPage: { slug: string };
 };
 
 declare global {

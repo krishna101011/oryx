@@ -4,6 +4,11 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
   prefixes: ['oryx://'],
   config: {
     screens: {
+      // Public Reader Rev 1 — genuinely unauthenticated, top-level (a sibling
+      // of Auth/Onboarding/Tabs, never nested under them): RootNavigator's
+      // public-route branch resolves this directly from the URL before any
+      // auth state is touched, so it must live outside every auth-gated tree.
+      PublicPage: 'public/pages/:slug',
       Auth: {
         screens: {
           SignIn: 'auth/sign-in',

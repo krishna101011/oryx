@@ -23,7 +23,12 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import literal
 
-from oryx.core.models import DraftCitation, IntelligenceObject, PublicationCitation
+from oryx.core.models import (
+    DraftCitation,
+    IntelligenceObject,
+    PublicationCitation,
+    PublicPageCitation,
+)
 from oryx.services.publishing.channels.formatting import thread_segments
 from oryx.shared.types import CONFIDENCE_BAND_THRESHOLDS, PublishChannel
 
@@ -125,6 +130,47 @@ async def snapshot_citations(
         sel,
     ).on_conflict_do_nothing(
         index_elements=["publication_id", "intelligence_object_id"]
+    )
+    await session.execute(stmt)
+
+
+async def snapshot_citations_to_public_page(
+    session: AsyncSession, *, public_page_id: uuid.UUID, draft_id: uuid.UUID
+) -> None:
+    """Same shape and same guarantees as `snapshot_citations` above, targeting
+    public_page_citations instead of publication_citations (Public Reader
+    Rev 1, §6). Called by the engine in the SAME transaction as the
+    public_pages row insert, so a public page can never exist without its
+    provenance snapshot. ON CONFLICT DO NOTHING on the composite PK makes a
+    retried create() call a no-op that preserves the ORIGINAL snapshot —
+    identical idempotency shape to the publication_citations sibling."""
+    sel = (
+        select(
+            literal(public_page_id),
+            DraftCitation.intelligence_object_id,
+            IntelligenceObject.headline,
+            IntelligenceObject.epistemic_type,
+            IntelligenceObject.confidence_score,
+            IntelligenceObject.scoring_version,
+        )
+        .join(
+            IntelligenceObject,
+            IntelligenceObject.id == DraftCitation.intelligence_object_id,
+        )
+        .where(DraftCitation.draft_id == draft_id)
+    )
+    stmt = pg_insert(PublicPageCitation).from_select(
+        [
+            "public_page_id",
+            "intelligence_object_id",
+            "headline",
+            "epistemic_type",
+            "confidence_score",
+            "scoring_version",
+        ],
+        sel,
+    ).on_conflict_do_nothing(
+        index_elements=["public_page_id", "intelligence_object_id"]
     )
     await session.execute(stmt)
 

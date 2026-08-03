@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'reac
 import { useTheme } from '@oryx/design-system';
 import { useMe } from '../../hooks/useMe';
 import { useAppSelector } from '../../store';
+import { usePublicPageRoute } from '../../navigation/usePublicPageRoute';
 import {
   navigateContentScreen,
   navigateResearchScreen,
@@ -50,6 +51,7 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const t = useTheme();
   const status = useAppSelector((s) => s.auth.status);
   const me = useMe();
+  const publicRoute = usePublicPageRoute();
   const [activeId, setActiveId] = useState('home');
   const [searchOpen, setSearchOpen] = useState(false);
   // Below the derived breakpoint (see webShellLayout.ts) the fixed 232px
@@ -117,10 +119,15 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const onDrawerNavigate = (item: WebNavItem) =>
     drawerNavigate(item, { close: () => setNavOpen(false), perform: onNavigate });
 
-  // Only show the desktop chrome once the user is fully into the app. Auth and
-  // onboarding render full-bleed (no sidebar), matching their mobile UX.
+  // Only show the desktop chrome once the user is fully into the app. Auth
+  // and onboarding render full-bleed (no sidebar), matching their mobile UX.
+  // A public reader link ALWAYS renders full-bleed too, regardless of auth
+  // status — an already-signed-in visitor who opens a public link in the
+  // same tab must never see their own sidebar/topbar wrapped around it.
   const showChrome =
-    status === 'authenticated' && me.data?.onboarding?.state === 'complete';
+    !publicRoute.isPublicRoute &&
+    status === 'authenticated' &&
+    me.data?.onboarding?.state === 'complete';
 
   if (!showChrome) {
     return <View style={{ flex: 1, backgroundColor: t.colors.bg.primary }}>{children}</View>;
