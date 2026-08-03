@@ -203,6 +203,15 @@ class Settings(BaseSettings):
     razorpay_key_secret: str | None = None
     razorpay_webhook_secret: str | None = None
 
+    # --- Phase 8 Wave A: VideoProvider (core/video_provider.py) ---
+    # Same shape as the payment-provider settings above: no live credential
+    # is configured by default, so create_upload_url/get_asset_status/
+    # delete_asset all raise VideoProviderError(PERMANENT) pre-flight until
+    # real Cloudflare Stream credentials are wired (deliberately out of
+    # scope this wave — see docs/PHASE_8_TRAINING_ARCHITECTURE.md §3).
+    cloudflare_stream_account_id: str | None = None
+    cloudflare_stream_api_token: str | None = None
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

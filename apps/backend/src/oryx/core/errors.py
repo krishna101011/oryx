@@ -187,6 +187,17 @@ class PaymentProviderUnavailableError(AppError):
     http_status = 503
 
 
+# --- training/academy (Phase 8 Wave A) ---
+class VideoProviderUnavailableError(AppError):
+    """The real, honest response for VideoProviderError today: no live
+    Cloudflare Stream credentials are configured yet. 503 (not 500) — this
+    is a known, expected state, not a crash. Mirrors
+    PaymentProviderUnavailableError's shape exactly."""
+
+    code = "VIDEO_PROVIDER_UNAVAILABLE"
+    http_status = 503
+
+
 # --- team/workspace (Rev 2) ---
 class InviteNotFoundError(AppError):
     code = "INVITE_NOT_FOUND"

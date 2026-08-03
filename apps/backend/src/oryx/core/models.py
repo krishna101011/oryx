@@ -1836,3 +1836,130 @@ class WorkspaceChatRead(Base):
         UUID(as_uuid=True), ForeignKey("chat_messages.id", ondelete="SET NULL")
     )
     last_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Course(Base):
+    """Phase 8 Wave A (docs/PHASE_8_TRAINING_ARCHITECTURE.md §2/§4) — a
+    Course is platform-wide, NOT per-workspace: the Academy catalog is
+    shared across every workspace, so this table deliberately carries no
+    workspace_id column at all — there is no "which workspace's course"
+    question to answer. Authoring is gated by Account.is_platform_admin at
+    the router layer (core/dependencies.py's require_platform_admin), never
+    by a workspace-role capability check — §4's corrected reasoning."""
+
+    __tablename__ = "courses"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class Module(Base):
+    """One ordered unit inside a Course. `order` positions modules within
+    their course for display — same convention as Lesson.order below."""
+
+    __tablename__ = "modules"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    course_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("courses.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class Lesson(Base):
+    """Belongs to a Module. `video_asset_id` stores the VideoProvider's own
+    asset reference (core/video_provider.py) — a Cloudflare Stream video
+    uid, never a raw file path (§3). Null until a real upload exists; no
+    live upload/playback flow is wired this wave — §3's honest "not
+    configured" default (CloudflareStreamProvider) is the real state until
+    live credentials exist."""
+
+    __tablename__ = "lessons"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    module_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("modules.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    video_asset_id: Mapped[str | None] = mapped_column(Text)
+    transcript_text: Mapped[str | None] = mapped_column(Text)
+    order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class Enrollment(Base):
+    """One row per (account, course) — composite PK, same shape as
+    WorkspaceMember's (workspace_id, account_id) convention. No enrollment
+    endpoints exist yet (authoring-only wave); schema only, exercised
+    directly by CertificateRepository's own tests."""
+
+    __tablename__ = "enrollments"
+
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True
+    )
+    course_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True
+    )
+    enrolled_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class LessonProgress(Base):
+    """One row per (account, lesson) marking real completion. Composite PK
+    — a lesson is either completed or not for a given account, never
+    re-inserted."""
+
+    __tablename__ = "lesson_progress"
+
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True
+    )
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("lessons.id", ondelete="CASCADE"), primary_key=True
+    )
+    completed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class Certificate(Base):
+    """Issued when every lesson in a course has a LessonProgress row for
+    the same account (services/training/repository.py's
+    CertificateRepository.issue_if_eligible) — never issued directly by an
+    API write. Composite PK: at most one certificate per (account, course)."""
+
+    __tablename__ = "certificates"
+
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True
+    )
+    course_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True
+    )
+    issued_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
