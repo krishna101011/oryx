@@ -56,12 +56,18 @@ Cloudflare Stream asset ID, not a raw file path.
 
 ## 4. Authoring
 
-Per the confirmed decision that real content will be authored directly
-(not pre-seeded), course/module/lesson creation needs a real,
-workspace-capability-gated authoring flow — reusing the existing
-`require_capability` pattern, not a new permissions scheme. Exact
-capability scoping (a new `content.author`-style capability vs. reusing an
-existing one) is a recon question for the next pass, not decided here.
+Corrected from Rev 1's original claim, per recon: authoring is gated
+by `is_platform_admin` (the existing account-level flag,
+core/dependencies.py), NOT any workspace-role capability. Course has
+no workspace_id (Section 2) — a workspace-scoped check like
+require_capability cannot coherently gate a platform-wide resource,
+since "which workspace's role applies" is meaningless for content that
+belongs to no workspace. Concretely: a customer's own workspace
+admin/editor role must never grant authoring access to ORYX's shared
+Academy catalog — this is a genuine, deliberate scope narrowing from
+the original loose phrasing, not an equivalent restatement of it. This
+correctly sidesteps the CAPABILITIES-wildcard trap entirely, since
+is_platform_admin never goes through require_capability at all.
 
 ## 5. Explicitly Out of Scope for Rev 1
 
