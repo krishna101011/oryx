@@ -1,17 +1,23 @@
-"""Training/Academy router — Phase 8 Wave A (authoring foundation only).
+"""Training/Academy router — Phase 8 Wave A (authoring) + Wave B (learner-
+facing enroll/progress/certificate).
 
 Course/Module/Lesson are platform-wide, not workspace-scoped
-(docs/PHASE_8_TRAINING_ARCHITECTURE.md §2) — every endpoint here is gated
+(docs/PHASE_8_TRAINING_ARCHITECTURE.md §2) — authoring endpoints are gated
 by Account.is_platform_admin (require_platform_admin), NOT
 require_capability: no ActiveWorkspaceContext/get_active_workspace appears
 anywhere in this file, by design (§4's corrected reasoning — a
 workspace-role capability check cannot coherently apply to a resource that
 belongs to no workspace).
 
-No enrollment/lesson-progress/certificate endpoints exist yet — those are
-learner-facing and out of this wave's authoring-only scope; their schema
-and business logic (services/training/repository.py's
-CertificateRepository) are built and tested, just not exposed over HTTP.
+Wave B's learner-facing endpoints (enroll/complete/progress) use the SAME
+reasoning one level down: any real signed-in account should be able to
+enroll in and track its own progress through the platform-wide catalog —
+there is no workspace role to check here either, so these are gated by
+plain get_current_account, never is_platform_admin or any capability.
+Enrollment is deliberately NOT a precondition for completing a lesson
+(CertificateRepository's own issuance rule already never references
+Enrollment — see repository.py) — not an oversight, matching that existing
+independence rather than inventing a new gate.
 
 Response bodies are plain dicts, not oryx.shared.types models: no frontend
 consumes these yet (explicitly out of scope this wave), and gen-pydantic.ts's
@@ -34,6 +40,7 @@ from oryx.config import get_settings
 from oryx.core.dependencies import (
     db_session,
     envelope,
+    get_current_account,
     get_request_id,
     require_platform_admin,
 )
@@ -49,7 +56,10 @@ from oryx.services.training.models import (
     ModuleUpdateRequest,
 )
 from oryx.services.training.repository import (
+    CertificateRepository,
     CourseRepository,
+    EnrollmentRepository,
+    LessonProgressRepository,
     LessonRepository,
     ModuleRepository,
 )
@@ -345,5 +355,122 @@ async def create_video_upload_url(
         ) from exc
     return envelope(
         {"assetId": handle.asset_id, "uploadUrl": handle.upload_url},
+        request_id=get_request_id(request),
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Learner-facing: enroll / complete / progress (Wave B). Gated by plain
+# get_current_account — no workspace context, no platform-admin check.
+# Course/Module/Lesson have no workspace_id (§2), so there is no workspace
+# role to check here either, same reasoning as authoring's §4 correction
+# one level down.
+# --------------------------------------------------------------------------- #
+
+
+def _enrollment_dict(row) -> dict[str, Any]:
+    return {
+        "accountId": str(row.account_id),
+        "courseId": str(row.course_id),
+        "enrolledAt": _iso(row.enrolled_at),
+    }
+
+
+def _lesson_progress_dict(row) -> dict[str, Any]:
+    return {
+        "accountId": str(row.account_id),
+        "lessonId": str(row.lesson_id),
+        "completedAt": _iso(row.completed_at),
+    }
+
+
+def _certificate_dict(row) -> dict[str, Any]:
+    return {
+        "accountId": str(row.account_id),
+        "courseId": str(row.course_id),
+        "issuedAt": _iso(row.issued_at),
+    }
+
+
+@router.post("/training/courses/{course_id}/enroll")
+async def enroll_in_course(
+    course_id: uuid.UUID,
+    request: Request,
+    account: Account = Depends(get_current_account),
+    db: AsyncSession = Depends(db_session),
+) -> dict:
+    course = await CourseRepository(db).get(course_id)
+    if course is None:
+        raise NotFoundError("Course not found")
+    row = await EnrollmentRepository(db).enroll(account_id=account.id, course_id=course_id)
+    return envelope(_enrollment_dict(row), request_id=get_request_id(request))
+
+
+@router.post("/training/lessons/{lesson_id}/complete")
+async def complete_lesson(
+    lesson_id: uuid.UUID,
+    request: Request,
+    account: Account = Depends(get_current_account),
+    db: AsyncSession = Depends(db_session),
+) -> dict:
+    lesson = await LessonRepository(db).get(lesson_id)
+    if lesson is None:
+        raise NotFoundError("Lesson not found")
+    # Lesson.module_id is a NOT NULL FK — the row is guaranteed to exist.
+    module = await ModuleRepository(db).get(lesson.module_id)
+
+    progress = await LessonProgressRepository(db).mark_complete(
+        account_id=account.id, lesson_id=lesson_id
+    )
+    # Same transaction, same request — issuance fires the moment the final
+    # lesson completes, not as a separate manual step (Phase 1's requirement).
+    certificate = await CertificateRepository(db).issue_if_eligible(
+        account_id=account.id, course_id=module.course_id
+    )
+    return envelope(
+        {
+            "lessonProgress": _lesson_progress_dict(progress),
+            "certificate": _certificate_dict(certificate) if certificate is not None else None,
+        },
+        request_id=get_request_id(request),
+    )
+
+
+@router.get("/training/courses/{course_id}/progress")
+async def get_course_progress(
+    course_id: uuid.UUID,
+    request: Request,
+    account: Account = Depends(get_current_account),
+    db: AsyncSession = Depends(db_session),
+) -> dict:
+    course = await CourseRepository(db).get(course_id)
+    if course is None:
+        raise NotFoundError("Course not found")
+
+    enrollment = await EnrollmentRepository(db).get(account_id=account.id, course_id=course_id)
+    lessons = await LessonRepository(db).list_for_course(course_id)
+    completed_map = await LessonProgressRepository(db).completed_map_for_course(
+        account_id=account.id, course_id=course_id
+    )
+    certificate = await CertificateRepository(db).get(account_id=account.id, course_id=course_id)
+
+    return envelope(
+        {
+            "courseId": str(course_id),
+            "enrollment": _enrollment_dict(enrollment) if enrollment is not None else None,
+            "lessons": [
+                {
+                    "lessonId": str(lesson.id),
+                    "moduleId": str(lesson.module_id),
+                    "title": lesson.title,
+                    "completed": lesson.id in completed_map,
+                    "completedAt": (
+                        _iso(completed_map[lesson.id]) if lesson.id in completed_map else None
+                    ),
+                }
+                for lesson in lessons
+            ],
+            "certificate": _certificate_dict(certificate) if certificate is not None else None,
+        },
         request_id=get_request_id(request),
     )

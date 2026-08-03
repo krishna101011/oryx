@@ -132,6 +132,18 @@ class LessonRepository:
         )
         return list(result.scalars().all())
 
+    async def list_for_course(self, course_id: uuid.UUID) -> list[Lesson]:
+        """Every lesson across every module of `course_id`, in real display
+        order — the real lesson set GET
+        /training/courses/{course_id}/progress reports against."""
+        result = await self.db.execute(
+            select(Lesson)
+            .join(Module, Lesson.module_id == Module.id)
+            .where(Module.course_id == course_id)
+            .order_by(Module.order, Module.created_at, Lesson.order, Lesson.created_at)
+        )
+        return list(result.scalars().all())
+
     async def update(self, lesson: Lesson, fields: dict[str, Any]) -> Lesson:
         _apply_updates(lesson, fields)
         await self.db.flush()
@@ -143,13 +155,27 @@ class LessonRepository:
 
 
 class EnrollmentRepository:
-    """No HTTP endpoints this wave (authoring only, per task scope) —
-    exercised directly by tests that need a real enrollment precondition."""
+    """enroll() is idempotent (Wave B fix — recon found the original
+    unconditional insert would IntegrityError on a second call, unlike
+    CertificateRepository's check-first pattern below, which this now
+    mirrors): a second call for the same (account_id, course_id) returns
+    the SAME row, never a duplicate-key crash."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
+    async def get(self, *, account_id: uuid.UUID, course_id: uuid.UUID) -> Enrollment | None:
+        result = await self.db.execute(
+            select(Enrollment).where(
+                Enrollment.account_id == account_id, Enrollment.course_id == course_id
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def enroll(self, *, account_id: uuid.UUID, course_id: uuid.UUID) -> Enrollment:
+        existing = await self.get(account_id=account_id, course_id=course_id)
+        if existing is not None:
+            return existing
         row = Enrollment(account_id=account_id, course_id=course_id)
         self.db.add(row)
         await self.db.flush()
@@ -157,16 +183,52 @@ class EnrollmentRepository:
 
 
 class LessonProgressRepository:
+    """mark_complete() is idempotent for the same reason as
+    EnrollmentRepository.enroll above — completing an already-completed
+    lesson a second time returns the SAME row instead of hitting the
+    composite-PK IntegrityError."""
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
+
+    async def get(
+        self, *, account_id: uuid.UUID, lesson_id: uuid.UUID
+    ) -> LessonProgress | None:
+        result = await self.db.execute(
+            select(LessonProgress).where(
+                LessonProgress.account_id == account_id,
+                LessonProgress.lesson_id == lesson_id,
+            )
+        )
+        return result.scalar_one_or_none()
 
     async def mark_complete(
         self, *, account_id: uuid.UUID, lesson_id: uuid.UUID
     ) -> LessonProgress:
+        existing = await self.get(account_id=account_id, lesson_id=lesson_id)
+        if existing is not None:
+            return existing
         row = LessonProgress(account_id=account_id, lesson_id=lesson_id)
         self.db.add(row)
         await self.db.flush()
         return row
+
+    async def completed_map_for_course(
+        self, *, account_id: uuid.UUID, course_id: uuid.UUID
+    ) -> dict[uuid.UUID, datetime]:
+        """lesson_id -> completed_at for every lesson in `course_id` this
+        account has completed — the real per-lesson completion state
+        GET /training/courses/{course_id}/progress reports."""
+        result = await self.db.execute(
+            select(LessonProgress.lesson_id, LessonProgress.completed_at)
+            .join(Lesson, LessonProgress.lesson_id == Lesson.id)
+            .join(Module, Lesson.module_id == Module.id)
+            .where(
+                Module.course_id == course_id,
+                LessonProgress.account_id == account_id,
+            )
+        )
+        return dict(result.all())
 
 
 class CertificateRepository:
