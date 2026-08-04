@@ -1,5 +1,6 @@
 """Training/Academy router — Phase 8 Wave A (authoring) + Wave B (learner-
-facing enroll/progress/certificate).
+facing enroll/complete/progress) + Wave C (real frontend wired against the
+learner-facing surface).
 
 Course/Module/Lesson are platform-wide, not workspace-scoped
 (docs/PHASE_8_TRAINING_ARCHITECTURE.md §2) — authoring endpoints are gated
@@ -9,20 +10,24 @@ anywhere in this file, by design (§4's corrected reasoning — a
 workspace-role capability check cannot coherently apply to a resource that
 belongs to no workspace).
 
-Wave B's learner-facing endpoints (enroll/complete/progress) use the SAME
-reasoning one level down: any real signed-in account should be able to
-enroll in and track its own progress through the platform-wide catalog —
-there is no workspace role to check here either, so these are gated by
-plain get_current_account, never is_platform_admin or any capability.
-Enrollment is deliberately NOT a precondition for completing a lesson
+Learner-facing endpoints (catalog/enroll/complete/progress/lesson-detail)
+use the SAME reasoning one level down: any real signed-in account should be
+able to browse the catalog and track its own progress — there is no
+workspace role to check here either, so these are gated by plain
+get_current_account, never is_platform_admin or any capability. Enrollment
+is deliberately NOT a precondition for completing a lesson
 (CertificateRepository's own issuance rule already never references
 Enrollment — see repository.py) — not an oversight, matching that existing
 independence rather than inventing a new gate.
 
-Response bodies are plain dicts, not oryx.shared.types models: no frontend
-consumes these yet (explicitly out of scope this wave), and gen-pydantic.ts's
-unused-export check would flag a TS mirror with zero real references — see
-services/training/models.py's docstring.
+Learner-facing responses now use real oryx.shared.types models (Wave C: the
+mobile course-list + lesson-viewer screens are the first real consumers, so
+the "no frontend yet" deferral from Wave A/B ends here). The raw
+video_asset_id is NEVER included in any learner-facing response — only the
+derived hasVideo boolean crosses the wire (recon found no endpoint anywhere
+resolves a real Cloudflare playback URL; exposing the raw placeholder string
+would be actively misleading, not just premature). Authoring endpoints keep
+their plain-dict shape unchanged — still no admin-authoring frontend exists.
 
 The /training/ping stub route is kept — test_health.py exercises every
 service's ping.
@@ -62,6 +67,17 @@ from oryx.services.training.repository import (
     LessonProgressRepository,
     LessonRepository,
     ModuleRepository,
+)
+from oryx.shared.types import (
+    CertificateStatus,
+    CourseCatalogItem,
+    CourseCatalogResponse,
+    CourseProgress,
+    EnrollmentResult,
+    LessonCompleteResult,
+    LessonDetail,
+    LessonProgressResult,
+    LessonSummary,
 )
 
 router = APIRouter(tags=["training"])
@@ -360,36 +376,65 @@ async def create_video_upload_url(
 
 
 # --------------------------------------------------------------------------- #
-# Learner-facing: enroll / complete / progress (Wave B). Gated by plain
-# get_current_account — no workspace context, no platform-admin check.
-# Course/Module/Lesson have no workspace_id (§2), so there is no workspace
-# role to check here either, same reasoning as authoring's §4 correction
-# one level down.
+# Learner-facing: catalog / enroll / complete / progress / lesson detail.
+# Gated by plain get_current_account — no workspace context, no
+# platform-admin check. Course/Module/Lesson have no workspace_id (§2), so
+# there is no workspace role to check here either, same reasoning as
+# authoring's §4 correction one level down. Real oryx.shared.types models
+# (Wave C — the mobile screens are the first real consumer).
 # --------------------------------------------------------------------------- #
 
 
-def _enrollment_dict(row) -> dict[str, Any]:
-    return {
-        "accountId": str(row.account_id),
-        "courseId": str(row.course_id),
-        "enrolledAt": _iso(row.enrolled_at),
-    }
+def _enrollment_result(row) -> EnrollmentResult:
+    return EnrollmentResult(
+        accountId=str(row.account_id),
+        courseId=str(row.course_id),
+        enrolledAt=row.enrolled_at,
+    )
 
 
-def _lesson_progress_dict(row) -> dict[str, Any]:
-    return {
-        "accountId": str(row.account_id),
-        "lessonId": str(row.lesson_id),
-        "completedAt": _iso(row.completed_at),
-    }
+def _lesson_progress_result(row) -> LessonProgressResult:
+    return LessonProgressResult(
+        accountId=str(row.account_id),
+        lessonId=str(row.lesson_id),
+        completedAt=row.completed_at,
+    )
 
 
-def _certificate_dict(row) -> dict[str, Any]:
-    return {
-        "accountId": str(row.account_id),
-        "courseId": str(row.course_id),
-        "issuedAt": _iso(row.issued_at),
-    }
+def _certificate_status(row) -> CertificateStatus:
+    return CertificateStatus(
+        accountId=str(row.account_id),
+        courseId=str(row.course_id),
+        issuedAt=row.issued_at,
+    )
+
+
+@router.get("/training/catalog")
+async def get_catalog(
+    request: Request,
+    account: Account = Depends(get_current_account),
+    db: AsyncSession = Depends(db_session),
+) -> dict:
+    """The real course list a learner browses — distinct from
+    GET /training/courses (admin-only, authoring context). Enrollment
+    status is computed once as a map, not one query per course."""
+    courses = await CourseRepository(db).list_all()
+    enrollments = await EnrollmentRepository(db).list_for_account(account.id)
+    enrolled_map = {e.course_id: e.enrolled_at for e in enrollments}
+
+    payload = CourseCatalogResponse(
+        courses=[
+            CourseCatalogItem(
+                id=str(course.id),
+                title=course.title,
+                description=course.description,
+                enrolled=course.id in enrolled_map,
+                enrolledAt=enrolled_map.get(course.id),
+            )
+            for course in courses
+        ]
+    )
+    return envelope(payload.model_dump(by_alias=True), request_id=get_request_id(request))
 
 
 @router.post("/training/courses/{course_id}/enroll")
@@ -403,7 +448,8 @@ async def enroll_in_course(
     if course is None:
         raise NotFoundError("Course not found")
     row = await EnrollmentRepository(db).enroll(account_id=account.id, course_id=course_id)
-    return envelope(_enrollment_dict(row), request_id=get_request_id(request))
+    payload = _enrollment_result(row)
+    return envelope(payload.model_dump(by_alias=True), request_id=get_request_id(request))
 
 
 @router.post("/training/lessons/{lesson_id}/complete")
@@ -427,13 +473,11 @@ async def complete_lesson(
     certificate = await CertificateRepository(db).issue_if_eligible(
         account_id=account.id, course_id=module.course_id
     )
-    return envelope(
-        {
-            "lessonProgress": _lesson_progress_dict(progress),
-            "certificate": _certificate_dict(certificate) if certificate is not None else None,
-        },
-        request_id=get_request_id(request),
+    payload = LessonCompleteResult(
+        lessonProgress=_lesson_progress_result(progress),
+        certificate=_certificate_status(certificate) if certificate is not None else None,
     )
+    return envelope(payload.model_dump(by_alias=True), request_id=get_request_id(request))
 
 
 @router.get("/training/courses/{course_id}/progress")
@@ -454,23 +498,50 @@ async def get_course_progress(
     )
     certificate = await CertificateRepository(db).get(account_id=account.id, course_id=course_id)
 
-    return envelope(
-        {
-            "courseId": str(course_id),
-            "enrollment": _enrollment_dict(enrollment) if enrollment is not None else None,
-            "lessons": [
-                {
-                    "lessonId": str(lesson.id),
-                    "moduleId": str(lesson.module_id),
-                    "title": lesson.title,
-                    "completed": lesson.id in completed_map,
-                    "completedAt": (
-                        _iso(completed_map[lesson.id]) if lesson.id in completed_map else None
-                    ),
-                }
-                for lesson in lessons
-            ],
-            "certificate": _certificate_dict(certificate) if certificate is not None else None,
-        },
-        request_id=get_request_id(request),
+    payload = CourseProgress(
+        courseId=str(course_id),
+        enrollment=_enrollment_result(enrollment) if enrollment is not None else None,
+        lessons=[
+            LessonSummary(
+                lessonId=str(lesson.id),
+                moduleId=str(lesson.module_id),
+                title=lesson.title,
+                hasVideo=lesson.video_asset_id is not None,
+                completed=lesson.id in completed_map,
+                completedAt=completed_map.get(lesson.id),
+            )
+            for lesson in lessons
+        ],
+        certificate=_certificate_status(certificate) if certificate is not None else None,
     )
+    return envelope(payload.model_dump(by_alias=True), request_id=get_request_id(request))
+
+
+@router.get("/training/lessons/{lesson_id}")
+async def get_lesson_detail(
+    lesson_id: uuid.UUID,
+    request: Request,
+    account: Account = Depends(get_current_account),
+    db: AsyncSession = Depends(db_session),
+) -> dict:
+    """The lesson-viewer screen's one real call: title, transcript, and
+    this account's own completion state — hasVideo only, never the raw
+    video_asset_id (see module docstring)."""
+    lesson = await LessonRepository(db).get(lesson_id)
+    if lesson is None:
+        raise NotFoundError("Lesson not found")
+    # Lesson.module_id is a NOT NULL FK — the row is guaranteed to exist.
+    module = await ModuleRepository(db).get(lesson.module_id)
+    progress = await LessonProgressRepository(db).get(account_id=account.id, lesson_id=lesson_id)
+
+    payload = LessonDetail(
+        lessonId=str(lesson.id),
+        moduleId=str(lesson.module_id),
+        courseId=str(module.course_id),
+        title=lesson.title,
+        transcriptText=lesson.transcript_text,
+        hasVideo=lesson.video_asset_id is not None,
+        completed=progress is not None,
+        completedAt=progress.completed_at if progress is not None else None,
+    )
+    return envelope(payload.model_dump(by_alias=True), request_id=get_request_id(request))

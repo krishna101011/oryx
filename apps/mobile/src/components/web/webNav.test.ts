@@ -11,6 +11,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  ACADEMY_ROOT_SCREEN,
   CONTENT_ROOT_SCREEN,
   type NavCountSource,
   RESEARCH_ROOT_SCREEN,
@@ -23,25 +24,28 @@ import {
   performNav,
 } from './webNav';
 
-/** Recording fakes standing in for navigationRef's five navigate functions. */
+/** Recording fakes standing in for navigationRef's six navigate functions. */
 function recordingNav() {
   const tabs: string[] = [];
   const screens: string[] = [];
   const researchScreens: string[] = [];
   const contentScreens: string[] = [];
   const teamScreens: string[] = [];
+  const academyScreens: string[] = [];
   return {
     tabs,
     screens,
     researchScreens,
     contentScreens,
     teamScreens,
+    academyScreens,
     nav: {
       navigateTab: (tab: string) => tabs.push(tab),
       navigateSettingsScreen: (screen: string) => screens.push(screen),
       navigateResearchScreen: (screen: string) => researchScreens.push(screen),
       navigateContentScreen: (screen: string) => contentScreens.push(screen),
       navigateTeamScreen: (screen: string) => teamScreens.push(screen),
+      navigateAcademyScreen: (screen: string) => academyScreens.push(screen),
     },
   };
 }
@@ -150,7 +154,13 @@ test('sidebar deep items still resolve through performNav (Settings-nested scree
 // ---------------------------------------------------------------------------
 
 function fakeNavigator(
-  initial: { Settings?: string[]; Research?: string[]; Content?: string[]; Team?: string[] } = {},
+  initial: {
+    Settings?: string[];
+    Research?: string[];
+    Content?: string[];
+    Team?: string[];
+    Academy?: string[];
+  } = {},
 ) {
   let focusedTab = 'Home';
   const stacks: Record<string, string[]> = {
@@ -158,6 +168,7 @@ function fakeNavigator(
     Research: [...(initial.Research ?? ['ResearchWorkspaceList'])],
     Content: [...(initial.Content ?? ['ContentHome'])],
     Team: [...(initial.Team ?? ['TeamHome'])],
+    Academy: [...(initial.Academy ?? ['AcademyHome'])],
   };
   const navigateStackScreen = (tab: string) => (screen: string) => {
     focusedTab = tab;
@@ -178,6 +189,7 @@ function fakeNavigator(
       navigateResearchScreen: navigateStackScreen('Research'),
       navigateContentScreen: navigateStackScreen('Content'),
       navigateTeamScreen: navigateStackScreen('Team'),
+      navigateAcademyScreen: navigateStackScreen('Academy'),
     },
   };
 }
@@ -296,11 +308,31 @@ test('LIVE-CLASS regression: deep in TeamActivity, pressing Team resets to TeamH
   assert.equal(f.landedOn, 'TeamHome', 'must leave TeamActivity, not stay on it');
 });
 
+// ---------------------------------------------------------------------------
+// Academy — fifth stacked tab (Phase 8 Wave C, Academy activation), same bug
+// class and same fix shape as Research/Content/Settings/Team above.
+// ---------------------------------------------------------------------------
+
+test('Academy resolves to AcademyHome explicitly, never a bare tab focus', () => {
+  const { tabs, academyScreens, nav } = recordingNav();
+  performNav(findNavItem('academy'), nav);
+  assert.deepEqual(academyScreens, ['AcademyHome']);
+  assert.deepEqual(tabs, [], 'academy must not use the non-resetting bare-tab path');
+  assert.equal(findNavItem('academy').screen, ACADEMY_ROOT_SCREEN);
+});
+
+test('LIVE-CLASS regression: deep in LessonViewer, pressing Academy resets to AcademyHome', () => {
+  const f = fakeNavigator({ Academy: ['AcademyHome', 'LessonViewer'] });
+  performNav(findNavItem('academy'), f.nav);
+  assert.equal(f.landedOn, 'AcademyHome', 'must leave LessonViewer, not stay on it');
+});
+
 test('cross-stack: stale nested state in EVERY stacked tab, each sidebar item still lands on its own root', () => {
   for (const [id, lands] of [
     ['research', 'ResearchWorkspaceList'],
     ['content', 'ContentHome'],
     ['team', 'TeamHome'],
+    ['academy', 'AcademyHome'],
     ['settings', 'SettingsHome'],
   ] as const) {
     const f = fakeNavigator({
@@ -308,9 +340,10 @@ test('cross-stack: stale nested state in EVERY stacked tab, each sidebar item st
       Research: ['ResearchWorkspaceList', 'ResearchPacket'],
       Content: ['ContentHome', 'DraftEditor'],
       Team: ['TeamHome', 'TeamActivity'],
+      Academy: ['AcademyHome', 'LessonViewer'],
     });
     performNav(findNavItem(id), f.nav);
-    assert.equal(f.landedOn, lands, `${id} with all four stacks dirty`);
+    assert.equal(f.landedOn, lands, `${id} with all five stacks dirty`);
   }
 });
 
@@ -337,10 +370,10 @@ test('Home and Activity are stackless tabs: the bare-tab path remains their corr
     ['home', 'Home'],
     ['activity', 'Activity'],
   ] as const) {
-    const { tabs, screens, researchScreens, contentScreens, teamScreens, nav } = recordingNav();
+    const { tabs, screens, researchScreens, contentScreens, teamScreens, academyScreens, nav } = recordingNav();
     performNav(findNavItem(id), nav);
     assert.deepEqual(tabs, [tab]);
-    assert.deepEqual([...screens, ...researchScreens, ...contentScreens, ...teamScreens], []);
+    assert.deepEqual([...screens, ...researchScreens, ...contentScreens, ...teamScreens, ...academyScreens], []);
   }
 });
 

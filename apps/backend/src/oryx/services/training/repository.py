@@ -172,6 +172,15 @@ class EnrollmentRepository:
         )
         return result.scalar_one_or_none()
 
+    async def list_for_account(self, account_id: uuid.UUID) -> list[Enrollment]:
+        """Every real enrollment this account has, across every course —
+        the catalog endpoint's real per-course "enrolled" signal, computed
+        once as a map rather than N+1 get() calls per course."""
+        result = await self.db.execute(
+            select(Enrollment).where(Enrollment.account_id == account_id)
+        )
+        return list(result.scalars().all())
+
     async def enroll(self, *, account_id: uuid.UUID, course_id: uuid.UUID) -> Enrollment:
         existing = await self.get(account_id=account_id, course_id=course_id)
         if existing is not None:

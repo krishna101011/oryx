@@ -40,6 +40,15 @@ export const linking: LinkingOptions<ReactNavigation.RootParamList> = {
               TeamChat: 'team/chat',
             },
           },
+          // Phase 8 Wave C — Academy activation (real courses/lessons,
+          // replacing the Phase-1 placeholder). Same stacked-tab shape as
+          // Research/Content/Team above.
+          Academy: {
+            screens: {
+              AcademyHome: 'academy',
+              LessonViewer: 'academy/lessons/:lessonId',
+            },
+          },
           Activity: 'activity',
           Settings: {
             screens: {

@@ -1,5 +1,6 @@
 import { createNavigationContainerRef } from '@react-navigation/native';
 import type {
+  AcademyStackParamList,
   ContentStackParamList,
   ResearchStackParamList,
   RootStackParamList,
@@ -15,7 +16,9 @@ import type {
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 /** Navigate to a top-level tab from the web sidebar. No-op until ready. */
-export function navigateTab(tab: 'Home' | 'Research' | 'Content' | 'Team' | 'Activity' | 'Settings'): void {
+export function navigateTab(
+  tab: 'Home' | 'Research' | 'Content' | 'Team' | 'Academy' | 'Activity' | 'Settings',
+): void {
   if (!navigationRef.isReady()) return;
   navigationRef.navigate('Tabs', { screen: tab });
 }
@@ -72,6 +75,18 @@ export function navigateTeamScreen<S extends keyof TeamStackParamList>(
   if (!navigationRef.isReady()) return;
   navigationRef.navigate('Tabs', {
     screen: 'Team',
+    params: params === undefined ? { screen } : { screen, params },
+  } as never);
+}
+
+/** Phase 8 Wave C — same mirror, fifth stacked tab (Academy activation). */
+export function navigateAcademyScreen<S extends keyof AcademyStackParamList>(
+  screen: S,
+  params?: AcademyStackParamList[S],
+): void {
+  if (!navigationRef.isReady()) return;
+  navigationRef.navigate('Tabs', {
+    screen: 'Academy',
     params: params === undefined ? { screen } : { screen, params },
   } as never);
 }

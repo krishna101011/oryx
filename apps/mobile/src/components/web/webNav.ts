@@ -9,7 +9,7 @@ import type { MeResponse } from '@oryx/shared-types';
  * everything else is `pending: true` (Phase 6+ surfaces) and renders dimmed and
  * non-interactive rather than as a fake live screen.
  */
-export type WebNavTab = 'Home' | 'Research' | 'Content' | 'Team' | 'Activity' | 'Settings';
+export type WebNavTab = 'Home' | 'Research' | 'Content' | 'Team' | 'Academy' | 'Activity' | 'Settings';
 
 export interface WebNavItem {
   id: string;
@@ -79,8 +79,11 @@ export const WEB_NAV: WebNavGroup[] = [
     ],
   },
   {
+    // Phase 8 Wave C — Academy activation: real courses/lessons replace the
+    // Phase-1 placeholder, matching how Team was promoted from `pending`.
+    // screen REQUIRED — same bare-tab bug class as every other stacked tab.
     group: 'LEARN',
-    items: [{ id: 'academy', label: 'Academy', icon: 'Book', pending: true }],
+    items: [{ id: 'academy', label: 'Academy', icon: 'Book', tab: 'Academy', screen: 'AcademyHome' }],
   },
   {
     // Team promotion wave (2026-07-26) — this group is NOT part of the
@@ -138,6 +141,8 @@ export const RESEARCH_ROOT_SCREEN = 'ResearchWorkspaceList';
 export const CONTENT_ROOT_SCREEN = 'ContentHome';
 /** Team promotion wave (2026-07-26) — fourth stacked tab, same rule. */
 export const TEAM_ROOT_SCREEN = 'TeamHome';
+/** Phase 8 Wave C — fifth stacked tab, same rule (Academy activation). */
+export const ACADEMY_ROOT_SCREEN = 'AcademyHome';
 
 /**
  * The tabs that mount a nested stack — the only tabs where a bare tab-level
@@ -145,7 +150,7 @@ export const TEAM_ROOT_SCREEN = 'TeamHome';
  * a single screen directly (RootTabNavigator), so the bare-tab path is
  * CORRECT for them: there is no stack to reset.
  */
-export const STACKED_TABS = ['Settings', 'Research', 'Content', 'Team'] as const;
+export const STACKED_TABS = ['Settings', 'Research', 'Content', 'Team', 'Academy'] as const;
 
 /**
  * Resolve a nav item to real navigation. Extracted from WebShell so the topbar
@@ -169,6 +174,7 @@ export function performNav(
     navigateResearchScreen: (screen: string) => void;
     navigateContentScreen: (screen: string) => void;
     navigateTeamScreen: (screen: string) => void;
+    navigateAcademyScreen: (screen: string) => void;
   },
 ): void {
   if (item.pending) return;
@@ -180,6 +186,8 @@ export function performNav(
     nav.navigateContentScreen(item.screen ?? CONTENT_ROOT_SCREEN);
   } else if (item.tab === 'Team') {
     nav.navigateTeamScreen(item.screen ?? TEAM_ROOT_SCREEN);
+  } else if (item.tab === 'Academy') {
+    nav.navigateAcademyScreen(item.screen ?? ACADEMY_ROOT_SCREEN);
   } else if (item.tab) {
     // Home / Activity: stackless tabs — a bare focus is the whole job.
     nav.navigateTab(item.tab);

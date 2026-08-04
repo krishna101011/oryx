@@ -54,6 +54,7 @@ test('activeNavIdFor maps every navigable tab and disambiguates the nested Setti
   assert.equal(activeNavIdFor('Research', undefined), 'research');
   assert.equal(activeNavIdFor('Content', 'DraftEditor'), 'content');
   assert.equal(activeNavIdFor('Team', undefined), 'team');
+  assert.equal(activeNavIdFor('Academy', undefined), 'academy');
   assert.equal(activeNavIdFor('Activity', undefined), 'activity');
   assert.equal(activeNavIdFor('Settings', 'SettingsHome'), 'settings');
   assert.equal(activeNavIdFor('Settings', 'VerificationQueue'), 'verify');
@@ -80,7 +81,13 @@ test('both sidebar renders receive the SAME activeId state — the highlight can
 /** The React-Navigation-faithful fake from webNav.test.ts (tab focus never
  * resets a nested stack; screen navigate rewinds-or-pushes in its own stack). */
 function fakeNavigator(
-  initial: { Settings?: string[]; Research?: string[]; Content?: string[]; Team?: string[] } = {},
+  initial: {
+    Settings?: string[];
+    Research?: string[];
+    Content?: string[];
+    Team?: string[];
+    Academy?: string[];
+  } = {},
 ) {
   let focusedTab = 'Home';
   const stacks: Record<string, string[]> = {
@@ -88,6 +95,7 @@ function fakeNavigator(
     Research: [...(initial.Research ?? ['ResearchWorkspaceList'])],
     Content: [...(initial.Content ?? ['ContentHome'])],
     Team: [...(initial.Team ?? ['TeamHome'])],
+    Academy: [...(initial.Academy ?? ['AcademyHome'])],
   };
   const navigateStackScreen = (tab: string) => (screen: string) => {
     focusedTab = tab;
@@ -108,12 +116,19 @@ function fakeNavigator(
       navigateResearchScreen: navigateStackScreen('Research'),
       navigateContentScreen: navigateStackScreen('Content'),
       navigateTeamScreen: navigateStackScreen('Team'),
+      navigateAcademyScreen: navigateStackScreen('Academy'),
     },
   };
 }
 
 /** Drawer harness: drawerNavigate wired to the REAL performNav, like WebShell. */
-function drawerHarness(initial?: { Settings?: string[]; Research?: string[]; Content?: string[]; Team?: string[] }) {
+function drawerHarness(initial?: {
+  Settings?: string[];
+  Research?: string[];
+  Content?: string[];
+  Team?: string[];
+  Academy?: string[];
+}) {
   const f = fakeNavigator(initial);
   let open = true;
   return {
@@ -144,11 +159,13 @@ test('REGRESSION through the collapsed path: Research and Content Studio presses
     ['research', 'ResearchWorkspaceList'],
     ['content', 'ContentHome'],
     ['team', 'TeamHome'],
+    ['academy', 'AcademyHome'],
   ] as const) {
     const h = drawerHarness({
       Research: ['ResearchWorkspaceList', 'ResearchWorkspaceDetail', 'ResearchPacket'],
       Content: ['ContentHome', 'DraftEditor'],
       Team: ['TeamHome', 'TeamActivity'],
+      Academy: ['AcademyHome', 'LessonViewer'],
     });
     h.press(id);
     assert.equal(h.f.landedOn, lands, `drawer ${id} press with a dirty stack`);

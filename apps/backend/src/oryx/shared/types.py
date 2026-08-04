@@ -1420,3 +1420,70 @@ class SubscribeRequest(_Base):
 class SubscribeResult(_Base):
     provider_subscription_id: str = Field(alias="providerSubscriptionId")
     status: SubscriptionStatus
+
+
+# ============================================================================
+# Training / Academy (Phase 8 Wave C) — mirrors shared-types/src/training.ts
+# ============================================================================
+
+
+class CourseCatalogItem(_Base):
+    id: str
+    title: str
+    description: str | None
+    enrolled: bool
+    enrolled_at: datetime | None = Field(default=None, alias="enrolledAt")
+
+
+class CourseCatalogResponse(_Base):
+    courses: list[CourseCatalogItem]
+
+
+class EnrollmentResult(_Base):
+    account_id: str = Field(alias="accountId")
+    course_id: str = Field(alias="courseId")
+    enrolled_at: datetime = Field(alias="enrolledAt")
+
+
+class LessonProgressResult(_Base):
+    account_id: str = Field(alias="accountId")
+    lesson_id: str = Field(alias="lessonId")
+    completed_at: datetime = Field(alias="completedAt")
+
+
+class CertificateStatus(_Base):
+    account_id: str = Field(alias="accountId")
+    course_id: str = Field(alias="courseId")
+    issued_at: datetime = Field(alias="issuedAt")
+
+
+class LessonSummary(_Base):
+    lesson_id: str = Field(alias="lessonId")
+    module_id: str = Field(alias="moduleId")
+    title: str
+    has_video: bool = Field(alias="hasVideo")
+    completed: bool
+    completed_at: datetime | None = Field(default=None, alias="completedAt")
+
+
+class CourseProgress(_Base):
+    course_id: str = Field(alias="courseId")
+    enrollment: EnrollmentResult | None
+    lessons: list[LessonSummary]
+    certificate: CertificateStatus | None
+
+
+class LessonDetail(_Base):
+    lesson_id: str = Field(alias="lessonId")
+    module_id: str = Field(alias="moduleId")
+    course_id: str = Field(alias="courseId")
+    title: str
+    transcript_text: str | None = Field(default=None, alias="transcriptText")
+    has_video: bool = Field(alias="hasVideo")
+    completed: bool
+    completed_at: datetime | None = Field(default=None, alias="completedAt")
+
+
+class LessonCompleteResult(_Base):
+    lesson_progress: LessonProgressResult = Field(alias="lessonProgress")
+    certificate: CertificateStatus | None

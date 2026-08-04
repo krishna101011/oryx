@@ -5,6 +5,7 @@ import { useMe } from '../../hooks/useMe';
 import { useAppSelector } from '../../store';
 import { usePublicPageRoute } from '../../navigation/usePublicPageRoute';
 import {
+  navigateAcademyScreen,
   navigateContentScreen,
   navigateResearchScreen,
   navigateSettingsScreen,
@@ -13,6 +14,7 @@ import {
   navigationRef,
 } from '../../navigation/navigationRef';
 import type {
+  AcademyStackParamList,
   ContentStackParamList,
   ResearchStackParamList,
   SettingsStackParamList,
@@ -39,8 +41,9 @@ function crumbsFor(activeId: string): [string, string] {
  * bottom-tab navigation untouched (early return introduces no extra View).
  *
  * Follows the WebFrame branching convention. The sidebar drives the real tab
- * navigator via navigationRef; only the four built tabs navigate, pending nav
- * items are inert.
+ * navigator via navigationRef; only the built tabs (Research/Content/Team/
+ * Academy, plus Settings/Home/Activity) navigate — pending nav items are
+ * inert.
  */
 export const WebShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   if (Platform.OS !== 'web') return <>{children}</>;
@@ -111,6 +114,8 @@ const WebShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         navigateContentScreen(screen as keyof ContentStackParamList),
       navigateTeamScreen: (screen) =>
         navigateTeamScreen(screen as keyof TeamStackParamList),
+      navigateAcademyScreen: (screen) =>
+        navigateAcademyScreen(screen as keyof AcademyStackParamList),
     });
   };
 

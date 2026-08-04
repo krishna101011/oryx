@@ -90,11 +90,25 @@ export type ContentStackParamList = {
   Calendar: undefined;
 };
 
+// Phase 8 Wave C — Academy is its own top-level tab (the LEARN sidebar
+// group's real, activated entry), same shape as Research/Content/Team:
+// a course list root plus a lesson-detail screen, courseId carried through
+// so the viewer can invalidate that course's real progress on completion.
+export type AcademyStackParamList = {
+  AcademyHome: undefined;
+  // courseId is deliberately NOT a param — LessonDetail's own response
+  // already carries it, so the viewer derives it from data instead of
+  // duplicating it in the route (and it stays deep-link-safe with just
+  // a lessonId in the URL).
+  LessonViewer: { lessonId: string };
+};
+
 export type RootTabParamList = {
   Home: undefined;
   Research: NavigatorScreenParams<ResearchStackParamList> | undefined;
   Content: NavigatorScreenParams<ContentStackParamList> | undefined;
   Team: NavigatorScreenParams<TeamStackParamList> | undefined;
+  Academy: NavigatorScreenParams<AcademyStackParamList> | undefined;
   Activity: undefined;
   Settings: NavigatorScreenParams<SettingsStackParamList> | undefined;
 };
