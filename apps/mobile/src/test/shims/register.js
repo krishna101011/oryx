@@ -22,6 +22,8 @@ const SHIMS = {
   'expo-constants': path.join(__dirname, 'expo-constants.js'),
   'expo-notifications': path.join(__dirname, 'expo-notifications.js'),
   'lucide-react-native': path.join(__dirname, 'lucide-react-native.js'),
+  'react-native-webview': path.join(__dirname, 'react-native-webview.js'),
+  'lightweight-charts': path.join(__dirname, 'lightweight-charts.js'),
 };
 
 const hasShim = (specifier) =>
