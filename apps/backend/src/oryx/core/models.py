@@ -1963,3 +1963,107 @@ class Certificate(Base):
     issued_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class Symbol(Base):
+    """Phase 9 Wave A (docs/PHASE_9_MARKET_TERMINAL_ARCHITECTURE.md §3) — a
+    tradable instrument. Platform-wide, same shape as Course (§2 of the
+    Phase 8 doc): the symbol catalog is shared across every workspace, so
+    this table deliberately carries no workspace_id column. asset_class
+    covers only the two classes evidenced in the real design-reference
+    mockups (terminal.jsx's heatmap sectors, technical.jsx's BTC/USD
+    chart) — widen additively when a real screen needs a third, don't
+    pre-guess the set."""
+
+    __tablename__ = "symbols"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ticker: Mapped[str] = mapped_column(Text, nullable=False)
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    asset_class: Mapped[str] = mapped_column(
+        Enum("equity", "crypto", name="symbol_asset_class"), nullable=False
+    )
+    exchange: Mapped[str] = mapped_column(Text, nullable=False)
+    currency: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (UniqueConstraint("ticker", "exchange", name="uq_symbols_ticker_exchange"),)
+
+
+class PriceBar(Base):
+    """The OHLCV cache (§3) — explicitly a CACHE, not a source of truth;
+    populated by whichever real vendor MarketDataProvider eventually wires
+    up (§3 of the architecture doc — none is chosen yet). Composite PK
+    (symbol_id, timeframe, bar_time): one bar per symbol/timeframe/
+    timestamp is the natural dedup key for a re-fetchable cache row, no
+    synthetic id needed. `timeframe` enum values match technical.jsx's
+    real timeframe tabs exactly (§1) — 1m/5m/15m/1H/4H/1D/1W, nothing
+    invented beyond the confirmed mockup."""
+
+    __tablename__ = "price_bars"
+
+    symbol_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("symbols.id", ondelete="CASCADE"), primary_key=True
+    )
+    timeframe: Mapped[str] = mapped_column(
+        Enum("1m", "5m", "15m", "1H", "4H", "1D", "1W", name="bar_timeframe"),
+        primary_key=True,
+    )
+    bar_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    open: Mapped[Decimal] = mapped_column(Numeric(20, 8), nullable=False)
+    high: Mapped[Decimal] = mapped_column(Numeric(20, 8), nullable=False)
+    low: Mapped[Decimal] = mapped_column(Numeric(20, 8), nullable=False)
+    close: Mapped[Decimal] = mapped_column(Numeric(20, 8), nullable=False)
+    volume: Mapped[Decimal] = mapped_column(Numeric(24, 8), nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class Watchlist(Base):
+    """§3 — a personal, per-account tracked-symbol list, NOT a shared
+    workspace resource. Scoped to account_id only, no workspace_id —
+    mirrors AlertPreference's real precedent above (account_id-only,
+    despite living inside a workspace-scoped app) for a setting that's
+    personal to the user: different teammates in the same workspace want
+    different symbols tracked, same reasoning as why notification
+    preferences aren't shared across a workspace. `name` defaults to
+    'Default', matching technical.jsx's real "Watchlist · DEFAULT" mockup
+    label — which implies (not built this wave) room for more than one
+    named list per account, so the schema allows it now rather than
+    needing a later migration."""
+
+    __tablename__ = "watchlists"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False, server_default="Default")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (UniqueConstraint("account_id", "name", name="uq_watchlists_account_name"),)
+
+
+class WatchlistItem(Base):
+    """One row per (watchlist, symbol) — composite PK, same shape as
+    Enrollment's (account_id, course_id) convention (Phase 8 §2). `order`
+    positions symbols within their watchlist for display, same convention
+    as Module.order/Lesson.order above."""
+
+    __tablename__ = "watchlist_items"
+
+    watchlist_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("watchlists.id", ondelete="CASCADE"), primary_key=True
+    )
+    symbol_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("symbols.id", ondelete="CASCADE"), primary_key=True
+    )
+    order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
