@@ -55,6 +55,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """
 
     WINDOW_SECONDS = 600  # 10 minutes
+    PRUNE_INTERVAL_SECONDS = 60
 
     def __init__(self, app, prefix: str = "/v1") -> None:
         super().__init__(app)
@@ -72,8 +73,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         then supplies the resolved client address through request.client.
         """
         return request.client.host if request.client else "unknown"
-
-    PRUNE_INTERVAL_SECONDS = 60
 
     def _prune_expired_buckets(self, now: float) -> None:
         """Remove client buckets whose complete sliding window has expired."""
