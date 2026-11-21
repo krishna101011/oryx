@@ -1,4 +1,4 @@
-﻿"""Security pass — rate limit, lockout, permission deny, feature gate."""
+"""Security pass — rate limit, lockout, permission deny, feature gate."""
 from __future__ import annotations
 
 import os
@@ -34,16 +34,23 @@ async def test_rate_limit_blocks_repeated_signin_attempts(app) -> None:
 
 
 @pytest.mark.asyncio
-async def test_lockout_triggers_after_threshold_failures(app) -> None:
-    """10 wrong passwords on the same account → account locked."""
+async def test_lockout_triggers_after_threshold_failures(app, monkeypatch) -> None:
+    """10 wrong passwords on the same account → account locked.
+
+    Raise the per-IP limit for this test so it isolates account lockout rather
+    than relying on spoofed X-Forwarded-For values to evade rate limiting.
+    """
+    from oryx.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "rate_limit_signin_per_10min", 20)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
         email = f"test+{uuid.uuid4().hex[:8]}@oryx.test"
         await client.post("/v1/auth/signup", json={
             "email": email, "password": "StrongPass123", "displayName": "x",
             "deviceId": "d", "deviceLabel": "l", "devicePlatform": "ios",
         })
-        # 10 wrong attempts — interleave devices to stay clear of the IP rate limit
-        # by tweaking X-Forwarded-For to spread bucket keys.
+        # Keep every attempt on the same ASGI peer address. The raised test
+        # limit leaves account lockout as the control under test.
         for i in range(11):
             await client.post(
                 "/v1/auth/signin",
@@ -51,7 +58,6 @@ async def test_lockout_triggers_after_threshold_failures(app) -> None:
                     "email": email, "password": "WrongPass" + str(i),
                     "deviceId": "d", "deviceLabel": "l", "devicePlatform": "ios",
                 },
-                headers={"X-Forwarded-For": f"10.0.0.{i + 1}"},
             )
         # Now the correct password should also be rejected because account is locked.
         res = await client.post(
@@ -60,7 +66,6 @@ async def test_lockout_triggers_after_threshold_failures(app) -> None:
                 "email": email, "password": "StrongPass123",
                 "deviceId": "d", "deviceLabel": "l", "devicePlatform": "ios",
             },
-            headers={"X-Forwarded-For": "10.0.0.99"},
         )
         assert res.json()["error"]["code"] == "AUTH_ACCOUNT_LOCKED"
 
