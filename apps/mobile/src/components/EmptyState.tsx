@@ -1,11 +1,10 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, Spacer, Text } from '@oryx/design-system';
-import { HornMark } from './HornMark';
+import { Button, OryxMark, Spacer, Text } from '@oryx/design-system';
 
 export interface EmptyStateProps {
-  /** Optional brand motif. 'horn' renders the sparing oryx-horn mark. */
-  icon?: 'horn';
+  /** Optional brand motif. 'oryx' is preferred; 'horn' remains compatible. */
+  icon?: 'horn' | 'oryx';
   title: string;
   description: string;
   ctaLabel?: string;
@@ -14,8 +13,8 @@ export interface EmptyStateProps {
 
 /**
  * Shared empty-state block for list screens: an invitation (not an apology),
- * a one-line explanation, and an optional verb-first CTA. The horn motif is the
- * only place HornMark is used in the app.
+ * a one-line explanation, and an optional verb-first CTA. The ORYX mark is the
+ * shared brand motif for empty states.
  *
  * Typography maps to the six-size token set (no ad-hoc sizes): title → body
  * (16px), description → bodySm (14px, secondary). The CTA reuses the primary
@@ -29,9 +28,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   onPress,
 }) => (
   <View style={styles.wrap}>
-    {icon === 'horn' ? (
+    {icon === 'horn' || icon === 'oryx' ? (
       <>
-        <HornMark />
+        <OryxMark />
         <Spacer size={4} />
       </>
     ) : null}
