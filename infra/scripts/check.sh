@@ -23,10 +23,21 @@ echo "→ backend sync (locked, dev extras)"
 echo "→ backend lint + type-check (CI py-job parity)"
 ( cd apps/backend && uv run --no-sync ruff check src tests && pnpm run type-check )
 
-echo "→ backend tests"
-# `python -m pytest` (not bare `uv run pytest`): under Git Bash on this Windows
-# setup, `uv run pytest`/`uv run mypy` intermittently emit no output and exit 1
-# spuriously; invoking via the module runs reliably. CI (ci.yml) is unaffected.
-( cd apps/backend && uv run --no-sync python -m pytest )
+if [[ -z "${ORYX_TEST_DB:-}" ]]; then
+  echo "ERROR: ORYX_TEST_DB is required for the full CI-equivalent check." >&2
+  echo "Start a disposable PostgreSQL database and set ORYX_TEST_DB first." >&2
+  exit 1
+fi
+
+# Keep migrations and tests pointed at the same disposable database.
+export DATABASE_URL="$ORYX_TEST_DB"
+
+echo "→ apply database migrations"
+( cd apps/backend && uv run --no-sync alembic upgrade head )
+
+echo "→ backend tests (unit + PostgreSQL integration)"
+# `python -m pytest` avoids a known intermittent uv/pytest launcher issue
+# on this Windows Git Bash setup. The CI workflow uses the standard launcher.
+( cd apps/backend && uv run --no-sync python -m pytest -q )
 
 echo "✓ all checks passed"
