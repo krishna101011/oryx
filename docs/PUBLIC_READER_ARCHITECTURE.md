@@ -103,15 +103,15 @@ considered here.
 **Rate limiting:** `slowapi` is a dead dependency (listed in
 `pyproject.toml`, never imported anywhere). The one real limiter,
 `RateLimitMiddleware` (`core/middleware.py:47-109`), is in-process,
-per-worker, `deque`-based, and hard-scoped to `POST
-/auth/signin|signup` only — its own docstring calls it a Phase-2
-placeholder ("replace with Redis-backed when we scale horizontally").
+per-worker, `deque`-based, and scoped to `POST
+/auth/signin|signup` plus `GET /public/pages/{slug}`. Its counters are
+not shared across API workers or instances.
 Client key is `request.client.host`; the middleware does not parse
 caller-supplied `X-Forwarded-For`. Uvicorn's proxy-header trust boundary
 must still be configured by the deployment operator to include only the
 actual ingress addresses. Without that configuration, requests behind a
 proxy may share the proxy's address rather than the originating client.
-Nothing generalized exists for any other route.
+No general-purpose shared limiter exists for other routes.
 
 **Caching:** fully absent. No Redis, no `REDIS_URL`, no CDN config, no
 `Cache-Control`/`ETag` on any response anywhere. `docker-compose.local.yml`
