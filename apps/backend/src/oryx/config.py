@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     service_name: str = "oryx-backend"
 
     @model_validator(mode="after")
-    def validate_non_dev_security_settings(self) -> "Settings":
+    def validate_non_dev_security_settings(self) -> Settings:
         """Reject development JWT configuration in staging and production."""
         if self.environment in ("staging", "prod"):
             if self.jwt_secret == "dev-only-not-for-prod-please-rotate":
