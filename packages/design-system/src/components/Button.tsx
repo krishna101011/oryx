@@ -46,9 +46,9 @@ export const Button: React.FC<ButtonProps> = ({
   const variantStyle: ViewStyle = (() => {
     switch (variant) {
       case 'primary':
-        // New primary CTA fill is amber; the disabled state is conveyed by the
-        // shared opacity treatment below (no separate muted-amber token).
-        return { backgroundColor: t.colors.accent.amber };
+        // The primary action uses the semantic ORYX accent token. Disabled
+        // state is conveyed by the shared opacity treatment below.
+        return { backgroundColor: t.colors.accent.primary };
       case 'secondary':
         return {
           backgroundColor: t.colors.bg.elevated,
@@ -63,7 +63,7 @@ export const Button: React.FC<ButtonProps> = ({
   })();
 
   const labelColor: React.ComponentProps<typeof Text>['color'] =
-    variant === 'primary' ? 'onAmber' : variant === 'danger' ? 'inverse' : 'primary';
+    variant === 'primary' ? 'onPrimary' : variant === 'danger' ? 'inverse' : 'primary';
 
   return (
     <Pressable
@@ -85,7 +85,7 @@ export const Button: React.FC<ButtonProps> = ({
       <View style={styles.content}>
         {loading ? (
           <ActivityIndicator
-            color={variant === 'primary' ? t.colors.text.onAmber : t.colors.text.primary}
+            color={variant === 'primary' ? t.colors.text.onPrimary : t.colors.text.primary}
           />
         ) : (
           <Text variant="body" color={labelColor}>
