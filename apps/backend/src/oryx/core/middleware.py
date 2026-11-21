@@ -48,12 +48,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """Sliding-window rate limit on /v1/auth/signin, /v1/auth/signup, and
     GET /v1/public/pages/{slug}.
 
-    Phase 2: in-memory per-process. Acceptable for a single-instance dev/prod.
-    Replace with Redis-backed when we scale horizontally. The public-pages
-    bucket (Public Reader Rev 1, §6) is the same placeholder, extended to
-    cover the one unauthenticated, scraping-exposed route this project has
-    ever shipped — real for this route, still honestly incomplete as a
-    general-purpose limiter.
+    Counters are in-memory and local to this API process. This is not a
+    shared limit across multiple workers or instances; use a shared store or
+    edge-level limiter before relying on global limits at scale. Client
+    identity comes from the ASGI connection, not raw forwarding headers.
     """
 
     WINDOW_SECONDS = 600  # 10 minutes
@@ -66,9 +64,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._public_page_hits: dict[str, deque[float]] = defaultdict(deque)
 
     def _client_key(self, request: Request) -> str:
-        fwd = request.headers.get("x-forwarded-for")
-        if fwd:
-            return fwd.split(",")[0].strip()
+        """Use the ASGI peer address, never a caller-controlled forwarding header.
+
+        If Uvicorn is behind a reverse proxy, its proxy-header handling must be
+        restricted to the deployment's exact trusted proxy addresses. Uvicorn
+        then supplies the resolved client address through request.client.
+        """
         return request.client.host if request.client else "unknown"
 
     def _check(self, hits: dict[str, deque[float]], key: str, limit: int) -> bool:
