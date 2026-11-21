@@ -14,7 +14,7 @@ export interface EmptyStateProps {
 /**
  * Shared empty-state block for list screens: an invitation (not an apology),
  * a one-line explanation, and an optional verb-first CTA. The ORYX mark is the
- * only place OryxMark is used in the app.
+ * shared brand motif for empty states.
  *
  * Typography maps to the six-size token set (no ad-hoc sizes): title → body
  * (16px), description → bodySm (14px, secondary). The CTA reuses the primary
