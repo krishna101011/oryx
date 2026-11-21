@@ -48,12 +48,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """Sliding-window rate limit on /v1/auth/signin, /v1/auth/signup, and
     GET /v1/public/pages/{slug}.
 
-    Phase 2: in-memory per-process. Acceptable for a single-instance dev/prod.
-    Replace with Redis-backed when we scale horizontally. The public-pages
-    bucket (Public Reader Rev 1, §6) is the same placeholder, extended to
-    cover the one unauthenticated, scraping-exposed route this project has
-    ever shipped — real for this route, still honestly incomplete as a
-    general-purpose limiter.
+    Counters are in-memory and local to this API process. This is not a
+    shared limit across multiple workers or instances; use a shared store or
+    edge-level limiter before relying on global limits at scale. Client
+    identity comes from the ASGI connection, not raw forwarding headers.
     """
 
     WINDOW_SECONDS = 600  # 10 minutes
