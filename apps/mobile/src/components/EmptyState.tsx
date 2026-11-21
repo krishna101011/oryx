@@ -1,10 +1,9 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, Spacer, Text } from '@oryx/design-system';
-import { OryxMark } from '@oryx/design-system';
+import { Button, OryxMark, Spacer, Text } from '@oryx/design-system';
 
 export interface EmptyStateProps {
-  /** Optional brand motif. 'horn' renders the sparing oryx-horn mark. */
+  /** Optional brand motif. 'oryx' is preferred; 'horn' remains compatible. */
   icon?: 'horn' | 'oryx';
   title: string;
   description: string;
