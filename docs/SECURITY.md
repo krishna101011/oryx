@@ -36,8 +36,8 @@ This document captures Phase 2's security posture: what the code guarantees, wha
 
 | Control | Trigger | Mechanism |
 |---|---|---|
-| **Signin rate limit** | 5 attempts / 10 min per IP (sliding window) | `RateLimitMiddleware`. In-memory per-process — replace with Redis before horizontal scaling. |
-| **Signup rate limit** | 5 attempts / 10 min per IP | Same |
+| **Signin rate limit** | 5 attempts / 10 min per resolved client address (sliding window) | `RateLimitMiddleware`. Uses the ASGI peer address and ignores caller-supplied `X-Forwarded-For`. In-memory per-process — use a shared limiter before horizontal scaling. |
+| **Signup rate limit** | 5 attempts / 10 min per resolved client address | Same |
 | **Account lockout** | 10 consecutive failed signins on one account | `accounts.locked_until` set 15 min ahead; the correct password is also rejected during the lockout window |
 | **Email enumeration resistance** | Bogus email + any password | Performs a dummy Argon2 verify before returning `AUTH_INVALID_CREDENTIALS` so the response timing matches the real-account path |
 
@@ -88,6 +88,8 @@ Phase 2 ships single-user mode (every user is owner of their own workspace), so 
 
 **HTTPS** — terminated at the operator's load balancer / ingress. The app does not handle TLS itself.
 
+**Client address trust** — the rate limiter uses `request.client.host`; it never parses `X-Forwarded-For` itself. When Uvicorn runs behind a reverse proxy, operators must configure Uvicorn's trusted proxy addresses narrowly (for example with `--forwarded-allow-ips`) so only the actual ingress can supply forwarded client information. Never use a wildcard trust setting on an internet-facing deployment. If this is not configured, requests may be grouped under the proxy address, reducing per-client fairness but avoiding caller-controlled identity spoofing.
+
 **Headers exposed** — only `X-Request-Id` and `X-Response-Time` (for correlation and debugging).
 
 ---
@@ -112,7 +114,7 @@ These are real security concerns whose ownership is operations, not application 
 - [x] Refresh tokens hashed at rest, opaque on the wire
 - [x] JWT signed; minimal claims; clock skew tolerance
 - [x] Rotation with reuse detection → chain revocation
-- [x] Rate limit on `/auth/signin` and `/auth/signup`
+- [x] Rate limit on `/auth/signin` and `/auth/signup` (per-process; proxy trust must be configured by the operator)
 - [x] Account lockout after threshold
 - [x] Account isolation enforced
 - [x] Workspace isolation enforced
