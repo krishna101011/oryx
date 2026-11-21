@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Divider,
   GensparkIcon,
-  HornMark,
+  OryxMark,
   Text,
   useGx,
   useTheme,
@@ -119,7 +119,7 @@ export const WebSidebar: React.FC<{
       >
         {/* brand */}
         <View style={gx.sidebarBrand}>
-          <HornMark size={22} />
+          <OryxMark size={22} />
           <Text variant="wordmark" color="primary">ORYX</Text>
           {version ? (
             <View style={gx.brandBadge}>
@@ -139,7 +139,7 @@ export const WebSidebar: React.FC<{
             testID="workspace-pill"
           >
             <View style={gx.wsIcon}>
-              <HornMark size={12} />
+              <OryxMark size={12} />
             </View>
             <View style={{ flex: 1 }}>
               <Text variant="navLabel" color="primary" numberOfLines={1}>{wsName}</Text>
