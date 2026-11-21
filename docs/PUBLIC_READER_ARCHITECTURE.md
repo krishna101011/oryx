@@ -224,9 +224,8 @@ returning the shape above; the existing Expo web app renders it as a
 real screen with no auth guard.
 
 **Rate limiting — real for this route, honestly incomplete elsewhere.**
-The existing limiter is an admitted in-process placeholder scoped to
-signin/signup. Rev 1 extends it to cover the new public route as a
-genuine, immediate improvement. It uses the ASGI client address rather
+The existing limiter is an admitted in-process placeholder covering
+signin/signup and the new public route. It uses the ASGI client address rather
 than parsing caller-controlled forwarding headers. The deployment must
 configure Uvicorn to trust only its actual ingress proxy addresses.
 A Redis-backed or edge-level solution remains follow-up work before this
