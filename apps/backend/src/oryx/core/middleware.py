@@ -66,9 +66,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._public_page_hits: dict[str, deque[float]] = defaultdict(deque)
 
     def _client_key(self, request: Request) -> str:
-        fwd = request.headers.get("x-forwarded-for")
-        if fwd:
-            return fwd.split(",")[0].strip()
+        """Use the ASGI peer address, never a caller-controlled forwarding header.
+
+        If Uvicorn is behind a reverse proxy, its proxy-header handling must be
+        restricted to the deployment's exact trusted proxy addresses. Uvicorn
+        then supplies the resolved client address through request.client.
+        """
         return request.client.host if request.client else "unknown"
 
     def _check(self, hits: dict[str, deque[float]], key: str, limit: int) -> bool:
