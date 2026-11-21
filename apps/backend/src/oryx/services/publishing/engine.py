@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from typing import cast
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -31,6 +32,7 @@ from oryx.services.publishing.channels.base import (
     TransientChannelError,
 )
 from oryx.services.publishing.channels.registry import get_channel
+from oryx.services.publishing.channels.webhook import WebhookChannel
 from oryx.services.publishing.citations import (
     CitationSummary,
     format_citation_footer,
@@ -46,6 +48,7 @@ from oryx.services.publishing.repository import PublicationsRepository
 from oryx.services.queue.outbox import enqueue_event
 from oryx.services.reader.repository import PublicPagesRepository
 from oryx.services.targets.repository import TargetsRepository
+from oryx.shared.types import PublishChannel
 
 logger = get_logger(__name__)
 
@@ -270,14 +273,16 @@ class PublishingEngine:
             publish_content = content
         else:
             publish_content = content + format_citation_footer(
-                citations, channel, content=content
+                citations, cast(PublishChannel, channel), content=content
             )
         try:
             # format_content first (§ step d) — empty means nothing to publish.
             segments = adapter.format_content(publish_content, None)
             if not segments:
                 raise PermanentChannelError("No content to publish")
-            if channel == "webhook":
+            if channel == "webhook" and isinstance(adapter, WebhookChannel):
+                # The shared protocol intentionally remains channel-agnostic.
+                # Only the concrete webhook adapter accepts structured citations.
                 result = await adapter.publish(
                     publish_content, draft_title, credentials, config,
                     citations=citations,
