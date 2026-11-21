@@ -16,6 +16,7 @@ export interface TextProps extends Omit<RNTextProps, 'style'> {
     | 'inverse'
     | 'brand'
     | 'danger'
+    | 'onPrimary'
     | 'onAmber'
     | 'onCoral'
     | 'onTeal';
