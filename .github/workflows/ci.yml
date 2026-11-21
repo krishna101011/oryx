@@ -48,6 +48,23 @@ jobs:
     name: lint + type-check + tests (Python)
     runs-on: ubuntu-latest
     needs: drift
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: anant
+          POSTGRES_PASSWORD: anant
+          POSTGRES_DB: oryx_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U anant -d oryx_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      ORYX_TEST_DB: postgresql+asyncpg://anant:anant@localhost:5432/oryx_test
+      DATABASE_URL: postgresql+asyncpg://anant:anant@localhost:5432/oryx_test
     defaults:
       run:
         working-directory: apps/backend
@@ -99,5 +116,7 @@ jobs:
           src/oryx/services/intake/admin_router.py
           src/oryx/core/security/secrets.py
           src/oryx/services/activity/digest.py
-      - name: Pytest
+      - name: Apply database migrations
+        run: uv run --no-sync alembic upgrade head
+      - name: Pytest (unit + PostgreSQL integration)
         run: uv run --no-sync pytest -q
