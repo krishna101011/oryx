@@ -8,7 +8,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["dev", "staging", "prod"]
@@ -36,6 +36,20 @@ class Settings(BaseSettings):
     environment: Environment = "dev"
     log_level: LogLevel = "INFO"
     service_name: str = "oryx-backend"
+
+    @model_validator(mode="after")
+    def validate_non_dev_security_settings(self) -> Settings:
+        """Reject development JWT configuration in staging and production."""
+        if self.environment in ("staging", "prod"):
+            if self.jwt_secret == "dev-only-not-for-prod-please-rotate":
+                raise ValueError(
+                    "JWT_SECRET must be explicitly configured outside development"
+                )
+            if len(self.jwt_secret.encode("utf-8")) < 32:
+                raise ValueError(
+                    "JWT_SECRET must contain at least 32 bytes outside development"
+                )
+        return self
 
     # --- HTTP server ---
     api_prefix: str = "/v1"
