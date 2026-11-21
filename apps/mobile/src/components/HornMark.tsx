@@ -1,6 +1,4 @@
 /**
- * Re-export of the canonical Genspark horn mark (now lives in the design-system
- * package so the web sidebar and EmptyState share one source). Import path kept
- * stable for existing callers (EmptyState).
+ * Backwards-compatible app import path for the ORYX identity mark.
  */
-export { HornMark } from '@oryx/design-system';
+export { OryxMark, OryxMark as HornMark } from '@oryx/design-system';
