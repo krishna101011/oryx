@@ -52,7 +52,6 @@ def test_client_key_falls_back_when_asgi_peer_is_missing() -> None:
     assert middleware._client_key(request) == "unknown"
 
 
-
 def test_prune_expired_buckets_removes_stale_entries_from_every_route_bucket() -> None:
     middleware = RateLimitMiddleware(app=lambda scope, receive, send: None)
     now = 10_000.0
