@@ -125,7 +125,8 @@ export const colors = {
     primary: g.text, // --text   #E6EAF2
     secondary: g.text2, // --text-2 #A8B0BF
     tertiary: g.text3, // --text-3 #6B7588
-    inverse: '#FFFFFF', // .btn.primary color: #fff (on accent gradient)
+    inverse: '#FFFFFF', // neutral inverse text
+    onPrimary: '#FFFFFF', // primary action fill (indigo)
     // Genspark renders white on every accent fill. These keys are retained
     // for the existing Text/Button contract; all resolve to #fff over the
     // bright accent gradient (no same-family dark-on-fill in this system).
@@ -137,8 +138,11 @@ export const colors = {
     // Genspark accent family. `amber`/`coral` keys are retained (the Button
     // and a few call sites reference them) but now carry the Genspark accent
     // values — indigo→violet is the primary gradient; violet is the solo.
-    amber: g.indigo, // PRIMARY solo accent — --indigo #5B5BF5
-    coral: g.violet, // secondary solo accent — --violet #8B5CF6
+    primary: g.indigo, // canonical ORYX primary action accent — --indigo #5B5BF5
+    secondary: g.violet, // canonical secondary accent — --violet #8B5CF6
+    // Deprecated compatibility aliases. Migrate consumers to primary/secondary.
+    amber: g.indigo,
+    coral: g.violet,
     teal: g.teal, // --teal  #08314A — SURFACE-ONLY (1.49:1 vs bg); marks/text use semantic.positiveText
     tealMuted: g.teal2, // --teal-2 #041F35
     tealGlow: withAlpha(g.teal, 0.15), // selection glow (tracks --teal)
@@ -265,12 +269,16 @@ export const lightColors: { [K in keyof Colors]: { [J in keyof Colors[K]]: strin
     secondary: l.text2,
     tertiary: l.text3,
     inverse: '#FFFFFF', // white on saturated pill/accent fills (mode-invariant fills)
+    onPrimary: '#FFFFFF', // white label on the primary indigo action
     onAmber: '#FFFFFF',
     onCoral: '#FFFFFF',
     // light teal is a pale wash — readable ink on it is positiveText (6.05:1)
     onTeal: '#155A9C',
   },
   accent: {
+    primary: l.indigo,
+    secondary: l.violet,
+    // Deprecated compatibility aliases. Migrate consumers to primary/secondary.
     amber: l.indigo,
     coral: l.violet,
     teal: l.teal, // surface wash, fill-only (same rule as dark)
