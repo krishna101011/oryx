@@ -106,8 +106,11 @@ considered here.
 per-worker, `deque`-based, and hard-scoped to `POST
 /auth/signin|signup` only — its own docstring calls it a Phase-2
 placeholder ("replace with Redis-backed when we scale horizontally").
-Client key is `X-Forwarded-For`/`request.client.host` — spoofable without
-a trusted proxy layer, which isn't configured anywhere in this repo.
+Client key is `request.client.host`; the middleware does not parse
+caller-supplied `X-Forwarded-For`. Uvicorn's proxy-header trust boundary
+must still be configured by the deployment operator to include only the
+actual ingress addresses. Without that configuration, requests behind a
+proxy may share the proxy's address rather than the originating client.
 Nothing generalized exists for any other route.
 
 **Caching:** fully absent. No Redis, no `REDIS_URL`, no CDN config, no
@@ -221,11 +224,13 @@ returning the shape above; the existing Expo web app renders it as a
 real screen with no auth guard.
 
 **Rate limiting — real for this route, honestly incomplete elsewhere.**
-The existing limiter is an admitted placeholder scoped only to
+The existing limiter is an admitted in-process placeholder scoped to
 signin/signup. Rev 1 extends it to cover the new public route as a
-genuine, immediate improvement — but a Redis-backed or edge-level
-solution is real follow-up work before this route should be considered
-safe under real scraping load at real scale.
+genuine, immediate improvement. It uses the ASGI client address rather
+than parsing caller-controlled forwarding headers. The deployment must
+configure Uvicorn to trust only its actual ingress proxy addresses.
+A Redis-backed or edge-level solution remains follow-up work before this
+route should be considered safe under real scraping load at real scale.
 
 **Explicitly out of scope for Rev 1.** Reader-engagement analytics
 (page views, time-on-page) — needs entirely new instrumentation
