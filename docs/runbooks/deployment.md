@@ -125,7 +125,7 @@ If database integrity is in doubt, stop the affected writers/workers and follow 
 This runbook documents the current application process topology and configuration surface. It does **not** certify that production infrastructure is ready. Before a production launch, separately verify:
 
 - managed PostgreSQL backups, restore drills, network restrictions, and connection capacity;
-- TLS termination, ingress/proxy configuration, and trusted forwarding headers;
+- TLS termination and ingress/proxy configuration. The rate limiter uses the ASGI client address and ignores raw `X-Forwarded-For`; when Uvicorn is behind ingress, set `--forwarded-allow-ips` (or `FORWARDED_ALLOW_IPS`) to the exact trusted proxy IPs/CIDRs. Do not use `*` on an internet-facing deployment. If the proxy is not trusted by Uvicorn, clients may all be counted under the proxy address; this is safer than trusting arbitrary client-supplied headers, but it is not correct per-client limiting;
 - centralized logs, metrics, alerting, and worker-liveness monitoring;
 - secret provisioning and rotation for JWT, intake encryption, publishing credentials, and enabled providers;
 - deployment-specific process definitions and restart/shutdown behavior;
