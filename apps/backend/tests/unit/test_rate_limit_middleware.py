@@ -1,5 +1,7 @@
 """Tests for the rate limiter's client-address trust boundary."""
 
+from collections import deque
+
 from starlette.requests import Request
 
 from oryx.core.middleware import RateLimitMiddleware
@@ -48,3 +50,39 @@ def test_client_key_falls_back_when_asgi_peer_is_missing() -> None:
     request = _request(client=None, headers=[])
 
     assert middleware._client_key(request) == "unknown"
+
+
+def test_prune_expired_buckets_removes_stale_entries_from_every_route_bucket() -> None:
+    middleware = RateLimitMiddleware(app=lambda scope, receive, send: None)
+    now = 10_000.0
+    expired_at = now - middleware.WINDOW_SECONDS - 1
+
+    middleware._signin_hits["old-signin"] = deque([expired_at])
+    middleware._signup_hits["old-signup"] = deque([expired_at])
+    middleware._public_page_hits["old-public"] = deque([expired_at])
+    middleware._signin_hits["active-signin"] = deque([now - 10])
+
+    middleware._prune_expired_buckets(now)
+
+    assert "old-signin" not in middleware._signin_hits
+    assert "old-signup" not in middleware._signup_hits
+    assert "old-public" not in middleware._public_page_hits
+    assert list(middleware._signin_hits["active-signin"]) == [now - 10]
+
+
+def test_check_triggers_periodic_pruning_across_route_bucket_maps(monkeypatch) -> None:
+    middleware = RateLimitMiddleware(app=lambda scope, receive, send: None)
+    expired_at = 100.0
+    middleware._signin_hits["stale-signin"] = deque([expired_at])
+    middleware._signup_hits["stale-signup"] = deque([expired_at])
+    middleware._public_page_hits["stale-public"] = deque([expired_at])
+    middleware._last_bucket_prune = 0.0
+    monkeypatch.setattr("oryx.core.middleware.time.time", lambda: 1_000.0)
+    monkeypatch.setattr("oryx.core.middleware.time.monotonic", lambda: 61.0)
+
+    assert middleware._check(middleware._signin_hits, "current-client", 5) is True
+
+    assert "stale-signin" not in middleware._signin_hits
+    assert "stale-signup" not in middleware._signup_hits
+    assert "stale-public" not in middleware._public_page_hits
+    assert list(middleware._signin_hits["current-client"]) == [1_000.0]

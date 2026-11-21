@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from collections import defaultdict, deque
+from collections import deque
 from collections.abc import Awaitable, Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -55,13 +55,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """
 
     WINDOW_SECONDS = 600  # 10 minutes
+    PRUNE_INTERVAL_SECONDS = 60
 
     def __init__(self, app, prefix: str = "/v1") -> None:
         super().__init__(app)
         self.prefix = prefix
-        self._signin_hits: dict[str, deque[float]] = defaultdict(deque)
-        self._signup_hits: dict[str, deque[float]] = defaultdict(deque)
-        self._public_page_hits: dict[str, deque[float]] = defaultdict(deque)
+        self._signin_hits: dict[str, deque[float]] = {}
+        self._signup_hits: dict[str, deque[float]] = {}
+        self._public_page_hits: dict[str, deque[float]] = {}
+        self._last_bucket_prune = time.monotonic()
 
     def _client_key(self, request: Request) -> str:
         """Use the ASGI peer address, never a caller-controlled forwarding header.
@@ -72,9 +74,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """
         return request.client.host if request.client else "unknown"
 
+    def _prune_expired_buckets(self, now: float) -> None:
+        """Remove client buckets whose complete sliding window has expired."""
+        for hits in (self._signin_hits, self._signup_hits, self._public_page_hits):
+            for key, bucket in list(hits.items()):
+                while bucket and now - bucket[0] > self.WINDOW_SECONDS:
+                    bucket.popleft()
+                if not bucket:
+                    del hits[key]
+
     def _check(self, hits: dict[str, deque[float]], key: str, limit: int) -> bool:
         now = time.time()
-        bucket = hits[key]
+        monotonic_now = time.monotonic()
+        if monotonic_now - self._last_bucket_prune >= self.PRUNE_INTERVAL_SECONDS:
+            self._prune_expired_buckets(now)
+            self._last_bucket_prune = monotonic_now
+
+        bucket = hits.setdefault(key, deque())
         while bucket and now - bucket[0] > self.WINDOW_SECONDS:
             bucket.popleft()
         if len(bucket) >= limit:
