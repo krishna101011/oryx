@@ -124,7 +124,7 @@ export const colors = {
   text: {
     primary: g.text, // --text   #E6EAF2
     secondary: g.text2, // --text-2 #A8B0BF
-    tertiary: g.text3, // --text-3 #6B7588
+    tertiary: g.text3, // --text-3 #737E92
     inverse: '#FFFFFF', // neutral inverse text
     onPrimary: '#FFFFFF', // primary action fill (indigo)
     // Genspark renders white on every accent fill. These keys are retained
@@ -196,7 +196,7 @@ export const colors = {
  *                     1.27:1 / 1.22:1 — same subtle-hairline role)
  *   borderStrong #C4CDD9 1.51:1 vs bg (dark #232F42 is 1.50:1 — exact role)
  *   text2    #3E4756  8.82:1 vs bg (dark #A8B0BF is 9.25:1) — AAA
- *   text3    #556072  5.98:1 vs bg (dark #6B7588 is 4.35:1) — AA
+ *   text3    #556072  5.98:1 vs bg (dark #737E92 is 4.93:1 vs bg and 4.72:1 vs panel) — AA
  *   text4    #8A94A6  2.88:1 vs bg (dark #4A5263 is 2.57:1) — decorative ramp
  *                     step only, same as dark; never used for readable copy
  * Given values verified: text.primary 16.90:1, positiveText 6.64:1, danger
