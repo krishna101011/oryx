@@ -37,7 +37,7 @@ export const gensparkPalette = {
 
   text: '#E6EAF2', // --text
   text2: '#A8B0BF', // --text-2
-  text3: '#6B7588', // --text-3
+  text3: '#737E92', // adjusted to meet 4.5:1 AA on bg and panel
   text4: '#4A5263', // --text-4
 
   indigo: '#5B5BF5', // --indigo
