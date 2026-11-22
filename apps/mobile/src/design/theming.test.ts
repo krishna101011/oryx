@@ -100,7 +100,7 @@ test('both modes share one consolidated scrim (the migrated 0.5/0.55/0.60 trio) 
 
 test('withAlpha composes with light tokens (the migrated badge/track/banner washes resolve in both modes)', () => {
   assert.equal(withAlpha(themes.light.colors.text.tertiary, 0.15), 'rgba(85,96,114,0.15)');
-  assert.equal(withAlpha(themes.dark.colors.text.tertiary, 0.15), 'rgba(107,117,136,0.15)');
+  assert.equal(withAlpha(themes.dark.colors.text.tertiary, 0.15), 'rgba(115,126,146,0.15)');
   assert.equal(withAlpha(themes.light.colors.semantic.danger, 0.12), 'rgba(158,36,30,0.12)');
   assert.equal(withAlpha(themes.dark.colors.semantic.danger, 0.12), 'rgba(248,113,113,0.12)');
 });
