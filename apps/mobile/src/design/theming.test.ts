@@ -119,6 +119,36 @@ test('canonical ORYX accent and onPrimary tokens are mode-aware aliases with no 
   assert.equal(themes.light.colors.accent.secondary, '#7440D6');
 });
 
+
+const relativeLuminance = (hex: string): number => {
+  const channels = [1, 3, 5].map((start) => {
+    const value = Number.parseInt(hex.slice(start, start + 2), 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+};
+
+const contrastRatio = (foreground: string, background: string): number => {
+  const values = [relativeLuminance(foreground), relativeLuminance(background)].sort(
+    (a, b) => b - a,
+  );
+  return (values[0]! + 0.05) / (values[1]! + 0.05);
+};
+
+test('readable text tokens meet WCAG AA against their default and card surfaces', () => {
+  for (const mode of ['dark', 'light'] as const) {
+    const c = themes[mode].colors;
+    for (const surface of [c.bg.primary, c.bg.card]) {
+      for (const role of ['primary', 'secondary', 'tertiary'] as const) {
+        assert.ok(
+          contrastRatio(c.text[role], surface) >= 4.5,
+          `${mode}.text.${role} must meet 4.5:1 on ${surface}; got ${contrastRatio(c.text[role], surface).toFixed(2)}:1`,
+        );
+      }
+    }
+  }
+});
+
 // ---- The switch mechanism ---------------------------------------------------
 
 test('theme slice: modeSet actually flips the mode (the Phase-1 empty reducer is gone)', () => {
