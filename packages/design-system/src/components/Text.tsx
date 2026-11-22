@@ -16,6 +16,7 @@ export interface TextProps extends Omit<RNTextProps, 'style'> {
     | 'inverse'
     | 'brand'
     | 'danger'
+    | 'onPrimary'
     | 'onAmber'
     | 'onCoral'
     | 'onTeal';
@@ -38,11 +39,11 @@ export const Text: React.FC<TextProps> = ({
 }) => {
   const t = useTheme();
   const variantStyle = t.typography[variant];
-  // 'brand' resolves to the new primary accent (amber). Text-on-fill keys
-  // (onAmber/onCoral/onTeal) and the base text ramp resolve from colors.text.
+  // 'brand' resolves to the canonical ORYX primary accent. Text-on-fill keys
+  // and the base text ramp resolve from colors.text.
   const resolvedColor =
     color === 'brand'
-      ? t.colors.accent.amber
+      ? t.colors.accent.primary
       : color === 'danger'
         ? t.colors.semantic.danger
         : t.colors.text[color];

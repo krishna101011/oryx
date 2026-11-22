@@ -105,6 +105,20 @@ test('withAlpha composes with light tokens (the migrated badge/track/banner wash
   assert.equal(withAlpha(themes.dark.colors.semantic.danger, 0.12), 'rgba(248,113,113,0.12)');
 });
 
+
+test('canonical ORYX accent and onPrimary tokens are mode-aware aliases with no visual regression', () => {
+  for (const mode of ['dark', 'light'] as const) {
+    const c = themes[mode].colors;
+    assert.equal(c.accent.primary, c.accent.amber);
+    assert.equal(c.accent.secondary, c.accent.coral);
+    assert.equal(c.text.onPrimary, '#FFFFFF');
+  }
+  assert.equal(themes.dark.colors.accent.primary, '#5B5BF5');
+  assert.equal(themes.light.colors.accent.primary, '#5B5BF5');
+  assert.equal(themes.dark.colors.accent.secondary, '#8B5CF6');
+  assert.equal(themes.light.colors.accent.secondary, '#7440D6');
+});
+
 // ---- The switch mechanism ---------------------------------------------------
 
 test('theme slice: modeSet actually flips the mode (the Phase-1 empty reducer is gone)', () => {
