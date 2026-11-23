@@ -209,7 +209,7 @@ export const DashboardScreen: React.FC = () => {
                 accessibilityRole="button"
                 accessibilityLabel="Generate a draft. Turn research into a clear first draft."
               >
-                <View style={styles.actionIcon}>
+                <View style={[styles.actionIcon, gx.navItemActive]}>
                   <Icon name="FileText" size="md" color="brand" />
                 </View>
                 <View style={styles.actionCopy}>
@@ -228,7 +228,7 @@ export const DashboardScreen: React.FC = () => {
                 accessibilityRole="button"
                 accessibilityLabel="Review claims. Check evidence and resolve items awaiting verification."
               >
-                <View style={styles.actionIcon}>
+                <View style={[styles.actionIcon, gx.navItemActive]}>
                   <Icon name="ShieldCheck" size="md" color="brand" />
                 </View>
                 <View style={styles.actionCopy}>
