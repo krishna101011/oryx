@@ -12,6 +12,22 @@ import type { ResearchWorkspace } from '@oryx/shared-types';
  * is invented.
  */
 
+/** Resolve query state without mistaking a failed request for an empty account.
+ * Existing cached data wins over a background refresh error. */
+export type WorkspaceListState = 'loading' | 'error' | 'empty' | 'ready';
+
+export function workspaceListState(
+  workspaces: ResearchWorkspace[] | undefined,
+  isLoading: boolean,
+  isError: boolean,
+): WorkspaceListState {
+  if (workspaces !== undefined) return workspaces.length === 0 ? 'empty' : 'ready';
+  if (isError) return 'error';
+  // No data and no confirmed error is still unresolved, never an empty state.
+  if (isLoading) return 'loading';
+  return 'loading';
+}
+
 /**
  * Mono display id for a row ("RWS-337F1AE1") — a fixed-width rendering of the
  * workspace's REAL uuid (first 8 hex chars, uppercase), not a made-up serial.
