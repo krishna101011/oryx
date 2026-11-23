@@ -25,6 +25,7 @@ import { HeroWash } from '../components/HeroWash';
 import { heroGreeting, heroKicker, heroSummary } from '../hero';
 import {
   draftsStatValue,
+  sourceSetupState,
   sourcesStatValue,
   todayCountSub,
   todayPanelState,
@@ -64,6 +65,11 @@ export const DashboardScreen: React.FC = () => {
   const recentItems = useRecentIntakeItems();
   const now = new Date();
   const today = todayPanelState(recentItems.data);
+  const setupState = sourceSetupState(
+    intakeStatus.data,
+    intakeStatus.isLoading,
+    intakeStatus.isError,
+  );
   const kpiLoading = intakeStatus.isLoading || me.isLoading;
 
   return (
@@ -116,16 +122,50 @@ export const DashboardScreen: React.FC = () => {
         <Card
           header={
             <CardHeader
-              title={intakeStatus.data?.total === 0 ? "Get started" : "Next steps"}
+              title={
+                setupState === 'loading'
+                  ? 'Checking your workspace'
+                  : setupState === 'error'
+                    ? 'Sources unavailable'
+                    : setupState === 'empty'
+                      ? 'Get started'
+                      : 'Next steps'
+              }
               sub={
-                intakeStatus.data?.total === 0
-                  ? "Connect your first information source"
-                  : "Move intelligence through ORYX"
+                setupState === 'loading'
+                  ? 'Checking connected sources'
+                  : setupState === 'error'
+                    ? 'Could not confirm your connections'
+                    : setupState === 'empty'
+                      ? 'Connect your first information source'
+                      : 'Move intelligence through ORYX'
               }
             />
           }
         >
-          {intakeStatus.data?.total === 0 ? (
+          {setupState === 'loading' ? (
+            <View>
+              <Text variant="body" color="secondary">
+                Your workspace is loading. Your next steps will appear here shortly.
+              </Text>
+              <Spacer size={3} />
+              <SkeletonRow leadingWidth={56} titleWidth="85%" />
+            </View>
+          ) : setupState === 'error' ? (
+            <View>
+              <Text variant="body" color="secondary">
+                ORYX couldn't load your source status. Your existing connections haven't been changed.
+              </Text>
+              <Spacer size={3} />
+              <Button
+                label="Try again"
+                variant="secondary"
+                fullWidth
+                testID="dashboard-retry-source-status"
+                onPress={() => { void intakeStatus.refetch(); }}
+              />
+            </View>
+          ) : setupState === 'empty' ? (
             <View>
               <Text variant="body" color="secondary">
                 Bring trusted information into ORYX first. Once a source is connected, you can organize research, verify claims, and create drafts.
@@ -184,9 +224,11 @@ export const DashboardScreen: React.FC = () => {
               <Text variant="body" color="secondary">
                 {intakeStatus.data?.total === 0
                   ? "Your feed will appear here after you connect a source."
-                  : "Your intelligence feed is quiet. Connect or manage a source to bring new information into ORYX."}
+                  : intakeStatus.data && intakeStatus.data.total > 0
+                    ? "Your intelligence feed is quiet. Connect or manage a source to bring new information into ORYX."
+                    : "Source status couldn't be confirmed, so ORYX can't tell whether new information is expected. Try again above."}
               </Text>
-              {intakeStatus.data?.total !== 0 ? (
+              {intakeStatus.data !== undefined && intakeStatus.data.total > 0 ? (
                 <>
                   <Spacer size={3} />
                   <Button
