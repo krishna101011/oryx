@@ -219,7 +219,7 @@ export const WebSidebar: React.FC<{
               {g.items.map((it) => {
                 const active = it.id === activeId;
                 const badge = it.countKey ? counts[it.countKey] : 0;
-                const iconColor = active ? t.colors.accent.coral : t.colors.text.tertiary;
+                const iconColor = active ? t.colors.accent.primary : t.colors.text.tertiary;
                 return (
                   <Pressable
                     key={it.id}
