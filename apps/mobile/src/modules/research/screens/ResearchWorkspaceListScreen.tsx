@@ -14,7 +14,7 @@ import {
 } from '@oryx/design-system';
 import { useCreateWorkspace, useResearchWorkspaces } from '../hooks/useResearch';
 import { WorkspaceCard } from '../components/WorkspaceCard';
-import { workspaceCountSub } from '../list';
+import { workspaceCountSub, workspaceListState } from '../list';
 import { EmptyState } from '../../../components/EmptyState';
 
 /**
@@ -34,6 +34,7 @@ export const ResearchWorkspaceListScreen: React.FC = () => {
   const create = useCreateWorkspace();
   const [name, setName] = useState('');
   const nameInput = useRef<TextInput>(null);
+  const listState = workspaceListState(workspaces.data, workspaces.isError);
 
   const onCreate = () => {
     if (!name.trim()) return;
@@ -80,7 +81,7 @@ export const ResearchWorkspaceListScreen: React.FC = () => {
         </Card>
 
         <Spacer size={6} />
-        {workspaces.isLoading ? (
+        {listState === 'loading' ? (
           <Card header={<CardHeader title="Workspaces" />}>
             <HairlineRowList>
               {/* WorkspaceCard anatomy: RWS-XXXXXXXX mono-id (~72px) + status
@@ -90,7 +91,19 @@ export const ResearchWorkspaceListScreen: React.FC = () => {
               <SkeletonRow leadingWidth={72} hasTrailingChip />
             </HairlineRowList>
           </Card>
-        ) : (workspaces.data ?? []).length === 0 ? (
+        ) : listState === 'error' ? (
+          <Card header={<CardHeader title="Workspaces" />}>
+            <Text variant="bodySm" color="secondary">
+              We couldn't load your workspaces. Check your connection and try again.
+            </Text>
+            <Spacer size={3} />
+            <Button
+              label="Try again"
+              variant="secondary"
+              onPress={() => { void workspaces.refetch(); }}
+            />
+          </Card>
+        ) : listState === 'empty' ? (
           <EmptyState
             icon="horn"
             title="Create a workspace"
