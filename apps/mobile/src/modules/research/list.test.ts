@@ -35,19 +35,19 @@ const WORKSPACE = {
 // ---- Query-state correctness -------------------------------------------------
 
 test('workspaceListState distinguishes unresolved, failed, confirmed-empty and ready states', () => {
-  assert.equal(workspaceListState(undefined, true, false), 'loading');
-  assert.equal(workspaceListState(undefined, false, true), 'error');
-  assert.equal(workspaceListState([], false, false), 'empty');
-  assert.equal(workspaceListState([WORKSPACE], false, false), 'ready');
+  assert.equal(workspaceListState(undefined, false), 'loading');
+  assert.equal(workspaceListState(undefined, true), 'error');
+  assert.equal(workspaceListState([], false), 'empty');
+  assert.equal(workspaceListState([WORKSPACE], false), 'ready');
 });
 
 test('cached workspaces remain authoritative during a background refresh error', () => {
-  assert.equal(workspaceListState([WORKSPACE], false, true), 'ready');
-  assert.equal(workspaceListState([], false, true), 'empty');
+  assert.equal(workspaceListState([WORKSPACE], true), 'ready');
+  assert.equal(workspaceListState([], true), 'empty');
 });
 
 test('unresolved no-data state never becomes a false empty state', () => {
-  assert.equal(workspaceListState(undefined, false, false), 'loading');
+  assert.equal(workspaceListState(undefined, false), 'loading');
 });
 
 // ---- RW-1 presenters --------------------------------------------------------
