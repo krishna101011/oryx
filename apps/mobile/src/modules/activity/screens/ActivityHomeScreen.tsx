@@ -8,9 +8,11 @@ import {
   Icon,
   Pressable,
   Screen,
+  SkeletonRow,
   Spacer,
   Text,
   useTheme,
+  useGx,
 } from '@oryx/design-system';
 import type {
   ActivityInboxResponse,
@@ -20,9 +22,11 @@ import { apiClient } from '../../../lib/api/client';
 import { EmptyState } from '../../../components/EmptyState';
 import type { RootTabParamList } from '../../../navigation/types';
 import { intakeItemIdOf } from '../activityDetail';
+import { activityInboxState } from '../home';
 
 export const ActivityHomeScreen: React.FC = () => {
   const queryClient = useQueryClient();
+  const gx = useGx();
   // Tab-level prop: the intake item detail lives in the Settings stack (with
   // the rest of the intake module), so opening one is a cross-tab navigate.
   const navigation =
@@ -41,7 +45,8 @@ export const ActivityHomeScreen: React.FC = () => {
     },
   });
 
-  const items = inbox.data?.items ?? [];
+  const items = inbox.data?.items;
+  const listState = activityInboxState(items, inbox.isError);
 
   return (
     <Screen background="primary">
@@ -58,13 +63,36 @@ export const ActivityHomeScreen: React.FC = () => {
       <Spacer size={6} />
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {items.length === 0 ? (
+        {listState === 'loading' ? (
+          <Card>
+            <SkeletonRow leadingWidth={36} />
+            <Spacer size={2} />
+            <SkeletonRow leadingWidth={36} />
+            <Spacer size={2} />
+            <SkeletonRow leadingWidth={36} />
+          </Card>
+        ) : listState === 'error' ? (
+          <Card>
+            <Text variant="bodySm" color="secondary">
+              We couldn't load your activity. Check your connection and try again.
+            </Text>
+            <Spacer size={3} />
+            <Pressable
+              onPress={() => { void inbox.refetch(); }}
+              accessibilityRole="button"
+              accessibilityLabel="Try again"
+              style={gx.btn}
+            >
+              <Text variant="bodySm" style={gx.btnText}>Try again</Text>
+            </Pressable>
+          </Card>
+        ) : listState === 'empty' ? (
           <EmptyState
             title="Nothing to report"
             description="Security events and account activity will show up here as they happen."
           />
         ) : (
-          items.map((item) => {
+          (items ?? []).map((item) => {
             // "New item ingested" rows carry the real item's id in their
             // payload — pressing one opens that item (and still marks read).
             // Rows with nothing behind them keep the mark-read-only press.
