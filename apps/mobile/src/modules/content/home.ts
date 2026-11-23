@@ -105,6 +105,18 @@ export function draftMeta(
   return parts.join(' · ');
 }
 
+/** Draft query states keep network failures distinct from a confirmed empty list. Cached data remains authoritative during background refresh errors. */
+export type DraftListState = 'loading' | 'error' | 'empty' | 'ready';
+
+export function draftListState(
+  drafts: ContentDraft[] | undefined,
+  isError: boolean,
+): DraftListState {
+  if (drafts !== undefined) return drafts.length === 0 ? 'empty' : 'ready';
+  if (isError) return 'error';
+  return 'loading';
+}
+
 /**
  * The card-header mono sub ("3 DRAFTS") — same rules as workspaceCountSub:
  * silent while the query has no data, a real zero stated plainly.
