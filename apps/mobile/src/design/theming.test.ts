@@ -218,3 +218,20 @@ test('ErrorBoundary stays permanently theme-invariant: no theme imports, own hex
     'ErrorBoundary wraps the theme system, never the reverse — it must render even if theming breaks',
   );
 });
+
+
+test('active navigation, loading, icon-brand, and chart accents use canonical ORYX tokens', () => {
+  const icon = read('../../../../packages/design-system/src/components/Icon.tsx');
+  const tabs = read('../navigation/RootTabNavigator.tsx');
+  const root = read('../navigation/RootNavigator.tsx');
+  const sidebar = read('../components/web/WebSidebar.tsx');
+  const candles = read('../../../../packages/design-system/src/components/Candles.tsx');
+
+  assert.ok(icon.includes('t.colors.accent.primary'), 'brand icons resolve to the canonical primary accent');
+  assert.ok(!icon.includes('t.colors.accent.amber'), 'brand icons do not depend on the deprecated amber alias');
+  assert.ok(tabs.includes('tabBarActiveTintColor: t.colors.accent.primary'), 'native active tabs use primary');
+  assert.ok(root.includes('ActivityIndicator color={t.colors.accent.primary}'), 'root splash uses primary');
+  assert.ok(sidebar.includes('active ? t.colors.accent.primary'), 'web active navigation uses primary');
+  assert.ok(candles.includes('t.colors.accent.secondary'), 'chart price marker uses the canonical secondary accent');
+  assert.ok(!candles.includes('axisLo'), 'unused chart fallback is removed');
+});
