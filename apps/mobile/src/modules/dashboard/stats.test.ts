@@ -20,6 +20,7 @@ import {
   draftsStatValue,
   providerTag,
   sourcesStatValue,
+  sourceSetupState,
   todayCountSub,
   todayPanelState,
   todayRowTarget,
@@ -30,6 +31,18 @@ const seeded: IntakeStatusSummary = {
   total: 3,
   byHealth: { healthy: 2, degraded: 1, auth_required: 0, disabled: 0 },
 };
+
+test('source setup state distinguishes loading, error, empty and ready without guessing', () => {
+  assert.equal(sourceSetupState(undefined, true, false), 'loading');
+  assert.equal(sourceSetupState(undefined, false, true), 'error');
+  assert.equal(sourceSetupState({ total: 0 } as IntakeStatusSummary, false, false), 'empty');
+  assert.equal(sourceSetupState(seeded, false, false), 'ready');
+});
+
+test('cached source status remains usable during a failed background refresh', () => {
+  assert.equal(sourceSetupState(seeded, false, true), 'ready');
+  assert.equal(sourceSetupState({ total: 0 } as IntakeStatusSummary, false, true), 'empty');
+});
 
 test('Command Center SOURCES stat shows the real seeded source count, not zero', () => {
   assert.equal(sourcesStatValue(seeded), '3');
