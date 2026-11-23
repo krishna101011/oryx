@@ -215,3 +215,16 @@ test('Today card genuinely empty (loaded, zero items) shows the real empty copy,
 
   act(() => tree.unmount());
 });
+
+
+test('an empty Today feed offers a real Manage sources action', () => {
+  const { tree, act, rendered } = renderDashboard([]);
+  const action = tree.root.findAll(
+    (node) => node.props.testID === 'dashboard-manage-sources' &&
+      typeof node.props.onPress === 'function',
+  );
+
+  assert.equal(action.length, 1, 'one actionable source-management CTA is rendered');
+  assert.ok(rendered().includes('Manage sources'), 'the action has a clear visible label');
+  act(() => tree.unmount());
+});

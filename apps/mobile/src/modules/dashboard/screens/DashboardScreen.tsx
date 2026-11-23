@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
+  Button,
   Card,
   CardHeader,
   HairlineRowList,
@@ -121,9 +122,19 @@ export const DashboardScreen: React.FC = () => {
           </HairlineRowList>
         )}
         {today.kind === 'empty' && (
-          <Text variant="body" color="secondary">
-            Nothing to surface yet. Connect a source to begin.
-          </Text>
+          <View>
+            <Text variant="body" color="secondary">
+              Your intelligence feed is quiet. Connect or manage a source to bring new information into ORYX.
+            </Text>
+            <Spacer size={3} />
+            <Button
+              label="Manage sources"
+              variant="secondary"
+              fullWidth
+              testID="dashboard-manage-sources"
+              onPress={() => navigateSettingsScreen('IntakeHome')}
+            />
+          </View>
         )}
         {today.kind === 'list' && (
           <HairlineRowList>
