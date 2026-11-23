@@ -34,7 +34,7 @@ export const ResearchWorkspaceListScreen: React.FC = () => {
   const create = useCreateWorkspace();
   const [name, setName] = useState('');
   const nameInput = useRef<TextInput>(null);
-  const listState = workspaceListState(workspaces.data, workspaces.isLoading, workspaces.isError);
+  const listState = workspaceListState(workspaces.data, workspaces.isError);
 
   const onCreate = () => {
     if (!name.trim()) return;
