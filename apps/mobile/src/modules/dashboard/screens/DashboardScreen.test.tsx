@@ -40,6 +40,11 @@ const STATUS: IntakeStatusSummary = {
   byHealth: { healthy: 4, degraded: 0, auth_required: 0, disabled: 0 },
 };
 
+const NO_SOURCES_STATUS: IntakeStatusSummary = {
+  total: 0,
+  byHealth: { healthy: 0, degraded: 0, auth_required: 0, disabled: 0 },
+};
+
 const ITEMS: RecentIntakeItem[] = [
   {
     id: 'item-1',
@@ -66,7 +71,10 @@ function setAuthenticated(store: { dispatch: (action: unknown) => void }) {
 }
 
 /** Seeds all three queries (staleTime: Infinity — no real fetch). */
-function renderDashboard(recentItems: RecentIntakeItem[] | undefined) {
+function renderDashboard(
+  recentItems: RecentIntakeItem[] | undefined,
+  status: IntakeStatusSummary = STATUS,
+) {
   const React = req('react') as typeof ReactNS;
   const { create, act } = req('react-test-renderer') as typeof TestRendererNS;
   const { Provider } = req('react-redux') as typeof ReactReduxNS;
@@ -82,7 +90,7 @@ function renderDashboard(recentItems: RecentIntakeItem[] | undefined) {
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
   qc.setQueryData(['me'], ME);
-  qc.setQueryData(['intake', 'status'], STATUS);
+  qc.setQueryData(['intake', 'status'], status);
   if (recentItems !== undefined) {
     qc.setQueryData(['intake', 'recent-items', 10], recentItems);
   }
@@ -250,6 +258,30 @@ test('Command Center exposes direct actions for the three core workflow steps', 
   assert.ok(rendered().includes('Open research'));
   assert.ok(rendered().includes('Generate a draft'));
   assert.ok(rendered().includes('Review claims'));
+
+  act(() => tree.unmount());
+});
+
+
+test('a workspace with no connected sources gets one clear first-setup action', () => {
+  const { tree, act, rendered } = renderDashboard([], NO_SOURCES_STATUS);
+  const { Button } = req('@oryx/design-system') as typeof DesignSystemNS;
+  const setupAction = tree.root.findAll(
+    (node) =>
+      node.props.testID === 'dashboard-connect-first-source' &&
+      typeof node.props.onPress === 'function',
+  );
+
+  assert.equal(setupAction.length, 1, 'the first-source action is actionable');
+  assert.equal(
+    tree.root.findAllByType(Button as never).length,
+    1,
+    'downstream workflow actions are replaced, not shown alongside setup',
+  );
+  assert.ok(rendered().includes('Get started'));
+  assert.ok(rendered().includes('Connect a source'));
+  assert.ok(rendered().includes('Your feed will appear here after you connect a source.'));
+  assert.ok(!rendered().includes('dashboard-manage-sources'));
 
   act(() => tree.unmount());
 });
