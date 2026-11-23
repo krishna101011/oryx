@@ -12,6 +12,15 @@ import type { IntakeStatusSummary, MeResponse } from '@oryx/shared-types';
  * never-flash-a-fake-zero stat rule), and a real zero renders as "0".
  */
 
+/** Use a time-appropriate greeting instead of showing "Good morning" all day. */
+export function heroGreeting(now: Date): string {
+  const hour = now.getHours();
+  if (hour >= 5 && hour < 12) return 'Good morning.';
+  if (hour >= 12 && hour < 18) return 'Good afternoon.';
+  if (hour >= 18) return 'Good evening.';
+  return 'Welcome back.';
+}
+
 const WEEKDAYS = [
   'SUNDAY',
   'MONDAY',
@@ -61,7 +70,7 @@ export interface SummarySegment {
   strong: boolean;
 }
 
-/** '3' for a loaded count, '—' while the owning query has no data yet. */
+/** '3' for a loaded count, '—' while its owning query has no data. */
 const count = (n: number | undefined): string => (n === undefined ? '—' : String(n));
 
 /** Singular for exactly 1; the em-dash placeholder reads as plural. */
