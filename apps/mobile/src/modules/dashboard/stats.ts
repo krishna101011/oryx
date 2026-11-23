@@ -9,6 +9,25 @@ import type { SettingsStackParamList } from '../../navigation/types';
  * a workspace with three sources must not flash "0" during load, and a real
  * zero still renders as '0'.
  */
+/**
+ * The first workflow card must not guess whether a workspace is new while
+ * its source-status request is unresolved. Cached data remains authoritative
+ * during a background refresh, including when that refresh fails.
+ */
+export type SourceSetupState = 'loading' | 'error' | 'empty' | 'ready';
+
+export function sourceSetupState(
+  status: IntakeStatusSummary | undefined,
+  isLoading: boolean,
+  isError: boolean,
+): SourceSetupState {
+  if (status !== undefined) return status.total === 0 ? 'empty' : 'ready';
+  if (isError) return 'error';
+  if (isLoading) return 'loading';
+  // No data and no terminal error is still unresolved, never assume "ready".
+  return 'loading';
+}
+
 export function sourcesStatValue(status: IntakeStatusSummary | undefined): string {
   return status ? String(status.total) : '—';
 }

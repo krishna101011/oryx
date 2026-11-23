@@ -190,7 +190,7 @@ test('Today card while loading shows 3 shaped SkeletonRows (tag chip + 2-line he
 });
 
 test('KPI row while loading (intake status or /me in flight) shows 3 shaped SkeletonTiles, never the real "—" fallback', () => {
-  const { tree, act, restore } = renderDashboardLoading(false);
+  const { tree, act, restore, rendered } = renderDashboardLoading(false);
   const { SkeletonTile } = req('@oryx/design-system') as typeof DesignSystemNS;
 
   assert.equal(
@@ -198,6 +198,10 @@ test('KPI row while loading (intake status or /me in flight) shows 3 shaped Skel
     3,
     'one shaped SkeletonTile per real KPI (SOURCES / VERIFIED / DRAFTS)',
   );
+
+  assert.ok(rendered().includes('Checking your workspace'));
+  assert.ok(!rendered().includes('Open research'), 'workflow actions wait for confirmed source status');
+  assert.ok(!rendered().includes('Connect a source'), 'setup CTA waits for confirmed zero sources');
 
   act(() => tree.unmount());
   restore();
