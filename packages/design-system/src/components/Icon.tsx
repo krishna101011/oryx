@@ -5,7 +5,7 @@ import { useTheme } from '../theme/ThemeProvider';
 export type IconName = keyof typeof Lucide;
 export type IconSize = 'sm' | 'md' | 'lg';
 
-/** Decorative/category accent keys exposed to icon glyphs ("Midnight Citrus"). */
+/** Decorative/category accent keys exposed to icon glyphs. */
 type IconAccent = 'amber' | 'coral' | 'teal' | 'slateBlue' | 'plum' | 'cream';
 
 export interface IconProps {
@@ -36,10 +36,10 @@ export const Icon: React.FC<IconProps> = ({
   if (!LucideIcon) return null;
 
   const px = typeof size === 'number' ? size : SIZE_MAP[size];
-  // 'brand' resolves to the new primary accent (amber).
+  // 'brand' is the canonical ORYX primary accent.
   const resolvedColor =
     color === 'brand'
-      ? t.colors.accent.amber
+      ? t.colors.accent.primary
       : color === 'danger'
         ? t.colors.semantic.danger
         : (ACCENT_KEYS as readonly string[]).includes(color)

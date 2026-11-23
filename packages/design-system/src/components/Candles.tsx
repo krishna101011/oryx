@@ -33,9 +33,8 @@ export const Candles: React.FC<{
   const up = t.colors.semantic.positiveText;
   const down = t.colors.semantic.danger;
   const gridStroke = t.colors.border.default; // #1A2330
-  const axisHi = t.colors.text.tertiary; // #6B7588
-  const axisLo = t.colors.accent.cream; // unused tone fallback
-  const priceLine = t.colors.accent.coral; // #8B5CF6
+  const axisHi = t.colors.text.tertiary; // theme-aware tertiary text
+  const priceLine = t.colors.accent.secondary; // canonical ORYX secondary accent
   const mono = 'JetBrainsMono_400Regular';
 
   const pad = { l: 44, r: 56, t: 8, b: showVol ? 60 : 18 };
@@ -87,8 +86,6 @@ export const Candles: React.FC<{
       );
     }
   }
-  void axisLo;
-
   const maxV = Math.max(...data.map((d) => d.v || 1));
   const volBase = h - 10;
   const volH = 40;
