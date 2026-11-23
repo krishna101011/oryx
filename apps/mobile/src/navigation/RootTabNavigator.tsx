@@ -32,7 +32,7 @@ export const RootTabNavigator: React.FC = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: t.colors.accent.amber,
+        tabBarActiveTintColor: t.colors.accent.primary,
         tabBarInactiveTintColor: t.colors.text.tertiary,
         // On web the ported Genspark sidebar (WebShell) is the primary nav, so
         // the bottom tab bar is hidden there; native keeps it.
