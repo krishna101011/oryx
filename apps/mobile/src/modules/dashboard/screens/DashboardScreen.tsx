@@ -113,37 +113,57 @@ export const DashboardScreen: React.FC = () => {
         <Card
           header={
             <CardHeader
-              title="Next steps"
-              sub="Move intelligence through ORYX"
+              title={intakeStatus.data?.total === 0 ? "Get started" : "Next steps"}
+              sub={
+                intakeStatus.data?.total === 0
+                  ? "Connect your first information source"
+                  : "Move intelligence through ORYX"
+              }
             />
           }
         >
-          <View style={styles.actions}>
-            <Button
-              label="Open research"
-              variant="secondary"
-              size="sm"
-              fullWidth
-              testID="dashboard-open-research"
-              onPress={() => navigateResearchScreen('ResearchWorkspaceList')}
-            />
-            <Button
-              label="Generate a draft"
-              variant="secondary"
-              size="sm"
-              fullWidth
-              testID="dashboard-generate-draft"
-              onPress={() => navigateContentScreen('GenerateDraft')}
-            />
-            <Button
-              label="Review claims"
-              variant="secondary"
-              size="sm"
-              fullWidth
-              testID="dashboard-review-claims"
-              onPress={() => navigateSettingsScreen('VerificationQueue')}
-            />
-          </View>
+          {intakeStatus.data?.total === 0 ? (
+            <View>
+              <Text variant="body" color="secondary">
+                Bring trusted information into ORYX first. Once a source is connected, you can organize research, verify claims, and create drafts.
+              </Text>
+              <Spacer size={3} />
+              <Button
+                label="Connect a source"
+                variant="primary"
+                fullWidth
+                testID="dashboard-connect-first-source"
+                onPress={() => navigateSettingsScreen('IntakeHome')}
+              />
+            </View>
+          ) : (
+            <View style={styles.actions}>
+              <Button
+                label="Open research"
+                variant="secondary"
+                size="sm"
+                fullWidth
+                testID="dashboard-open-research"
+                onPress={() => navigateResearchScreen('ResearchWorkspaceList')}
+              />
+              <Button
+                label="Generate a draft"
+                variant="secondary"
+                size="sm"
+                fullWidth
+                testID="dashboard-generate-draft"
+                onPress={() => navigateContentScreen('GenerateDraft')}
+              />
+              <Button
+                label="Review claims"
+                variant="secondary"
+                size="sm"
+                fullWidth
+                testID="dashboard-review-claims"
+                onPress={() => navigateSettingsScreen('VerificationQueue')}
+              />
+            </View>
+          )}
         </Card>
 
         <Spacer size={4} />
@@ -159,16 +179,22 @@ export const DashboardScreen: React.FC = () => {
           {today.kind === 'empty' && (
             <View>
               <Text variant="body" color="secondary">
-                Your intelligence feed is quiet. Connect or manage a source to bring new information into ORYX.
+                {intakeStatus.data?.total === 0
+                  ? "Your feed will appear here after you connect a source."
+                  : "Your intelligence feed is quiet. Connect or manage a source to bring new information into ORYX."}
               </Text>
-              <Spacer size={3} />
-              <Button
-                label="Manage sources"
-                variant="secondary"
-                fullWidth
-                testID="dashboard-manage-sources"
-                onPress={() => navigateSettingsScreen('IntakeHome')}
-              />
+              {intakeStatus.data?.total !== 0 ? (
+                <>
+                  <Spacer size={3} />
+                  <Button
+                    label="Manage sources"
+                    variant="secondary"
+                    fullWidth
+                    testID="dashboard-manage-sources"
+                    onPress={() => navigateSettingsScreen('IntakeHome')}
+                  />
+                </>
+              ) : null}
             </View>
           )}
           {today.kind === 'list' && (
