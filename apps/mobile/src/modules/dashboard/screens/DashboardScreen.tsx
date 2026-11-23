@@ -22,7 +22,7 @@ import {
 } from '../../../navigation/navigationRef';
 import { useIntakeStatus, useRecentIntakeItems } from '../../intake/hooks/useIntakeSources';
 import { HeroWash } from '../components/HeroWash';
-import { heroKicker, heroSummary } from '../hero';
+import { heroGreeting, heroKicker, heroSummary } from '../hero';
 import {
   draftsStatValue,
   sourcesStatValue,
@@ -41,11 +41,13 @@ function timeLabel(receivedAt: string): string {
 /** One hero KPI tile. Values come from real API fields; no invented deltas or sparklines. */
 const KpiTile: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <Card style={styles.kpiTile}>
-    <Text variant="label" color="tertiary">
+    <Text variant="label" color="tertiary" numberOfLines={1}>
       {label}
     </Text>
     <Spacer size={1} />
-    <Text variant="kpiVal">{value}</Text>
+    <Text variant="kpiVal" numberOfLines={1}>
+      {value}
+    </Text>
   </Card>
 );
 
@@ -60,6 +62,7 @@ export const DashboardScreen: React.FC = () => {
   const me = useMe();
   const intakeStatus = useIntakeStatus();
   const recentItems = useRecentIntakeItems();
+  const now = new Date();
   const today = todayPanelState(recentItems.data);
   const kpiLoading = intakeStatus.isLoading || me.isLoading;
 
@@ -73,10 +76,10 @@ export const DashboardScreen: React.FC = () => {
           <HeroWash />
           <Spacer size={6} />
           <Text variant="caption" color="tertiary">
-            {heroKicker(new Date())}
+            {heroKicker(now)}
           </Text>
           <Spacer size={2} />
-          <Text variant="display">Good morning.</Text>
+          <Text variant="display">{heroGreeting(now)}</Text>
           <Spacer size={1} />
           <Text variant="body" color="secondary">
             {heroSummary(intakeStatus.data, me.data).map((seg, i) =>
@@ -92,7 +95,7 @@ export const DashboardScreen: React.FC = () => {
 
           <Spacer size={5} />
 
-          <View style={styles.kpiRow}>
+          <View style={styles.kpiRow} testID="dashboard-kpi-row">
             {kpiLoading ? (
               <>
                 <SkeletonTile style={styles.kpiTile} />
@@ -243,8 +246,9 @@ export const DashboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   content: { paddingBottom: 24 },
   hero: { position: 'relative', overflow: 'hidden' },
-  kpiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  kpiTile: { flexGrow: 1, flexBasis: '30%', minWidth: 150 },
+  // Keep all three real KPIs on one balanced row, including narrow phones.
+  kpiRow: { flexDirection: 'row', flexWrap: 'nowrap', gap: 8 },
+  kpiTile: { flex: 1, minWidth: 0 },
   actions: { gap: 8 },
   todayRow: { flexDirection: 'row', alignItems: 'flex-start' },
   tagChip: { minWidth: 56, justifyContent: 'center', alignSelf: 'flex-start' },

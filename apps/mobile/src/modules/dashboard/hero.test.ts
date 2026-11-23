@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { heroKicker, heroSummary } from './hero';
+import { heroGreeting, heroKicker, heroSummary } from './hero';
 
 /** Comments stripped: the scans assert what the screen RENDERS, and the
  * screen's own comments legitimately name the things it must not render. */
@@ -23,6 +23,18 @@ const screenSource = (): string =>
       'utf8',
     ),
   );
+
+// ---- heroGreeting -----------------------------------------------------------
+
+test('heroGreeting uses the device-local time and handles all four day periods', () => {
+  assert.equal(heroGreeting(new Date(2026, 0, 1, 4, 59)), 'Welcome back.');
+  assert.equal(heroGreeting(new Date(2026, 0, 1, 5, 0)), 'Good morning.');
+  assert.equal(heroGreeting(new Date(2026, 0, 1, 11, 59)), 'Good morning.');
+  assert.equal(heroGreeting(new Date(2026, 0, 1, 12, 0)), 'Good afternoon.');
+  assert.equal(heroGreeting(new Date(2026, 0, 1, 17, 59)), 'Good afternoon.');
+  assert.equal(heroGreeting(new Date(2026, 0, 1, 18, 0)), 'Good evening.');
+  assert.equal(heroGreeting(new Date(2026, 0, 1, 23, 59)), 'Good evening.');
+});
 
 // ---- heroKicker -------------------------------------------------------------
 
@@ -97,12 +109,19 @@ test('KPI tiles render kpiVal and never invent a sparkline, delta, or sentiment 
   const source = screenSource();
   assert.ok(source.includes('variant="kpiVal"'), 'tile values must be kpiVal');
   // No real time series exists for Sources/Verified/Drafts (rollups measure
-  // pipeline events, not these stock counts) — so no Spark may be imported,
-  // and no delta/trend/sentiment may render.
+  // pipeline events, not these stock counts) — so no spark may render.
   assert.ok(!/\bSpark\b/.test(source), 'no sparkline without a real series');
   assert.ok(!source.includes('delta'), 'no delta without prior-period data');
   assert.ok(!source.includes('trend'), 'no trend without prior-period data');
   assert.ok(!/RISK-ON|RISK-OFF|sentiment/i.test(source), 'no sentiment chip — nothing real backs it');
+});
+
+test('KPI tiles stay in one compact row with labels and values kept to one line', () => {
+  const source = screenSource();
+  assert.ok(source.includes("flexWrap: 'nowrap'"), 'the KPI row must not wrap into an uneven second row');
+  assert.ok(source.includes('flex: 1, minWidth: 0'), 'each KPI tile shares the available width');
+  assert.ok(source.includes('numberOfLines={1}'), 'narrow tiles must not wrap labels or values');
+  assert.ok(source.includes('testID="dashboard-kpi-row"'), 'the compact KPI row remains identifiable');
 });
 
 test('the Today card is wired through CardHeader + HairlineRowList with a leading tag chip', () => {
@@ -120,9 +139,10 @@ test('the Today card is wired through CardHeader + HairlineRowList with a leadin
   assert.ok(source.includes('{row.tag}'), 'the chip text is the real provider tag');
 });
 
-test('the hero kicker and wash are real: heroKicker(new Date()) and token-only HeroWash', () => {
+test('the hero kicker and wash are real: heroKicker(now) and token-only HeroWash', () => {
   const source = screenSource();
-  assert.ok(source.includes('heroKicker(new Date())'), 'kicker uses the real clock');
+  assert.ok(source.includes('heroKicker(now)'), 'kicker uses the real clock');
+  assert.ok(source.includes('heroGreeting(now)'), 'greeting uses the same device-local clock');
   assert.ok(source.includes('<HeroWash />'), 'radial wash present');
   const wash = stripComments(
     readFileSync(
