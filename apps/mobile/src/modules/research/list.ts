@@ -18,13 +18,11 @@ export type WorkspaceListState = 'loading' | 'error' | 'empty' | 'ready';
 
 export function workspaceListState(
   workspaces: ResearchWorkspace[] | undefined,
-  isLoading: boolean,
   isError: boolean,
 ): WorkspaceListState {
   if (workspaces !== undefined) return workspaces.length === 0 ? 'empty' : 'ready';
   if (isError) return 'error';
   // No data and no confirmed error is still unresolved, never an empty state.
-  if (isLoading) return 'loading';
   return 'loading';
 }
 
