@@ -15,7 +15,7 @@ import {
 import { useDraftList } from '../hooks/useDrafts';
 import { DraftCard } from '../components/DraftCard';
 import { EmptyState } from '../../../components/EmptyState';
-import { CONTENT_ACTIONS, draftCountSub } from '../home';
+import { CONTENT_ACTIONS, draftCountSub, draftListState } from '../home';
 
 /**
  * Content Studio home (design-foundation wave, CS-1/CS-2, 2026-07-15). The
@@ -29,6 +29,7 @@ export const ContentHomeScreen: React.FC = () => {
   const gx = useGx();
   const navigation = useNavigation();
   const drafts = useDraftList();
+  const listState = draftListState(drafts.data, drafts.isError);
 
   const navigateTo = (screen: string) =>
     // @ts-expect-error param-less navigate within the content stack
@@ -67,7 +68,7 @@ export const ContentHomeScreen: React.FC = () => {
         </Card>
 
         <Spacer size={6} />
-        {drafts.isLoading ? (
+        {listState === 'loading' ? (
           <Card header={<CardHeader title="Drafts" />}>
             <HairlineRowList>
               {/* DraftCard anatomy: fixed 80px date column + status chip on
@@ -77,7 +78,22 @@ export const ContentHomeScreen: React.FC = () => {
               <SkeletonRow leadingWidth={80} hasTrailingChip />
             </HairlineRowList>
           </Card>
-        ) : (drafts.data ?? []).length === 0 ? (
+        ) : listState === 'error' ? (
+          <Card header={<CardHeader title="Drafts" />}>
+            <Text variant="bodySm" color="secondary">
+              We couldn't load your drafts. Check your connection and try again.
+            </Text>
+            <Spacer size={3} />
+            <Pressable
+              onPress={() => { void drafts.refetch(); }}
+              accessibilityRole="button"
+              accessibilityLabel="Try again"
+              style={[gx.btn]}
+            >
+              <Text variant="bodySm" style={gx.btnText}>Try again</Text>
+            </Pressable>
+          </Card>
+        ) : listState === 'empty' ? (
           <EmptyState
             icon="horn"
             title="Start your first draft"

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import {
   CONTENT_ACTIONS,
   draftCountSub,
+  draftListState,
   draftMeta,
   draftStatusChip,
   draftUpdatedDate,
@@ -20,6 +21,20 @@ const stripComments = (src: string): string =>
 
 const read = (rel: string): string =>
   stripComments(readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8'));
+
+// ---- Draft query-state correctness ------------------------------------------
+
+test('draftListState distinguishes loading, error, confirmed-empty and ready states', () => {
+  assert.equal(draftListState(undefined, false), 'loading');
+  assert.equal(draftListState(undefined, true), 'error');
+  assert.equal(draftListState([], false), 'empty');
+  assert.equal(draftListState([{ id: 'draft-1' } as never], false), 'ready');
+});
+
+test('cached drafts remain visible during a background refresh error', () => {
+  assert.equal(draftListState([{ id: 'draft-1' } as never], true), 'ready');
+  assert.equal(draftListState([], true), 'empty');
+});
 
 // ---- CS-1: toolbar action parity --------------------------------------------
 
@@ -95,6 +110,8 @@ test('the content screen and draft row wire through Card/CardHeader/HairlineRowL
   assert.ok(screen.includes('<CardHeader title="Drafts"'), 'drafts card has a real header');
   assert.ok(screen.includes('draftCountSub(drafts.data)'), 'header sub is the real count');
   assert.ok(screen.includes('<HairlineRowList>'), 'draft rows pack through HairlineRowList');
+  assert.ok(screen.includes("listState === 'error'"), 'request failures have a distinct error branch');
+  assert.ok(screen.includes('drafts.refetch()'), 'the error state can retry');
 });
 
 // ---- no hardcoded color introduced -------------------------------------------
