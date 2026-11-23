@@ -244,7 +244,6 @@ test('an empty Today feed offers a real Manage sources action', () => {
 
 test('Command Center exposes direct actions for the three core workflow steps', () => {
   const { tree, act, rendered } = renderDashboard([]);
-  const { Pressable } = req('@oryx/design-system') as typeof DesignSystemNS;
   const expected = [
     'dashboard-open-research',
     'dashboard-generate-draft',
@@ -253,7 +252,8 @@ test('Command Center exposes direct actions for the three core workflow steps', 
 
   for (const testID of expected) {
     const action = tree.root.findAll(
-      (node) => node.type === Pressable && node.props.testID === testID &&
+      (node) => (node.type as unknown) === 'Pressable' &&
+        node.props.testID === testID &&
         typeof node.props.onPress === 'function',
     );
     assert.equal(action.length, 1, `expected one actionable workflow row for ${testID}`);
