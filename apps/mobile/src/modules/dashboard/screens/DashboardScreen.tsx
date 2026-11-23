@@ -13,6 +13,7 @@ import {
   Spacer,
   Text,
   useGx,
+  useTheme,
 } from '@oryx/design-system';
 import { useMe } from '../../../hooks/useMe';
 import {
@@ -60,6 +61,7 @@ const KpiTile: React.FC<{ label: string; value: string }> = ({ label, value }) =
  */
 export const DashboardScreen: React.FC = () => {
   const gx = useGx();
+  const theme = useTheme();
   const me = useMe();
   const intakeStatus = useIntakeStatus();
   const recentItems = useRecentIntakeItems();
@@ -181,30 +183,63 @@ export const DashboardScreen: React.FC = () => {
             </View>
           ) : (
             <View style={styles.actions}>
-              <Button
-                label="Open research"
-                variant="secondary"
-                size="sm"
-                fullWidth
+              <Pressable
+                style={[styles.actionRow, { borderBottomColor: theme.colors.border.default }]}
                 testID="dashboard-open-research"
                 onPress={() => navigateResearchScreen('ResearchWorkspaceList')}
-              />
-              <Button
-                label="Generate a draft"
-                variant="secondary"
-                size="sm"
-                fullWidth
+                accessibilityRole="button"
+                accessibilityLabel="Open research. Explore your workspace and investigate incoming information."
+              >
+                <View style={[styles.actionIcon, gx.navItemActive]}>
+                  <Icon name="Search" size="md" color="brand" />
+                </View>
+                <View style={styles.actionCopy}>
+                  <Text variant="body">Open research</Text>
+                  <Text variant="caption" color="tertiary">
+                    Explore your workspace and investigate information.
+                  </Text>
+                </View>
+                <Text variant="caption" color="tertiary">01</Text>
+                <Icon name="ChevronRight" size="sm" color="tertiary" />
+              </Pressable>
+              <Pressable
+                style={[styles.actionRow, { borderBottomColor: theme.colors.border.default }]}
                 testID="dashboard-generate-draft"
                 onPress={() => navigateContentScreen('GenerateDraft')}
-              />
-              <Button
-                label="Review claims"
-                variant="secondary"
-                size="sm"
-                fullWidth
+                accessibilityRole="button"
+                accessibilityLabel="Generate a draft. Turn research into a clear first draft."
+              >
+                <View style={[styles.actionIcon, gx.navItemActive]}>
+                  <Icon name="FileText" size="md" color="brand" />
+                </View>
+                <View style={styles.actionCopy}>
+                  <Text variant="body">Generate a draft</Text>
+                  <Text variant="caption" color="tertiary">
+                    Turn research into a clear first draft.
+                  </Text>
+                </View>
+                <Text variant="caption" color="tertiary">02</Text>
+                <Icon name="ChevronRight" size="sm" color="tertiary" />
+              </Pressable>
+              <Pressable
+                style={[styles.actionRow, { borderBottomColor: theme.colors.border.default }]}
                 testID="dashboard-review-claims"
                 onPress={() => navigateSettingsScreen('VerificationQueue')}
-              />
+                accessibilityRole="button"
+                accessibilityLabel="Review claims. Check evidence and resolve items awaiting verification."
+              >
+                <View style={[styles.actionIcon, gx.navItemActive]}>
+                  <Icon name="ShieldCheck" size="md" color="brand" />
+                </View>
+                <View style={styles.actionCopy}>
+                  <Text variant="body">Review claims</Text>
+                  <Text variant="caption" color="tertiary">
+                    Check evidence and resolve items awaiting verification.
+                  </Text>
+                </View>
+                <Text variant="caption" color="tertiary">03</Text>
+                <Icon name="ChevronRight" size="sm" color="tertiary" />
+              </Pressable>
             </View>
           )}
         </Card>
@@ -291,7 +326,23 @@ const styles = StyleSheet.create({
   // Keep all three real KPIs on one balanced row, including narrow phones.
   kpiRow: { flexDirection: 'row', flexWrap: 'nowrap', gap: 8 },
   kpiTile: { flex: 1, minWidth: 0 },
-  actions: { gap: 8 },
+  actions: { gap: 0 },
+  actionRow: {
+    minHeight: 68,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  actionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionCopy: { flex: 1, minWidth: 0, gap: 3 },
   todayRow: { flexDirection: 'row', alignItems: 'flex-start' },
   tagChip: { minWidth: 56, justifyContent: 'center', alignSelf: 'flex-start' },
   chevron: { marginTop: 4, marginLeft: 8 },

@@ -244,7 +244,6 @@ test('an empty Today feed offers a real Manage sources action', () => {
 
 test('Command Center exposes direct actions for the three core workflow steps', () => {
   const { tree, act, rendered } = renderDashboard([]);
-  const { Button } = req('@oryx/design-system') as typeof DesignSystemNS;
   const expected = [
     'dashboard-open-research',
     'dashboard-generate-draft',
@@ -253,15 +252,22 @@ test('Command Center exposes direct actions for the three core workflow steps', 
 
   for (const testID of expected) {
     const action = tree.root.findAll(
-      (node) => node.props.testID === testID && typeof node.props.onPress === 'function',
+      (node) => (node.type as unknown) === 'Pressable' &&
+        node.props.testID === testID &&
+        typeof node.props.onPress === 'function',
     );
-    assert.equal(action.length, 1, `expected one actionable control for ${testID}`);
+    assert.equal(action.length, 1, `expected one actionable workflow row for ${testID}`);
   }
 
-  assert.equal(tree.root.findAllByType(Button as never).length, 4);
   assert.ok(rendered().includes('Open research'));
+  assert.ok(rendered().includes('Explore your workspace and investigate information.'));
   assert.ok(rendered().includes('Generate a draft'));
+  assert.ok(rendered().includes('Turn research into a clear first draft.'));
   assert.ok(rendered().includes('Review claims'));
+  assert.ok(rendered().includes('Check evidence and resolve items awaiting verification.'));
+  assert.ok(rendered().includes('01'));
+  assert.ok(rendered().includes('02'));
+  assert.ok(rendered().includes('03'));
 
   act(() => tree.unmount());
 });
