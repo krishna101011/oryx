@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import {
+  Button,
   Card,
   CardHeader,
   HairlineRowList,
@@ -12,6 +13,7 @@ import {
   Spacer,
   Text,
   useGx,
+  useTheme,
 } from '@oryx/design-system';
 import { useMe } from '../../../hooks/useMe';
 import {
@@ -59,6 +61,7 @@ const KpiTile: React.FC<{ label: string; value: string }> = ({ label, value }) =
  */
 export const DashboardScreen: React.FC = () => {
   const gx = useGx();
+  const theme = useTheme();
   const me = useMe();
   const intakeStatus = useIntakeStatus();
   const recentItems = useRecentIntakeItems();
@@ -181,13 +184,13 @@ export const DashboardScreen: React.FC = () => {
           ) : (
             <View style={styles.actions}>
               <Pressable
-                style={styles.actionRow}
+                style={[styles.actionRow, { borderBottomColor: theme.colors.border.default }]}
                 testID="dashboard-open-research"
                 onPress={() => navigateResearchScreen('ResearchWorkspaceList')}
                 accessibilityRole="button"
                 accessibilityLabel="Open research. Explore your workspace and investigate incoming information."
               >
-                <View style={styles.actionIcon}>
+                <View style={[styles.actionIcon, gx.navItemActive]}>
                   <Icon name="Search" size="md" color="brand" />
                 </View>
                 <View style={styles.actionCopy}>
@@ -200,7 +203,7 @@ export const DashboardScreen: React.FC = () => {
                 <Icon name="ChevronRight" size="sm" color="tertiary" />
               </Pressable>
               <Pressable
-                style={styles.actionRow}
+                style={[styles.actionRow, { borderBottomColor: theme.colors.border.default }]}
                 testID="dashboard-generate-draft"
                 onPress={() => navigateContentScreen('GenerateDraft')}
                 accessibilityRole="button"
@@ -219,7 +222,7 @@ export const DashboardScreen: React.FC = () => {
                 <Icon name="ChevronRight" size="sm" color="tertiary" />
               </Pressable>
               <Pressable
-                style={styles.actionRow}
+                style={[styles.actionRow, { borderBottomColor: theme.colors.border.default }]}
                 testID="dashboard-review-claims"
                 onPress={() => navigateSettingsScreen('VerificationQueue')}
                 accessibilityRole="button"
@@ -331,7 +334,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(128, 140, 160, 0.18)',
   },
   actionIcon: {
     width: 36,
@@ -339,7 +341,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(91, 91, 245, 0.10)',
   },
   actionCopy: { flex: 1, minWidth: 0, gap: 3 },
   todayRow: { flexDirection: 'row', alignItems: 'flex-start' },
