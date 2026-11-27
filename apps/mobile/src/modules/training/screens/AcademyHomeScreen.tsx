@@ -14,21 +14,23 @@ import {
   Text,
 } from '@oryx/design-system';
 import { EmptyState } from '../../../components/EmptyState';
+import {
+  academyQueryState,
+  courseCatalogState,
+} from '../home';
 import { useCourseCatalog, useCourseProgress, useEnrollInCourse } from '../hooks/useTraining';
 
 /**
  * Academy course list (Phase 8 Wave C) — replaces TrainingHomeScreen's
- * Phase-1 placeholder. Follows ResearchWorkspaceListScreen.tsx's confirmed
- * hook-wrapped useQuery + Card/CardHeader/HairlineRowList pattern exactly
- * (recon, this wave). Real catalog, real per-course enrollment status, a
- * real enroll action. Expanding an enrolled course fetches its real
- * progress and lists real lessons — tapping one opens the lesson viewer.
- * No video player anywhere on this screen; that honest boundary lives in
- * LessonViewerScreen.
+ * Phase-1 placeholder. The catalog, enrollment, course progress and lesson
+ * content are backed by real API calls. Video playback and course authoring
+ * remain explicit follow-on integrations; this learner screen never
+ * presents either as available when it is not.
  */
 export const AcademyHomeScreen: React.FC = () => {
   const navigation = useNavigation();
   const catalog = useCourseCatalog();
+  const catalogState = courseCatalogState(catalog.data, catalog.isError);
 
   return (
     <Screen background="primary">
@@ -37,7 +39,7 @@ export const AcademyHomeScreen: React.FC = () => {
         <Text variant="pageTitle">Academy</Text>
         <Spacer size={4} />
 
-        {catalog.isLoading ? (
+        {catalogState === 'loading' ? (
           <Card header={<CardHeader title="Courses" />}>
             <HairlineRowList>
               <SkeletonRow leadingWidth={56} hasTrailingChip />
@@ -45,11 +47,23 @@ export const AcademyHomeScreen: React.FC = () => {
               <SkeletonRow leadingWidth={56} hasTrailingChip />
             </HairlineRowList>
           </Card>
-        ) : (catalog.data ?? []).length === 0 ? (
+        ) : catalogState === 'error' ? (
+          <Card header={<CardHeader title="Courses" />}>
+            <Text variant="bodySm" color="secondary">
+              We couldn't load the Academy catalog. Check your connection and try again.
+            </Text>
+            <Spacer size={3} />
+            <Button
+              label="Try again"
+              variant="secondary"
+              onPress={() => { void catalog.refetch(); }}
+            />
+          </Card>
+        ) : catalogState === 'empty' ? (
           <EmptyState
             icon="horn"
             title="No courses yet"
-            description="Real courses will appear here once the Academy catalog has content."
+            description="The Academy catalog is currently empty. Courses will appear here when they are published."
           />
         ) : (
           <Card
@@ -87,9 +101,9 @@ const CourseRow: React.FC<{
 }> = ({ course, onOpenLesson }) => {
   const [expanded, setExpanded] = useState(false);
   const enroll = useEnrollInCourse();
-  // Only fetch progress once the learner has actually opened the course —
-  // no point loading lesson data for every collapsed row on the screen.
-  const progress = useCourseProgress(course.id);
+  // Fetch lesson progress only after an enrolled course is expanded.
+  const progress = useCourseProgress(course.id, expanded);
+  const progressState = academyQueryState(progress.data, progress.isError);
 
   return (
     <View>
@@ -129,13 +143,32 @@ const CourseRow: React.FC<{
           )}
         </View>
       </Pressable>
+      {!course.enrolled && enroll.isError ? (
+        <View style={styles.message}>
+          <Text variant="caption" color="secondary">
+            We couldn't enroll you in this course. Please try again.
+          </Text>
+        </View>
+      ) : null}
       {expanded && course.enrolled ? (
         <View style={styles.lessonsBlock}>
-          {progress.isLoading ? (
+          {progressState === 'loading' ? (
             <SkeletonRow leadingWidth={0} hasChevron={false} />
+          ) : progressState === 'error' ? (
+            <View>
+              <Text variant="bodySm" color="secondary">
+                We couldn't load this course's lessons. Please try again.
+              </Text>
+              <Spacer size={2} />
+              <Button
+                label="Try again"
+                variant="secondary"
+                onPress={() => { void progress.refetch(); }}
+              />
+            </View>
           ) : (progress.data?.lessons ?? []).length === 0 ? (
             <Text variant="bodySm" color="tertiary">
-              No lessons yet.
+              No lessons have been published for this course yet.
             </Text>
           ) : (
             progress.data!.lessons.map((lesson) => (
@@ -184,5 +217,6 @@ const styles = StyleSheet.create({
   enrolledChip: { paddingHorizontal: 8, paddingVertical: 2 },
   lessonsBlock: { paddingLeft: 8, paddingTop: 8 },
   lessonRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+  message: { paddingTop: 4 },
   certificateBanner: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
 });
