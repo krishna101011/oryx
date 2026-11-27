@@ -20,10 +20,11 @@ export function useEnrollInCourse() {
   });
 }
 
-export function useCourseProgress(courseId: string) {
+export function useCourseProgress(courseId: string, enabled = true) {
   return useQuery<Training.CourseProgress>({
     queryKey: ['training', 'progress', courseId],
     queryFn: () => trainingApi.getProgress(courseId),
+    enabled,
   });
 }
 
