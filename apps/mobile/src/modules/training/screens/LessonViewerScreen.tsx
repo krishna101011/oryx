@@ -11,28 +11,24 @@ import {
   useTheme,
 } from '@oryx/design-system';
 import type { AcademyStackParamList } from '../../../navigation/types';
+import { academyQueryState } from '../home';
 import { useCompleteLesson, useLessonDetail } from '../hooks/useTraining';
 
 /**
- * Lesson viewer (Phase 8 Wave C). Real title, real transcript, a real
- * mark-complete action — and, where video would play, an honest, clearly
- * labeled "Video not yet available" state, never a broken or fake player.
- * Recon (this wave) confirmed no endpoint anywhere resolves a real
- * Cloudflare playback URL — this screen never attempts one; hasVideo only
- * decides which of the two states below renders.
+ * Lesson viewer (Phase 8 Wave C). Displays real lesson content and supports
+ * marking a lesson complete. Video playback remains unavailable until the
+ * Cloudflare Stream credentials and playback flow are configured.
  */
 export const LessonViewerScreen: React.FC = () => {
   const t = useTheme();
   const route = useRoute<RouteProp<AcademyStackParamList, 'LessonViewer'>>();
   const { lessonId } = route.params;
   const lesson = useLessonDetail(lessonId);
-  // courseId comes from the lesson's own response, not the route — see
-  // AcademyStackParamList's LessonViewer comment. useCompleteLesson is only
-  // ever invoked (via the Mark complete button below) once lesson.data is
-  // loaded, so the '' fallback here is never actually used.
+  // courseId comes from the lesson's own response, not the route.
   const complete = useCompleteLesson(lessonId, lesson.data?.courseId ?? '');
+  const lessonState = academyQueryState(lesson.data, lesson.isError);
 
-  if (lesson.isLoading || !lesson.data) {
+  if (lessonState === 'loading') {
     return (
       <Screen background="primary">
         <View style={styles.center}>
@@ -42,7 +38,28 @@ export const LessonViewerScreen: React.FC = () => {
     );
   }
 
-  const data = lesson.data;
+  if (lessonState === 'error') {
+    return (
+      <Screen background="primary">
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <Spacer size={6} />
+          <Card>
+            <Text variant="bodySm" color="secondary">
+              We couldn't load this lesson. Check your connection and try again.
+            </Text>
+            <Spacer size={3} />
+            <Button
+              label="Try again"
+              variant="secondary"
+              onPress={() => { void lesson.refetch(); }}
+            />
+          </Card>
+        </ScrollView>
+      </Screen>
+    );
+  }
+
+  const data = lesson.data!;
   const justIssuedCertificate = complete.data?.certificate ?? null;
 
   return (
@@ -62,7 +79,7 @@ export const LessonViewerScreen: React.FC = () => {
               </Text>
               <Spacer size={1} />
               <Text variant="caption" color="tertiary" align="center">
-                This lesson has a video, but real playback isn't wired up yet.
+                This lesson has a video, but real playback isn't configured yet.
               </Text>
             </View>
           </Card>
@@ -89,13 +106,23 @@ export const LessonViewerScreen: React.FC = () => {
             </Text>
           </View>
         ) : (
-          <Button
-            label="Mark complete"
-            variant="primary"
-            fullWidth
-            disabled={complete.isPending}
-            onPress={() => complete.mutate()}
-          />
+          <>
+            {complete.isError ? (
+              <>
+                <Text variant="bodySm" color="secondary">
+                  We couldn't save your completion. Please try again.
+                </Text>
+                <Spacer size={2} />
+              </>
+            ) : null}
+            <Button
+              label={complete.isError ? 'Try again' : 'Mark complete'}
+              variant="primary"
+              fullWidth
+              disabled={complete.isPending}
+              onPress={() => complete.mutate()}
+            />
+          </>
         )}
 
         {justIssuedCertificate ? (
